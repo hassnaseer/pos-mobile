@@ -5,121 +5,74 @@ import apiClient from '../services/api/globalApi';
 const AuthContext = createContext();
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 };
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [user, setUser] = useState(null);
-  const [userModules, setUserModules] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Check authentication status on app start
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
 
-  // Set up the 401 unauthorized handler
+  useEffect(() => { checkAuthStatus(); }, []);
+
   useEffect(() => {
-    apiClient.setOnUnauthorized(() => {
-      console.log('Unauthorized error detected - logging out user');
-      logout();
-    });
+    apiClient.setOnUnauthorized(() => logout());
   }, []);
 
   const checkAuthStatus = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const role = await AsyncStorage.getItem('userRole');
       const storedUser = await AsyncStorage.getItem('userData');
-      const storedModules = await AsyncStorage.getItem('userModules');
-
-      if (token && role) {
+      if (token && storedUser) {
+        const parsed = JSON.parse(storedUser);
         setIsAuthenticated(true);
-        setUserRole(role);
-
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-        }
-
-        if (storedModules) {
-          setUserModules(JSON.parse(storedModules));
-        }
+        setUserRole(parsed.role ?? null);
+        setUser(parsed);
       }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
+    } catch (e) {
+      console.error('checkAuthStatus error:', e);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (userData, token, role, modules = null) => {
+  // userData: PosAuthUser shape { id, name, email, role, businessName, businessType, permissionCodes, isTrialExpired, trialEndsAt }
+  const login = async (userData, token) => {
     try {
       await AsyncStorage.setItem('authToken', token);
-      await AsyncStorage.setItem('userRole', role);
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
-
-      if (modules) {
-        await AsyncStorage.setItem('userModules', JSON.stringify(modules));
-        setUserModules(modules);
-      }
-
       setIsAuthenticated(true);
-      setUserRole(role);
+      setUserRole(userData.role);
       setUser(userData);
-    } catch (error) {
-      console.error('Error storing auth data:', error);
-      throw error;
+    } catch (e) {
+      console.error('login error:', e);
+      throw e;
     }
   };
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.removeItem('userRole');
-      await AsyncStorage.removeItem('userData');
-      await AsyncStorage.removeItem('userModules');
-
+      await AsyncStorage.multiRemove(['authToken', 'userData']);
       setIsAuthenticated(false);
       setUserRole(null);
       setUser(null);
-      setUserModules(null);
-    } catch (error) {
-      console.error('Error clearing auth data:', error);
+    } catch (e) {
+      console.error('logout error:', e);
     }
   };
 
-  const updateUser = userData => {
-    setUser(userData);
-    AsyncStorage.setItem('userData', JSON.stringify(userData)).catch(err =>
-      console.error('Error updating user data:', err)
-    );
+  const updateUser = updated => {
+    const merged = { ...user, ...updated };
+    setUser(merged);
+    AsyncStorage.setItem('userData', JSON.stringify(merged)).catch(console.error);
   };
 
-  const updateUserModules = modules => {
-    setUserModules(modules);
-    AsyncStorage.setItem('userModules', JSON.stringify(modules)).catch(err =>
-      console.error('Error updating user modules:', err)
-    );
-  };
-
-  const value = {
-    isAuthenticated,
-    userRole,
-    user,
-    userModules,
-    isLoading,
-    login,
-    logout,
-    updateUser,
-    updateUserModules,
-    checkAuthStatus,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, userRole, user, isLoading, login, logout, updateUser, checkAuthStatus }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

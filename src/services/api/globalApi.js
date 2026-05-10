@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {API_BASE_URL} from '@env';
+import { showToast } from '../../utils/toast';
 const BASE_URL = API_BASE_URL; // your API URL
 
 class ApiClient {
@@ -82,6 +83,10 @@ class ApiClient {
         } catch (e) {
           console.log('Failed to parse error response:', e);
         }
+        // Don't toast 401 — handled above with logout
+        if (response.status !== 401) {
+          showToast.error(errorMessage);
+        }
         throw errorMessage;
       }
 
@@ -131,6 +136,14 @@ class ApiClient {
   put(endpoint, data, options = {}) {
     return this.request(endpoint, {
       method: 'PUT',
+      body: JSON.stringify(data),
+      ...options,
+    });
+  }
+
+  patch(endpoint, data, options = {}) {
+    return this.request(endpoint, {
+      method: 'PATCH',
       body: JSON.stringify(data),
       ...options,
     });

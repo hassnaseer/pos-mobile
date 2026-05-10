@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { View, Text, StyleSheet } from 'react-native';
+import { Lock } from 'lucide-react-native';
 import colors from '../../theme/colors';
 
 const NoAccessScreen = ({ message = "You don't have permission to view this content." }) => {
   return (
     <View style={styles.container}>
-      <Icon name="lock" size={60} color={colors.warning} />
+      <Lock size={60} color={colors.warning} />
       <Text style={styles.title}>Access Denied</Text>
       <Text style={styles.message}>{message}</Text>
       <Text style={styles.subtext}>

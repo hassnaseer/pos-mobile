@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "624048766099",
-    "project_id": "maak-dream-crm",
-    "storage_bucket": "maak-dream-crm.firebasestorage.app"
+    "project_number": "774003914526",
+    "project_id": "possystem-114d4",
+    "storage_bucket": "possystem-114d4.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:624048766099:android:808b6ea63d2d8b71446166",
+        "mobilesdk_app_id": "1:774003914526:android:dd492bcc40ea93334a7b0f",
         "android_client_info": {
-          "package_name": "com.vulcantech.maak_dream_crm"
+          "package_name": "com.possystem.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAP6SdEY7QmcTnJTsK3kbk4WFBYS7ry_TM"
+          "current_key": "AIzaSyDiuzbvTpFVyKwJbAdEbRiynsVjQ7Dhskk"
         }
       ],
       "services": {

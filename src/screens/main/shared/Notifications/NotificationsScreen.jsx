@@ -1,210 +1,74 @@
 import React from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
-import {
-  useNotifications,
-  useMarkNotificationRead,
-} from '../../../../services/api/clientApi';
-import { useAuth } from '../../../../context/AuthContext';
-import {formatTimestamp} from '../../../../utils/formatTime';
-// --- Color mapping ---
-const TYPE_COLORS = {
-  success: '#28C76F', // green
-  error: '#FF4D4F', // red
-  warning: '#FFB020', // yellow
-  info: '#00CFE8', // blue
-  default: '#FFCC00',
-};
 
-// --- Determine color based on notification title ---
-const getTypeFromTitle = title => {
-  if (title.includes('Sales Offer')) return 'success';
-  if (title.includes('Invoice')) return 'error';
-  if (title.includes('Project Assigned')) return 'info';
-  return 'default';
-};
+const NotifItem = ({ item, onRead }) => (
+  <TouchableOpacity
+    style={[styles.item, !item.isRead && styles.itemUnread]}
+    onPress={() => !item.isRead && onRead(item.id)}
+    activeOpacity={0.7}
+  >
+    <View style={styles.itemDot}>
+      {!item.isRead && <View style={styles.dot} />}
+    </View>
+    <View style={styles.itemBody}>
+      <Text style={styles.itemTitle}>{item.title}</Text>
+      <Text style={styles.itemMsg}>{item.message}</Text>
+      <Text style={styles.itemTime}>
+        {(item.insertedDate ?? item.createdAt) ? new Date(item.insertedDate ?? item.createdAt).toLocaleString() : ''}
+      </Text>
+    </View>
+  </TouchableOpacity>
+);
 
-const getTypeColor = title => TYPE_COLORS[getTypeFromTitle(title)];
+const NotificationsScreen = () => {
+  const { data: notifs = [], isLoading, refetch } = useNotifications();
+  const { mutate: markOne } = useMarkNotificationRead();
+  const { mutate: markAll } = useMarkAllNotificationsRead();
 
-// --- Format time from ISO string ---
-const formatTime = isoString => {
-  const date = new Date(isoString);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
-
-// --- Notification Card ---
-const NotificationCard = ({ item }) => {
-  const color = getTypeColor(item.title);
-  const { mutate: markRead } = useMarkNotificationRead();
-
-  const handleCardPress = () => {
-    if (!item.is_read) {
-      markRead(item.id);
-    }
-  };
+  if (isLoading) return <View style={styles.center}><ActivityIndicator color={colors.primary} size="large" /></View>;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={handleCardPress}
-      style={[
-        styles.card,
-        item.is_read ? { backgroundColor: '#fff' } : { backgroundColor: '#F9FBFF' },
-      ]}
-    >
-      <View style={[styles.leftBar, { backgroundColor: color }]} />
-
-      <View style={styles.cardMain}>
-        <Text
-          style={[
-            styles.message,
-            !item.is_read && { fontFamily: 'Outfit-Medium' },
-          ]}
-        >
-          {item.message}
-        </Text>
+    <View style={styles.root}>
+      <View style={styles.topBar}>
+        <Text style={styles.heading}>Notifications</Text>
+        {notifs.some(n => !n.isRead) && (
+          <TouchableOpacity onPress={() => markAll()}>
+            <Text style={styles.markAll}>Mark all read</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      <View style={styles.sideContainer}>
-        <Text style={styles.time}>{formatTimestamp(item.created_at)}</Text>
-
-        {/* Blue dot indicator for unread notifications */}
-        {!item.is_read && <View style={styles.blueDot} />}
-      </View>
-    </TouchableOpacity>
+      <FlatList
+        data={notifs}
+        keyExtractor={i => String(i.id)}
+        renderItem={({ item }) => <NotifItem item={item} onRead={markOne} />}
+        refreshing={isLoading}
+        onRefresh={refetch}
+        ListEmptyComponent={<Text style={styles.empty}>No notifications yet.</Text>}
+        contentContainerStyle={notifs.length === 0 && styles.emptyWrap}
+      />
+    </View>
   );
 };
-
-// --- Notifications Screen ---
-export default function NotificationsScreen({ navigation }) {
-  const { userRole } = useAuth(); // get the current user role
-  const { data, isLoading, isError, refetch } = useNotifications(userRole);
-  const notifications = data || [];
-
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={refetch} />
-          }
-        >
-          <Text style={styles.title}>Notifications</Text>
-
-          {isError && (
-            <Text style={styles.errorText}>Failed to load notifications.</Text>
-          )}
-
-          {!isLoading && notifications.length === 0 && (
-            <Text style={styles.emptyText}>No notifications available.</Text>
-          )}
-
-          {notifications.map(n => (
-            <NotificationCard key={n.id} item={n} />
-          ))}
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </View>
-    </SafeAreaView>
-  );
-}
-
-// --- Styles ---
-const CARD_RADIUS = 8;
-const CARD_MIN_HEIGHT = 64;
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontFamily: 'Outfit-Medium',
-    color: colors.defaultBlack,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#ECEFF3',
-    borderRadius: CARD_RADIUS,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginBottom: 12,
-    minHeight: CARD_MIN_HEIGHT,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  leftBar: {
-    width: 6,
-    height: '100%',
-    borderRadius: CARD_RADIUS,
-    marginRight: 12,
-    alignSelf: 'stretch',
-  },
-  cardMain: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  message: {
-    fontSize: 14,
-    color: colors.defaultBlack,
-    lineHeight: 20,
-    fontFamily: 'Outfit-Regular',
-  },
-  sideContainer: {
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginLeft: 10,
-    gap: 6,
-  },
-  time: {
-    textAlign: 'right',
-    fontSize: 12,
-    color: colors.secondary,
-    fontFamily: 'Outfit-Regular',
-  },
-  blueDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#3083FF',
-    marginTop: 4,
-  },
-  errorText: {
-    color: 'red',
-    marginBottom: 10,
-    fontSize: 14,
-  },
-  emptyText: {
-    color: '#888',
-    fontSize: 14,
-    marginTop: 10,
-  },
+  root: { flex: 1, backgroundColor: '#f4f6f9' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
+  heading: { fontSize: 18, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
+  markAll: { fontSize: 13, fontFamily: 'Outfit-Regular', color: colors.primary },
+  item: { backgroundColor: '#fff', padding: 16, marginHorizontal: 16, marginTop: 8, borderRadius: 10, flexDirection: 'row', gap: 12 },
+  itemUnread: { backgroundColor: '#EBF0F5' },
+  itemDot: { width: 10, paddingTop: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  itemBody: { flex: 1 },
+  itemTitle: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack, marginBottom: 4 },
+  itemMsg: { fontSize: 13, fontFamily: 'Outfit-Regular', color: colors.secondary, lineHeight: 20 },
+  itemTime: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#aaa', marginTop: 6 },
+  empty: { textAlign: 'center', color: colors.secondary, fontFamily: 'Outfit-Regular', fontSize: 15 },
+  emptyWrap: { flex: 1, justifyContent: 'center' },
 });
+
+export default NotificationsScreen;

@@ -7,7 +7,6 @@ import {
   Modal,
   TouchableOpacity,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import colors from '../../theme/colors';
 import deleteIcon from '../../assets/icons/trash-01.png';
 

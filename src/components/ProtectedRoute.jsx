@@ -1,37 +1,38 @@
 import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { usePermissions } from '../hooks/usePermissions';
-import NoAccessScreen from './NoAccessScreen';
-import { getModuleDisplayName } from '../utils/permissions';
+import colors from '../theme/colors';
 
-/**
- * @param {Object} props
- * @param {React.Component} props.component - The component to render if access is granted
- * @param {string} props.moduleName - The module name to check access for
- * @param {Object} props - All other props are passed to the component
- *
- * @example
- */
-const ProtectedRoute = ({ component: Component, moduleName, ...rest }) => {
-  const { hasModule, isClient } = usePermissions();
+const NoAccess = ({ navigation }) => (
+  <View style={styles.container}>
+    <Text style={styles.icon}>🔒</Text>
+    <Text style={styles.title}>Access Denied</Text>
+    <Text style={styles.body}>You don't have permission to view this page.</Text>
+    {navigation && (
+      <TouchableOpacity style={styles.btn} onPress={() => navigation.goBack()}>
+        <Text style={styles.btnText}>Go Back</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+);
 
-  // Client role bypasses all permission checks
-  if (isClient()) {
-    return <Component {...rest} />;
-  }
+const ProtectedRoute = ({ component: Component, permission, ...rest }) => {
+  const perms = usePermissions();
 
-  // Check if user has access to the module
-  const hasAccess = hasModule(moduleName);
-
-  if (!hasAccess) {
-    return (
-      <NoAccessScreen
-        moduleName={getModuleDisplayName(moduleName)}
-        navigation={rest.navigation}
-      />
-    );
+  if (permission && !perms.can(permission)) {
+    return <NoAccess navigation={rest.navigation} />;
   }
 
   return <Component {...rest} />;
 };
+
+const styles = StyleSheet.create({
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
+  icon: { fontSize: 48, marginBottom: 16 },
+  title: { fontSize: 22, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack, marginBottom: 8 },
+  body: { fontSize: 15, fontFamily: 'Outfit-Regular', color: colors.secondary, textAlign: 'center', marginBottom: 24 },
+  btn: { backgroundColor: colors.primary, paddingHorizontal: 32, paddingVertical: 12, borderRadius: 8 },
+  btnText: { color: '#fff', fontFamily: 'Outfit-Medium', fontSize: 15 },
+});
 
 export default ProtectedRoute;

@@ -11,7 +11,6 @@ import {
   Image,
 } from 'react-native';
 import { Formik } from 'formik';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import colors from '../../theme/colors';
 import crossIcon from '../../assets/icons/cross-icon.png';
 
