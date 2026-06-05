@@ -31,8 +31,28 @@ import DeviceConditionsScreen from '../screens/main/admin/DeviceConditions/Devic
 import TicketsScreen from '../screens/main/admin/Tickets/TicketsScreen';
 import ReportsScreen from '../screens/main/admin/Reports/ReportsScreen';
 import IntegrationsScreen from '../screens/main/admin/Integrations/IntegrationsScreen';
-import BillingScreen from '../screens/main/admin/Billing/BillingScreen';
+import MiscChargesScreen from '../screens/main/admin/MiscCharges/MiscChargesScreen';
+import ActivityLogsScreen from '../screens/main/admin/ActivityLogs/ActivityLogsScreen';
 import AttendanceScreen from '../screens/main/admin/Attendance/AttendanceScreen';
+
+// HRMS
+import HRMSDashboardScreen from '../screens/main/admin/HRMS/HRMSDashboardScreen';
+import LeaveScreen from '../screens/main/admin/HRMS/LeaveScreen';
+import ClaimsScreen from '../screens/main/admin/HRMS/ClaimsScreen';
+import AnnouncementsScreen from '../screens/main/admin/HRMS/AnnouncementsScreen';
+import PayrollScreen from '../screens/main/admin/HRMS/PayrollScreen';
+import TasksScreen from '../screens/main/admin/HRMS/TasksScreen';
+import ReviewsScreen from '../screens/main/admin/HRMS/ReviewsScreen';
+import JobBoardScreen from '../screens/main/admin/HRMS/JobBoardScreen';
+import HRDocumentsScreen from '../screens/main/admin/HRMS/HRDocumentsScreen';
+import TrainingsScreen from '../screens/main/admin/HRMS/TrainingsScreen';
+
+// Vendor / Marketplace
+import MarketplaceScreen from '../screens/main/admin/Vendor/MarketplaceScreen';
+import VendorOrdersScreen from '../screens/main/admin/Vendor/VendorOrdersScreen';
+import VendorProfileScreen from '../screens/main/admin/Vendor/VendorProfileScreen';
+import VendorListingsScreen from '../screens/main/admin/Vendor/VendorListingsScreen';
+import IncomingOrdersScreen from '../screens/main/admin/Vendor/IncomingOrdersScreen';
 import SupportChatScreen from '../screens/main/admin/Chat/SupportChatScreen';
 import SettingsScreen from '../screens/main/admin/Settings/SettingsScreen';
 
@@ -41,6 +61,7 @@ import MedicalDashboardScreen from '../screens/main/admin/Medical/MedicalDashboa
 import AppointmentsScreen from '../screens/main/admin/Medical/AppointmentsScreen';
 import PatientsScreen from '../screens/main/admin/Medical/PatientsScreen';
 import DoctorsScreen from '../screens/main/admin/Medical/DoctorsScreen';
+import AppointmentTypesScreen from '../screens/main/admin/Medical/AppointmentTypesScreen';
 
 // Restaurant
 import RestaurantDashboardScreen from '../screens/main/admin/Restaurant/RestaurantDashboardScreen';
@@ -51,10 +72,12 @@ import RestaurantOrdersScreen from '../screens/main/admin/Restaurant/RestaurantO
 // Factory
 import FactoryMedicinesScreen from '../screens/main/admin/Factory/FactoryMedicinesScreen';
 import FactoryOrderInboxScreen from '../screens/main/admin/Factory/FactoryOrderInboxScreen';
+import FactoryConnectionsScreen from '../screens/main/admin/Factory/FactoryConnectionsScreen';
 
 // Pharmacy
 import PharmacyFactoriesScreen from '../screens/main/admin/Pharmacy/PharmacyFactoriesScreen';
 import PharmacyOrdersScreen from '../screens/main/admin/Pharmacy/PharmacyOrdersScreen';
+import PharmacyConnectionsScreen from '../screens/main/admin/Pharmacy/PharmacyConnectionsScreen';
 
 // Social Media
 import SocialAccountsScreen from '../screens/main/admin/Social/SocialAccountsScreen';
@@ -73,6 +96,40 @@ import SAReportsScreen from '../screens/main/super-admin/Reports/SAReportsScreen
 import SASupportScreen from '../screens/main/super-admin/Chat/SASupportScreen';
 import SALegalPagesScreen from '../screens/main/super-admin/LegalPages/SALegalPagesScreen';
 import SASettingsScreen from '../screens/main/super-admin/Settings/SASettingsScreen';
+import SAVendorsScreen from '../screens/main/super-admin/Vendors/SAVendorsScreen';
+import SADemoRequestsScreen from '../screens/main/super-admin/DemoRequests/SADemoRequestsScreen';
+import SAPlatformTeamScreen from '../screens/main/super-admin/PlatformTeam/SAPlatformTeamScreen';
+import SADocumentsScreen from '../screens/main/super-admin/Documents/SADocumentsScreen';
+import SAActivityLogsScreen from '../screens/main/super-admin/ActivityLogs/SAActivityLogsScreen';
+import SALearnGuidesScreen from '../screens/main/super-admin/LearnGuides/SALearnGuidesScreen';
+
+// Staff Dashboard (all 3 variants inside)
+import StaffDashboardScreen from '../screens/main/staff/StaffDashboardScreen';
+
+// Medical Staff Check-in (admin manual)
+import MedicalStaffCheckinScreen from '../screens/main/admin/Medical/MedicalStaffCheckinScreen';
+
+// Taxes
+import TaxesScreen from '../screens/main/admin/Taxes/TaxesScreen';
+
+// Departments
+import DepartmentsScreen from '../screens/main/admin/Departments/DepartmentsScreen';
+
+// Ticket Statuses & Fingerprint Devices
+import TicketStatusesScreen    from '../screens/main/admin/TicketStatuses/TicketStatusesScreen';
+import FingerprintDevicesScreen from '../screens/main/admin/FingerprintDevices/FingerprintDevicesScreen';
+
+// Staff Personal (HRMS)
+import MyAttendanceScreen  from '../screens/main/staff/MyAttendanceScreen';
+import MyLeaveScreen       from '../screens/main/staff/MyLeaveScreen';
+import MyPayslipsScreen    from '../screens/main/staff/MyPayslipsScreen';
+import MyClaimsScreen      from '../screens/main/staff/MyClaimsScreen';
+import MyAnnouncementsScreen from '../screens/main/staff/MyAnnouncementsScreen';
+import MyTasksScreen       from '../screens/main/staff/MyTasksScreen';
+import MyReviewsScreen     from '../screens/main/staff/MyReviewsScreen';
+import StaffJobBoardScreen from '../screens/main/staff/StaffJobBoardScreen';
+import MyDocumentsScreen   from '../screens/main/staff/MyDocumentsScreen';
+import MyTrainingsScreen   from '../screens/main/staff/MyTrainingsScreen';
 
 // Support Staff
 import SupportDashboardScreen from '../screens/main/support/Chat/SupportDashboardScreen';
@@ -109,26 +166,48 @@ const ADMIN_SCREENS = [
   { name: 'POS',          component: POSScreen },
   { name: 'Products',     component: ProductsScreen },
   { name: 'Categories',   component: CategoriesScreen },
+  { name: 'MiscCharges',  component: MiscChargesScreen },
   { name: 'Customers',    component: CustomersScreen },
   { name: 'Orders',       component: OrdersScreen },
   { name: 'Tickets',      component: TicketsScreen },
-  { name: 'Suppliers',         component: SuppliersScreen },
-  { name: 'Manufacturers',     component: ManufacturersScreen },
-  { name: 'DeviceConditions',  component: DeviceConditionsScreen },
-  { name: 'Staff',             component: StaffScreen },
-  { name: 'Roles',        component: RolesScreen },
+  { name: 'Staff',        component: StaffScreen },
   { name: 'Reports',      component: ReportsScreen },
   { name: 'Integrations', component: IntegrationsScreen },
-  { name: 'Billing',      component: BillingScreen },
+  { name: 'ActivityLogs', component: ActivityLogsScreen },
   { name: 'Attendance',   component: AttendanceScreen },
+
+  // HRMS
+  { name: 'HRMSDashboard',     component: HRMSDashboardScreen },
+  { name: 'HRMSAttendance',    component: AttendanceScreen },
+  { name: 'HRMSLeave',         component: LeaveScreen },
+  { name: 'HRMSClaims',        component: ClaimsScreen },
+  { name: 'HRMSAnnouncements', component: AnnouncementsScreen },
+  { name: 'HRMSPayroll',       component: PayrollScreen },
+  { name: 'HRMSTasks',         component: TasksScreen },
+  { name: 'HRMSReviews',       component: ReviewsScreen },
+  { name: 'HRMSJobBoard',      component: JobBoardScreen },
+  { name: 'HRMSDocuments',     component: HRDocumentsScreen },
+  { name: 'HRMSTrainings',     component: TrainingsScreen },
+
+  // Vendor / Marketplace
+  { name: 'Marketplace',    component: MarketplaceScreen },
+  { name: 'VendorOrders',   component: VendorOrdersScreen },
+  { name: 'VendorProfile',  component: VendorProfileScreen },
+  { name: 'VendorListings', component: VendorListingsScreen },
+  { name: 'IncomingOrders', component: IncomingOrdersScreen },
+
   { name: 'SupportChat',  component: SupportChatScreen },
   { name: 'Settings',     component: SettingsScreen },
 
+  // Staff Dashboard
+  { name: 'StaffDashboard', component: StaffDashboardScreen },
+
   // Medical
-  { name: 'MedicalDashboard', component: MedicalDashboardScreen },
-  { name: 'Appointments',     component: AppointmentsScreen },
-  { name: 'Patients',         component: PatientsScreen },
-  { name: 'Doctors',          component: DoctorsScreen },
+  { name: 'MedicalDashboard',    component: MedicalDashboardScreen },
+  { name: 'Appointments',        component: AppointmentsScreen },
+  { name: 'Patients',            component: PatientsScreen },
+  { name: 'Doctors',             component: DoctorsScreen },
+  { name: 'MedicalStaffCheckin', component: MedicalStaffCheckinScreen },
 
   // Restaurant
   { name: 'RestaurantDashboard', component: RestaurantDashboardScreen },
@@ -137,29 +216,60 @@ const ADMIN_SCREENS = [
   { name: 'RestaurantOrders',    component: RestaurantOrdersScreen },
 
   // Factory
-  { name: 'FactoryMedicines',  component: FactoryMedicinesScreen },
-  { name: 'FactoryOrderInbox', component: FactoryOrderInboxScreen },
+  { name: 'FactoryMedicines',   component: FactoryMedicinesScreen },
+  { name: 'FactoryOrderInbox',  component: FactoryOrderInboxScreen },
+  { name: 'FactoryConnections', component: FactoryConnectionsScreen },
 
   // Pharmacy
-  { name: 'PharmacyFactories', component: PharmacyFactoriesScreen },
-  { name: 'PharmacyOrders',    component: PharmacyOrdersScreen },
+  { name: 'PharmacyFactories',   component: PharmacyFactoriesScreen },
+  { name: 'PharmacyOrders',      component: PharmacyOrdersScreen },
+  { name: 'PharmacyConnections', component: PharmacyConnectionsScreen },
 
   // Social Media
   { name: 'SocialAccounts',  component: SocialAccountsScreen },
   { name: 'SocialPosts',     component: SocialPostsScreen },
   { name: 'SocialComments',  component: SocialCommentsScreen },
   { name: 'SocialMessages',  component: SocialMessagesScreen },
+
+  // Staff Personal (HRMS personal screens)
+  { name: 'MyAttendance',    component: MyAttendanceScreen },
+  { name: 'MyLeave',         component: MyLeaveScreen },
+  { name: 'MyPayslips',      component: MyPayslipsScreen },
+  { name: 'MyClaims',        component: MyClaimsScreen },
+  { name: 'MyAnnouncements', component: MyAnnouncementsScreen },
+  { name: 'MyTasks',         component: MyTasksScreen },
+  { name: 'MyReviews',       component: MyReviewsScreen },
+  { name: 'StaffJobBoard',   component: StaffJobBoardScreen },
+  { name: 'MyDocuments',     component: MyDocumentsScreen },
+  { name: 'MyTrainings',     component: MyTrainingsScreen },
 ];
 
-const AdminNavigator = ({ unreadCount }) => {
+// Settings sub-screens — opened from Settings > Configuration, always show back button
+const SETTINGS_SCREENS = [
+  { name: 'Suppliers',        component: SuppliersScreen },
+  { name: 'Manufacturers',    component: ManufacturersScreen },
+  { name: 'DeviceConditions', component: DeviceConditionsScreen },
+  { name: 'Roles',            component: RolesScreen },
+  { name: 'Departments',      component: DepartmentsScreen },
+  { name: 'Taxes',            component: TaxesScreen },
+  { name: 'TicketStatuses',    component: TicketStatusesScreen },
+  { name: 'FingerprintDevices', component: FingerprintDevicesScreen },
+  { name: 'AppointmentTypes',  component: AppointmentTypesScreen },
+];
+
+const AdminNavigator = ({ unreadCount, userRole }) => {
   const openSidebar = useSidebarStore(s => s.open);
   const menuHdr = makeMenuHeader(openSidebar, unreadCount);
   const backHdr = makeBackHeader(unreadCount);
+  const initialRoute = userRole === ROLES.STAFF ? 'StaffDashboard' : 'Dashboard';
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Navigator screenOptions={{ headerShown: true }}>
+      <Stack.Navigator screenOptions={{ headerShown: true }} initialRouteName={initialRoute}>
         {ADMIN_SCREENS.map(({ name, component: C }) => (
           <Stack.Screen key={name} name={name} component={C} options={{ header: menuHdr }} />
+        ))}
+        {SETTINGS_SCREENS.map(({ name, component: C }) => (
+          <Stack.Screen key={name} name={name} component={C} options={{ header: backHdr }} />
         ))}
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ header: backHdr }} />
         <Stack.Screen name="OrderDetail"   component={OrderDetailScreen}   options={{ header: backHdr }} />
@@ -182,6 +292,12 @@ const SA_SCREENS = [
   { name: 'SASupport',       component: SASupportScreen },
   { name: 'SALegalPages',    component: SALegalPagesScreen },
   { name: 'SASettings',      component: SASettingsScreen },
+  { name: 'SAVendors',       component: SAVendorsScreen },
+  { name: 'SADemoRequests',  component: SADemoRequestsScreen },
+  { name: 'SAPlatformTeam',  component: SAPlatformTeamScreen },
+  { name: 'SADocuments',     component: SADocumentsScreen },
+  { name: 'SAActivityLogs',  component: SAActivityLogsScreen },
+  { name: 'SALearnGuides',   component: SALearnGuidesScreen },
 ];
 
 const SuperAdminNavigator = ({ unreadCount }) => {
@@ -231,5 +347,5 @@ export default function MainStack() {
 
   if (userRole === ROLES.SUPER_ADMIN)   return <SuperAdminNavigator unreadCount={unreadCount} />;
   if (userRole === ROLES.SUPPORT_STAFF) return <SupportNavigator    unreadCount={unreadCount} />;
-  return <AdminNavigator unreadCount={unreadCount} />;
+  return <AdminNavigator unreadCount={unreadCount} userRole={userRole} />;
 }

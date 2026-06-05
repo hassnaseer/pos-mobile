@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../services/api/globalApi';
 
@@ -15,11 +16,23 @@ export const AuthProvider = ({ children }) => {
   const [userRole, setUserRole] = useState(null);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => { checkAuthStatus(); }, []);
 
   useEffect(() => {
     apiClient.setOnUnauthorized(() => logout());
+  }, []);
+
+  // Re-fetch permissions when app comes to foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', nextState => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        refreshPermissions();
+      }
+      appState.current = nextState;
+    });
+    return () => sub.remove();
   }, []);
 
   const checkAuthStatus = async () => {
@@ -39,7 +52,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // userData: PosAuthUser shape { id, name, email, role, businessName, businessType, permissionCodes, isTrialExpired, trialEndsAt }
+  // Silently merge fresh permissionCodes from the profile endpoint
+  const refreshPermissions = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) return;
+      const res = await apiClient.get('/user/profile');
+      const profile = res?.data ?? res;
+      if (!profile) return;
+      const storedRaw = await AsyncStorage.getItem('userData');
+      if (!storedRaw) return;
+      const stored = JSON.parse(storedRaw);
+      const merged = {
+        ...stored,
+        permissionCodes: profile.permissionCodes ?? stored.permissionCodes,
+        businessPermissionCodes: profile.businessPermissionCodes ?? stored.businessPermissionCodes,
+      };
+      setUser(merged);
+      await AsyncStorage.setItem('userData', JSON.stringify(merged));
+    } catch {
+      // Silent — token may be expired (handled by onUnauthorized)
+    }
+  };
+
   const login = async (userData, token) => {
     try {
       await AsyncStorage.setItem('authToken', token);
@@ -71,7 +106,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userRole, user, isLoading, login, logout, updateUser, checkAuthStatus }}>
+    <AuthContext.Provider value={{
+      isAuthenticated, userRole, user, isLoading,
+      login, logout, updateUser, checkAuthStatus, refreshPermissions,
+    }}>
       {children}
     </AuthContext.Provider>
   );

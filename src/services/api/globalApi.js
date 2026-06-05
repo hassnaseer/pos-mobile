@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {API_BASE_URL} from '@env';
 import { showToast } from '../../utils/toast';
-const BASE_URL = API_BASE_URL; // your API URL
-
+const BASE_URL = 'https://8263-182-181-168-99.ngrok-free.app/api/v1'; // your API URL
+// const BASE_URL = API_BASE_URL;
 class ApiClient {
   constructor() {
     this.baseURL = BASE_URL;
@@ -25,7 +25,7 @@ class ApiClient {
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const { skipAuth = false, responseType, ...restOptions } = options;
-    // console.log(url, "urlurl");
+    console.log(url, "urlurl");
     
     const defaultHeaders = { 'Content-Type': 'application/json' };
 
@@ -106,7 +106,13 @@ class ApiClient {
 
       //  Handle JSON safely
       if (contentType.includes('application/json')) {
-        return await response.json();
+        const data = await response.json();
+        // Show backend success message for mutating requests
+        const method = (config.method ?? '').toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && data?.message) {
+          showToast.success(data.message);
+        }
+        return data;
       }
 
       //  Fallback to text

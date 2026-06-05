@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import {
   useProducts, useCategories, useSuppliers, useDeviceConditions,
-  useCreateProduct, useUpdateProduct, useDeleteProduct,
+  useCreateProduct, useUpdateProduct, useDeleteProduct, useTaxes,
 } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
@@ -13,9 +13,10 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
 
 const EMPTY_FORM = {
-  name: '', sku: '', price: '', cost: '', minSellingPrice: '',
+  name: '', sku: '', barcode: '', price: '', cost: '', minSellingPrice: '',
   stock: '', lowStockThreshold: '', categoryId: '', supplierId: '',
   description: '', condition: '', physicalLocation: '',
+  warrantyDays: '', taxId: '',
 };
 
 const InlineSelect = ({ label, value, options, onSelect }) => {
@@ -62,14 +63,16 @@ const ProductsScreen = () => {
   const { data: rawCats = [] } = useCategories();
   const { data: rawSuppliers = [] } = useSuppliers();
   const { data: rawConditions = [] } = useDeviceConditions();
+  const { data: rawTaxes = [] } = useTaxes();
   const { mutateAsync: create, isPending: creating } = useCreateProduct();
   const { mutateAsync: update, isPending: updating } = useUpdateProduct();
   const { mutateAsync: remove } = useDeleteProduct();
 
-  const products = Array.isArray(rawProducts) ? rawProducts : (rawProducts?.data ?? []);
-  const categories = Array.isArray(rawCats) ? rawCats : (rawCats?.data ?? []);
-  const suppliers = Array.isArray(rawSuppliers) ? rawSuppliers : (rawSuppliers?.data ?? []);
-  const conditions = Array.isArray(rawConditions) ? rawConditions : (rawConditions?.data ?? []);
+  const products   = Array.isArray(rawProducts)  ? rawProducts  : (rawProducts?.data  ?? []);
+  const categories = Array.isArray(rawCats)      ? rawCats      : (rawCats?.data      ?? []);
+  const suppliers  = Array.isArray(rawSuppliers) ? rawSuppliers : (rawSuppliers?.data ?? []);
+  const conditions = Array.isArray(rawConditions)? rawConditions: (rawConditions?.data?? []);
+  const taxes      = Array.isArray(rawTaxes)     ? rawTaxes     : (rawTaxes?.data     ?? []);
 
   const filtered = products.filter(p => p.name?.toLowerCase().includes(search.toLowerCase()));
 
@@ -77,18 +80,21 @@ const ProductsScreen = () => {
   const openEdit = p => {
     setEditing(p);
     setForm({
-      name: p.name ?? '',
-      sku: p.sku ?? '',
-      price: p.price != null ? String(p.price) : '',
-      cost: p.cost != null ? String(p.cost) : '',
-      minSellingPrice: p.minSellingPrice != null ? String(p.minSellingPrice) : '',
-      stock: p.stock != null ? String(p.stock) : '',
-      lowStockThreshold: p.lowStockThreshold != null ? String(p.lowStockThreshold) : '',
-      categoryId: p.categoryId ?? '',
-      supplierId: p.supplierId ?? '',
-      description: p.description ?? '',
-      condition: p.condition ?? '',
+      name:             p.name ?? '',
+      sku:              p.sku ?? '',
+      barcode:          p.barcode ?? '',
+      price:            p.price != null ? String(p.price) : '',
+      cost:             p.cost != null ? String(p.cost) : '',
+      minSellingPrice:  p.minSellingPrice != null ? String(p.minSellingPrice) : '',
+      stock:            p.stock != null ? String(p.stock) : '',
+      lowStockThreshold:p.lowStockThreshold != null ? String(p.lowStockThreshold) : '',
+      categoryId:       p.categoryId ?? '',
+      supplierId:       p.supplierId ?? '',
+      description:      p.description ?? '',
+      condition:        p.condition ?? '',
       physicalLocation: p.physicalLocation ?? '',
+      warrantyDays:     p.warrantyDays != null ? String(p.warrantyDays) : '',
+      taxId:            p.taxId ?? '',
     });
     setShowModal(true);
   };
@@ -97,18 +103,21 @@ const ProductsScreen = () => {
     if (!form.name.trim()) { Alert.alert('Error', 'Product name is required'); return; }
     if (!form.price) { Alert.alert('Error', 'Price is required'); return; }
     const payload = {
-      name: form.name,
-      sku: form.sku || undefined,
-      price: parseFloat(form.price),
-      cost: form.cost ? parseFloat(form.cost) : undefined,
-      minSellingPrice: form.minSellingPrice ? parseFloat(form.minSellingPrice) : undefined,
-      stock: form.stock ? parseInt(form.stock) : 0,
-      lowStockThreshold: form.lowStockThreshold ? parseInt(form.lowStockThreshold) : 0,
-      categoryId: form.categoryId || undefined,
-      supplierId: form.supplierId || undefined,
-      description: form.description || undefined,
-      condition: form.condition || undefined,
+      name:             form.name,
+      sku:              form.sku || undefined,
+      barcode:          form.barcode || undefined,
+      price:            parseFloat(form.price),
+      cost:             form.cost ? parseFloat(form.cost) : undefined,
+      minSellingPrice:  form.minSellingPrice ? parseFloat(form.minSellingPrice) : undefined,
+      stock:            form.stock ? parseInt(form.stock) : 0,
+      lowStockThreshold:form.lowStockThreshold ? parseInt(form.lowStockThreshold) : 0,
+      categoryId:       form.categoryId || undefined,
+      supplierId:       form.supplierId || undefined,
+      description:      form.description || undefined,
+      condition:        form.condition || undefined,
       physicalLocation: form.physicalLocation || undefined,
+      warrantyDays:     form.warrantyDays ? parseInt(form.warrantyDays) : undefined,
+      taxId:            form.taxId || undefined,
     };
     try {
       if (editing) await update({ id: editing.id, ...payload });
@@ -180,10 +189,17 @@ const ProductsScreen = () => {
               <Text style={styles.formSection}>Basic Info</Text>
               <F label="Product Name *" fkey="name" placeholder="Product name" />
               <F label="SKU" fkey="sku" placeholder="e.g. PRD-001" />
+              <F label="Barcode" fkey="barcode" placeholder="Scan or enter barcode" />
 
               <InlineSelect label="Category" value={form.categoryId} options={categories} onSelect={set('categoryId')} />
               <InlineSelect label="Supplier" value={form.supplierId} options={suppliers} onSelect={set('supplierId')} />
               <InlineSelect label="Condition" value={form.condition} options={conditions.map(c => ({ id: c.name, name: c.name }))} onSelect={set('condition')} />
+              <InlineSelect
+                label="Tax"
+                value={form.taxId}
+                options={taxes.filter(t => t.isActive).map(t => ({ id: String(t.id), name: `${t.name} (${t.percentage}%)` }))}
+                onSelect={set('taxId')}
+              />
 
               <F label="Physical Location" fkey="physicalLocation" placeholder="e.g. Shelf A3" />
 
@@ -207,6 +223,7 @@ const ProductsScreen = () => {
               <Text style={styles.formSection}>Stock</Text>
               <F label="Stock Quantity" fkey="stock" placeholder="0" keyboard="number-pad" />
               <F label="Low Stock Alert" fkey="lowStockThreshold" placeholder="0" keyboard="number-pad" />
+              <F label="Warranty (Days)" fkey="warrantyDays" placeholder="e.g. 365" keyboard="number-pad" />
 
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>

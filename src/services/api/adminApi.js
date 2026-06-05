@@ -1,2 +1,2 @@
-// CRM adminApi removed — POS System uses posApi.js
+// CRM adminApi removed — Vendixs uses posApi.js
 export {};

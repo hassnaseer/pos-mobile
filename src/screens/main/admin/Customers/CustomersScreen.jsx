@@ -1,33 +1,62 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, Modal, ActivityIndicator, Alert, RefreshControl } from 'react-native';
-import { useCustomers, useCreateCustomer, useDeleteCustomer } from '../../../../services/api/posApi';
+import {
+  View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput,
+  Modal, ActivityIndicator, Alert, RefreshControl, ScrollView,
+} from 'react-native';
+import {
+  useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer,
+} from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
 
+const EMPTY_FORM = { name: '', email: '', phone: '', address: '', notes: '' };
+
 const CustomersScreen = () => {
   const perms = usePermissions();
   const canManage = perms.can(PERMISSIONS.MANAGE_CUSTOMERS);
   const { fmt } = useCurrency();
-  const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '' });
+
+  const [search, setSearch]   = useState('');
+  const [modal, setModal]     = useState(null); // null | 'add' | 'edit'
+  const [form, setForm]       = useState(EMPTY_FORM);
+  const [editId, setEditId]   = useState(null);
 
   const { data: raw = [], isLoading, refetch } = useCustomers();
-  const { mutateAsync: create, isPending } = useCreateCustomer();
+  const { mutateAsync: create, isPending: creating } = useCreateCustomer();
+  const { mutateAsync: update, isPending: updating } = useUpdateCustomer();
   const { mutate: remove } = useDeleteCustomer();
 
   const customers = Array.isArray(raw) ? raw : (raw?.data ?? []);
-  const filtered = customers.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()));
+  const filtered  = customers.filter(c =>
+    c.name?.toLowerCase().includes(search.toLowerCase()) ||
+    c.email?.toLowerCase().includes(search.toLowerCase()) ||
+    c.phone?.includes(search),
+  );
+
+  const set = key => val => setForm(p => ({ ...p, [key]: val }));
+
+  const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setModal('add'); };
+  const openEdit = c => {
+    setForm({
+      name: c.name ?? '', email: c.email ?? '', phone: c.phone ?? '',
+      address: c.address ?? '', notes: c.notes ?? '',
+    });
+    setEditId(c.id);
+    setModal('edit');
+  };
 
   const handleSave = async () => {
     if (!form.name.trim()) { Alert.alert('Error', 'Name is required'); return; }
-    try { await create(form); setShowModal(false); setForm({ name: '', email: '', phone: '' }); }
-    catch (err) { Alert.alert('Error', typeof err === 'string' ? err : 'Save failed'); }
+    try {
+      if (modal === 'add') await create(form);
+      else await update({ id: editId, ...form });
+      setModal(null);
+    } catch (err) { Alert.alert('Error', typeof err === 'string' ? err : 'Save failed'); }
   };
 
-  const handleDelete = c => Alert.alert('Delete', `Delete "${c.name}"?`, [
+  const handleDelete = c => Alert.alert('Delete Customer', `Delete "${c.name}"?`, [
     { text: 'Cancel', style: 'cancel' },
     { text: 'Delete', style: 'destructive', onPress: () => remove(c.id) },
   ]);
@@ -35,50 +64,113 @@ const CustomersScreen = () => {
   return (
     <View style={styles.root}>
       <View style={styles.topBar}>
-        <TextInput style={styles.search} placeholder="Search customers…" placeholderTextColor="#999" value={search} onChangeText={setSearch} />
-        {canManage && <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}><Text style={styles.addBtnText}>+ Add</Text></TouchableOpacity>}
+        <TextInput
+          style={styles.search}
+          placeholder="Search customers…"
+          placeholderTextColor="#999"
+          value={search}
+          onChangeText={setSearch}
+        />
+        {canManage && (
+          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
+            <Text style={styles.addBtnText}>+ Add</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
         data={filtered}
         keyExtractor={c => String(c.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        ListEmptyComponent={!isLoading && <Text style={styles.empty}>No customers found.</Text>}
         renderItem={({ item }) => (
           <View style={styles.row}>
-            <View style={styles.avatar}><Text style={styles.avatarText}>{(item.name ?? 'C')[0].toUpperCase()}</Text></View>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{(item.name ?? 'C')[0].toUpperCase()}</Text>
+            </View>
             <View style={styles.rowInfo}>
               <Text style={styles.rowName}>{item.name}</Text>
-              <Text style={styles.rowSub}>{item.email ?? ''} {item.phone ? `· ${item.phone}` : ''}</Text>
-              <Text style={styles.rowStats}>Orders: {item.totalOrders ?? 0} · Spent: {fmt(item.totalSpent)}</Text>
+              <Text style={styles.rowSub}>
+                {item.email ?? ''}{item.phone ? ` · ${item.phone}` : ''}
+              </Text>
+              {item.address ? <Text style={styles.rowAddress}>{item.address}</Text> : null}
+              <Text style={styles.rowStats}>
+                Orders: {item.totalOrders ?? 0} · Spent: {fmt(item.totalSpent ?? 0)}
+              </Text>
             </View>
             {canManage && (
-              <TouchableOpacity style={styles.delBtn} onPress={() => handleDelete(item)}>
-                <Text style={styles.delText}>Del</Text>
-              </TouchableOpacity>
+              <View style={styles.rowActions}>
+                <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
+                  <Text style={styles.editText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.delBtn} onPress={() => handleDelete(item)}>
+                  <Text style={styles.delText}>Del</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         )}
-        ListEmptyComponent={!isLoading && <Text style={styles.empty}>No customers found.</Text>}
-        contentContainerStyle={{ paddingBottom: 20 }}
       />
 
-      <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.modalBg}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Customer</Text>
-            {[{ key: 'name', label: 'Name', placeholder: 'Full name' }, { key: 'email', label: 'Email', placeholder: 'email@example.com', keyboard: 'email-address' }, { key: 'phone', label: 'Phone', placeholder: '+1234567890', keyboard: 'phone-pad' }].map(f => (
+      <Modal visible={!!modal} animationType="slide" transparent onRequestClose={() => setModal(null)}>
+        <View style={styles.overlay}>
+          <ScrollView
+            style={styles.modalCard}
+            contentContainerStyle={{ padding: 24 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.modalTitle}>
+              {modal === 'add' ? 'New Customer' : 'Edit Customer'}
+            </Text>
+
+            {[
+              { key: 'name',    label: 'Name *',  placeholder: 'Full name' },
+              { key: 'email',   label: 'Email',    placeholder: 'email@example.com', keyboard: 'email-address' },
+              { key: 'phone',   label: 'Phone',    placeholder: '+1 234 567 890',    keyboard: 'phone-pad' },
+              { key: 'address', label: 'Address',  placeholder: '123 Main St, City' },
+            ].map(f => (
               <View key={f.key} style={styles.field}>
                 <Text style={styles.label}>{f.label}</Text>
-                <TextInput style={styles.input} placeholder={f.placeholder} placeholderTextColor="#999" value={form[f.key]} onChangeText={v => setForm(p => ({ ...p, [f.key]: v }))} keyboardType={f.keyboard ?? 'default'} autoCapitalize="none" />
+                <TextInput
+                  style={styles.input}
+                  placeholder={f.placeholder}
+                  placeholderTextColor="#999"
+                  value={form[f.key]}
+                  onChangeText={set(f.key)}
+                  keyboardType={f.keyboard ?? 'default'}
+                  autoCapitalize="none"
+                />
               </View>
             ))}
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Notes</Text>
+              <TextInput
+                style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
+                placeholder="Internal notes…"
+                placeholderTextColor="#999"
+                value={form.notes}
+                onChangeText={set('notes')}
+                multiline
+              />
+            </View>
+
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isPending}>
-                {isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveText}>Save</Text>}
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModal(null)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={handleSave}
+                disabled={creating || updating}
+              >
+                {(creating || updating)
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.saveText}>Save</Text>}
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -97,17 +189,21 @@ const styles = StyleSheet.create({
   rowInfo: { flex: 1 },
   rowName: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
   rowSub: { fontSize: 12, fontFamily: 'Outfit-Regular', color: colors.secondary, marginTop: 2 },
+  rowAddress: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 1 },
   rowStats: { fontSize: 12, fontFamily: 'Outfit-Regular', color: colors.primary, marginTop: 4 },
+  rowActions: { flexDirection: 'row', gap: 6 },
+  editBtn: { backgroundColor: '#EBF0F5', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 },
+  editText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary },
   delBtn: { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 },
   delText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.warning },
   empty: { textAlign: 'center', color: colors.secondary, fontFamily: 'Outfit-Regular', marginTop: 40 },
-  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
   modalTitle: { fontSize: 20, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginBottom: 20 },
   field: { marginBottom: 14 },
   label: { fontSize: 14, fontFamily: 'Outfit-Medium', color: colors.defaultBlack, marginBottom: 6 },
-  input: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular' },
-  modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  input: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: colors.defaultBlack, backgroundColor: '#fff' },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 8, paddingBottom: 20 },
   cancelBtn: { flex: 1, borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   cancelText: { fontFamily: 'Outfit-Medium', color: colors.secondary },
   saveBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },

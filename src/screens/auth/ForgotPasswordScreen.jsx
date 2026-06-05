@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 40 },
   logoWrap: { alignItems: 'center', marginBottom: 24 },
-  logo: { width: 200, height: 70 },
+  logo: { width: 110, height: 110 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
   title: { fontSize: 26, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginBottom: 8 },
   subtitle: { fontSize: 14, fontFamily: 'Outfit-Regular', color: colors.secondary, marginBottom: 24, lineHeight: 22 },

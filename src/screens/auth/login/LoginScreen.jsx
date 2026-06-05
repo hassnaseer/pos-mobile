@@ -9,6 +9,7 @@ import logo from '../../../assets/images/logo.png';
 import showIcon from '../../../assets/icons/eye-open.png';
 import hiddenIcon from '../../../assets/icons/eye-closed.png';
 import { useLoginMutation } from '../../../services/api/authApi';
+import { useAuth } from '../../../context/AuthContext';
 
 const schema = Yup.object({
   email: Yup.string().email('Invalid email').required('Email is required'),
@@ -18,15 +19,22 @@ const schema = Yup.object({
 const LoginScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const { mutateAsync, isPending } = useLoginMutation();
+  const { login } = useAuth();
 
   const handleLogin = async values => {
     try {
       const data = await mutateAsync({ email: values.email, password: values.password });
-      // data = { message, email, devOtp? }
-      navigation.navigate('OTPVerification', {
-        email: data?.email ?? values.email,
-        flow: 'login',
-      });
+      // Backend returns { loggedIn, user, access_token } when already verified
+      // or { email } when OTP verification is required
+      if (data?.loggedIn && data?.user && (data?.access_token || data?.accessToken)) {
+        await login(data.user, data.access_token ?? data.accessToken);
+        navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Main' }] });
+      } else {
+        navigation.navigate('OTPVerification', {
+          email: data?.email ?? values.email,
+          flow: 'login',
+        });
+      }
     } catch (err) {
       const msg = typeof err === 'string' ? err : err?.message ?? 'Login failed. Please try again.';
       Alert.alert('Login Error', msg);
@@ -42,7 +50,7 @@ const LoginScreen = ({ navigation }) => {
 
         <View style={styles.card}>
           <Text style={styles.title}>Sign In</Text>
-          <Text style={styles.subtitle}>POS System</Text>
+          <Text style={styles.subtitle}>Vendixs</Text>
 
           <Formik initialValues={{ email: '', password: '' }} validationSchema={schema} onSubmit={handleLogin}>
             {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
@@ -103,7 +111,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 40 },
   logoWrap: { alignItems: 'center', marginBottom: 24 },
-  logo: { width: 200, height: 70 },
+  logo: { width: 110, height: 110 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
   title: { fontSize: 28, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, textAlign: 'center' },
   subtitle: { fontSize: 14, fontFamily: 'Outfit-Regular', color: colors.secondary, textAlign: 'center', marginBottom: 28 },

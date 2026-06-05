@@ -29,7 +29,7 @@ const EnhancedSplashScreen = ({ onLogin, onFinish }) => {
         <View style={styles.contentContainer}>
           {/* Main Content */}
           <View style={styles.mainContent}>
-            <Image source={logo} style={{ width: 130, height: 40 }} resizeMode="contain" />
+            <Image source={logo} style={{ width: 80, height: 80 }} resizeMode="contain" />
             <Text style={styles.headline}>Your all-in-one{'\n'}POS solution</Text>
             <Text style={styles.tagline}>Fast. Reliable. Built for your business.</Text>
           </View>

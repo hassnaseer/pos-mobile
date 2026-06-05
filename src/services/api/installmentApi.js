@@ -1,2 +1,2 @@
-// CRM installmentApi removed — POS System uses posApi.js
+// CRM installmentApi removed — Vendixs uses posApi.js
 export {};
