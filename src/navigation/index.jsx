@@ -39,7 +39,7 @@ function SplashFlow({ navigation }) {
 
   if (step === 'simple')   return <SimpleSplashScreen onFinish={handleSimpleFinish} />;
   if (step === 'loading')  return <LoadingScreen />;
-  return <EnhancedSplashScreen onLogin={() => navigation.replace('Auth')} />;
+  return <EnhancedSplashScreen onLogin={() => navigation.replace('Auth')} navigation={navigation} />;
 }
 
 // Save FCM token to backend — called on mount and on token refresh

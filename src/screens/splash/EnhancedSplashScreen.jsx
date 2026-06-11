@@ -15,16 +15,18 @@ import logo from '../../assets/images/logo.png';
 import backgroundImage from '../../assets/images/splash_bgImg.jpg';
 import colors from '../../../src/theme/colors';
 
-const EnhancedSplashScreen = ({ onLogin, onFinish }) => {
+const EnhancedSplashScreen = ({ onLogin, onFinish, navigation }) => {
+  const goLegal = (type) => navigation.navigate('Auth', { screen: 'LegalPage', params: { type } });
+
   return (
-    <View style={styles.container}>      
+    <View style={styles.container}>
       {/* Background Image */}
       <ImageBackground
         source={backgroundImage}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
-        
+
         {/* Content Container */}
         <View style={styles.contentContainer}>
           {/* Main Content */}
@@ -34,15 +36,25 @@ const EnhancedSplashScreen = ({ onLogin, onFinish }) => {
             <Text style={styles.tagline}>Fast. Reliable. Built for your business.</Text>
           </View>
 
-          {/* Login Button */}
+          {/* Login Button + Legal links */}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.loginButton}
               onPress={onLogin}
               activeOpacity={0.8}
             >
               <Text style={styles.loginButtonText}>Login</Text>
             </TouchableOpacity>
+
+            <View style={styles.legalRow}>
+              <TouchableOpacity onPress={() => goLegal('terms')}>
+                <Text style={styles.legalLink}>Terms of Service</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalSep}>·</Text>
+              <TouchableOpacity onPress={() => goLegal('privacy')}>
+                <Text style={styles.legalLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ImageBackground>
@@ -114,8 +126,25 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: colors.defaultWhite,
     fontSize: 16,
-    // fontWeight: '600',
-    fontFamily:'Outfit-Medium',
+    fontFamily: 'Outfit-Medium',
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 14,
+    gap: 8,
+  },
+  legalLink: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    fontFamily: 'Outfit-Regular',
+    textDecorationLine: 'underline',
+  },
+  legalSep: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontFamily: 'Outfit-Regular',
   },
 });
 

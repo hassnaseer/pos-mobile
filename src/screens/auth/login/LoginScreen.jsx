@@ -101,6 +101,16 @@ const LoginScreen = ({ navigation }) => {
               </View>
             )}
           </Formik>
+
+          <View style={styles.legalRow}>
+            <TouchableOpacity onPress={() => navigation.navigate('LegalPage', { type: 'terms' })}>
+              <Text style={styles.legalLink}>Terms of Service</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalSep}>·</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('LegalPage', { type: 'privacy' })}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -129,6 +139,9 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 16, fontFamily: 'Outfit-SemiBold' },
   forgotWrap: { marginTop: 16, alignItems: 'center' },
   forgotText: { color: colors.primary, fontSize: 14, fontFamily: 'Outfit-Regular', textDecorationLine: 'underline' },
+  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20, gap: 8 },
+  legalLink: { color: colors.secondary, fontSize: 12, fontFamily: 'Outfit-Regular', textDecorationLine: 'underline' },
+  legalSep: { color: colors.secondary, fontSize: 12, fontFamily: 'Outfit-Regular' },
 });
 
 export default LoginScreen;
