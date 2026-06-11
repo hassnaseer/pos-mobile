@@ -80,11 +80,11 @@ const ADMIN_MENU = [
   { id: 'hrms-trainings', title: 'Trainings',     route: 'HRMSTrainings',     icon: productsIcon,permission: PERMISSIONS.MANAGE_TRAININGS },
 
   // ── Vendor / Marketplace ──────────────────────────────────────────────────────
-  { id: 'marketplace',     title: 'Marketplace',     route: 'Marketplace',    icon: productsIcon,  permission: PERMISSIONS.ACCESS_VENDOR },
-  { id: 'vendor-orders',   title: 'My Orders',       route: 'VendorOrders',   icon: ordersIcon,    permission: PERMISSIONS.ACCESS_VENDOR },
-  { id: 'vendor-profile',  title: 'Vendor Profile',  route: 'VendorProfile',  icon: suppliersIcon, permission: PERMISSIONS.ACCESS_VENDOR },
-  { id: 'vendor-listings', title: 'My Listings',     route: 'VendorListings', icon: productsIcon,  permission: PERMISSIONS.ACCESS_VENDOR },
-  { id: 'incoming-orders', title: 'Incoming Orders', route: 'IncomingOrders', icon: ordersIcon,    permission: PERMISSIONS.ACCESS_VENDOR },
+  { id: 'marketplace',     title: 'Marketplace',     route: 'Marketplace',    icon: productsIcon,  permission: PERMISSIONS.ACCESS_VENDOR_BUYER },
+  { id: 'vendor-orders',   title: 'My Orders',       route: 'VendorOrders',   icon: ordersIcon,    permission: PERMISSIONS.ACCESS_VENDOR_BUYER },
+  { id: 'vendor-profile',  title: 'Vendor Profile',  route: 'VendorProfile',  icon: suppliersIcon, permission: PERMISSIONS.ACCESS_VENDOR_SELLER },
+  { id: 'vendor-listings', title: 'My Listings',     route: 'VendorListings', icon: productsIcon,  permission: PERMISSIONS.ACCESS_VENDOR_SELLER },
+  { id: 'incoming-orders', title: 'Incoming Orders', route: 'IncomingOrders', icon: ordersIcon,    permission: PERMISSIONS.ACCESS_VENDOR_SELLER },
 
   // ── Specialty: Medical ────────────────────────────────────────────────────────
   { id: 'medical-dash',    title: 'Medical Dashboard',  route: 'MedicalDashboard',    icon: dashIcon,      permission: PERMISSIONS.ACCESS_MEDICAL },

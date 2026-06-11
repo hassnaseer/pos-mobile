@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TextInput,
+  View, Text, StyleSheet, ScrollView, TextInput, Switch,
   TouchableOpacity, ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { useProfile, useUpdateProfile, useChangePassword } from '../../../../services/api/posApi';
@@ -29,6 +29,7 @@ const ProfileScreen = () => {
 
   const [tab, setTab] = useState('profile');
   const [form, setForm] = useState({ name: '', phoneNumber: '', address: '', bio: '' });
+  const [requireOtp, setRequireOtp] = useState(false);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   useEffect(() => {
@@ -39,6 +40,7 @@ const ProfileScreen = () => {
         address: profile.address ?? '',
         bio: profile.bio ?? '',
       });
+      setRequireOtp(profile.requireOtpOnLogin ?? false);
     }
   }, [profile]);
 
@@ -48,7 +50,7 @@ const ProfileScreen = () => {
   const handleSaveProfile = async () => {
     if (!form.name.trim()) { Alert.alert('Error', 'Name is required'); return; }
     try {
-      await updateProfile(form);
+      await updateProfile({ ...form, requireOtpOnLogin: requireOtp });
       Alert.alert('Success', 'Profile updated successfully');
     } catch {
       Alert.alert('Error', 'Failed to update profile');
@@ -116,6 +118,23 @@ const ProfileScreen = () => {
             <Field label="Address" value={form.address} onChangeText={set('address')} placeholder="Your address" />
             <Field label="Bio" value={form.bio} onChangeText={set('bio')} placeholder="Tell us about yourself" />
 
+            {/* OTP toggle */}
+            <View style={styles.otpToggleRow}>
+              <View style={styles.otpToggleInfo}>
+                <Text style={styles.otpToggleLabel}>Require OTP on Login</Text>
+                <Text style={styles.otpToggleDesc}>Send a verification code every time you sign in</Text>
+              </View>
+              <Switch
+                value={requireOtp}
+                onValueChange={val => {
+                  setRequireOtp(val);
+                  updateProfile({ requireOtpOnLogin: val }).catch(() => {});
+                }}
+                trackColor={{ false: '#D1D5DB', true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </View>
+
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={saving}>
               {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
             </TouchableOpacity>
@@ -160,8 +179,12 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontFamily: 'Outfit-Medium', color: colors.defaultBlack, marginBottom: 6 },
   input: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: colors.defaultBlack, backgroundColor: '#fff' },
   inputDisabled: { backgroundColor: '#f4f6f9', color: colors.secondary },
-  saveBtn: { backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
-  saveBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 15 },
+  saveBtn:          { backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  saveBtnText:      { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 15 },
+  otpToggleRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB' },
+  otpToggleInfo:    { flex: 1, marginRight: 12 },
+  otpToggleLabel:   { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
+  otpToggleDesc:    { fontSize: 12, fontFamily: 'Outfit-Regular', color: colors.secondary, marginTop: 2 },
 });
 
 export default ProfileScreen;

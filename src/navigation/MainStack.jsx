@@ -55,6 +55,7 @@ import VendorListingsScreen from '../screens/main/admin/Vendor/VendorListingsScr
 import IncomingOrdersScreen from '../screens/main/admin/Vendor/IncomingOrdersScreen';
 import SupportChatScreen from '../screens/main/admin/Chat/SupportChatScreen';
 import SettingsScreen from '../screens/main/admin/Settings/SettingsScreen';
+import AwaitingPaymentScreen from '../screens/main/admin/Billing/AwaitingPaymentScreen';
 
 // Medical
 import MedicalDashboardScreen from '../screens/main/admin/Medical/MedicalDashboardScreen';
@@ -254,7 +255,8 @@ const SETTINGS_SCREENS = [
   { name: 'Taxes',            component: TaxesScreen },
   { name: 'TicketStatuses',    component: TicketStatusesScreen },
   { name: 'FingerprintDevices', component: FingerprintDevicesScreen },
-  { name: 'AppointmentTypes',  component: AppointmentTypesScreen },
+  { name: 'AppointmentTypes',   component: AppointmentTypesScreen },
+  { name: 'AwaitingPayment',    component: AwaitingPaymentScreen },
 ];
 
 const AdminNavigator = ({ unreadCount, userRole }) => {

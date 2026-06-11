@@ -67,7 +67,8 @@ export const PERMISSIONS = {
   ACCESS_RESTAURANT:      'access_restaurant',
   ACCESS_FACTORY:         'access_factory',
   ACCESS_PHARMACY:        'access_pharmacy',
-  ACCESS_VENDOR:          'access_vendor',
+  ACCESS_VENDOR_BUYER:    'access_vendor_buyer',
+  ACCESS_VENDOR_SELLER:   'access_vendor_seller',
 
   // ── Devices ──────────────────────────────────────────────────────────────────
   DEVICE_ATTENDANCE:      'device_attendance',

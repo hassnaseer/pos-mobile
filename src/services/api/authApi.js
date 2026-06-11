@@ -59,8 +59,8 @@ export const authApi = {
     return res?.data ?? res;
   },
 
-  resetPassword: async ({ email, newPassword }) => {
-    const res = await apiClient.post(AUTH.RESET_PASSWORD, { email, newPassword }, { skipAuth: true });
+  resetPassword: async ({ email, otp, newPassword }) => {
+    const res = await apiClient.post(AUTH.RESET_PASSWORD, { email, otp, newPassword }, { skipAuth: true });
     return res?.data ?? res;
   },
 

@@ -51,7 +51,7 @@ const statusStyle = status => {
   return { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' };
 };
 
-const BillingScreen = () => {
+const BillingScreen = ({ navigation }) => {
   const { data: info, isLoading, refetch } = useBilling();
   const { mutate: upgrade, isPending: upgrading } = useUpgradePlan();
   const [planModal, setPlanModal] = useState(false);
@@ -90,6 +90,8 @@ const BillingScreen = () => {
     ? `Active — ${info.subscription.plan?.name}`
     : info.status === 'Active'
     ? 'Active'
+    : info.status === 'AWAITING_PAYMENT'
+    ? '⏳  Payment Under Review'
     : 'Trial Expired';
 
   const canUpgrade = info.isTrial || info.status === 'Expired';
@@ -139,6 +141,18 @@ const BillingScreen = () => {
           <Text style={styles.trialNote}>Limits shown are for your trial. Upgrade for higher limits.</Text>
         )}
       </View>
+
+      {/* Bank Transfer */}
+      {info.status !== 'Active' && (
+        <TouchableOpacity
+          style={styles.bankTransferBtn}
+          onPress={() => navigation.navigate('AwaitingPayment')}
+        >
+          <Text style={styles.bankTransferText}>
+            {info.status === 'AWAITING_PAYMENT' ? '⏳  View Payment Status' : '🏦  Pay via Bank Transfer'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Plan Features */}
       {info.subscription?.plan?.features?.length > 0 && (
@@ -240,6 +254,8 @@ const styles = StyleSheet.create({
   barBg: { height: 8, backgroundColor: '#f3f4f6', borderRadius: 4, overflow: 'hidden' },
   barFill: { height: 8, borderRadius: 4 },
   trialNote: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 4 },
+  bankTransferBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 14, padding: 14, alignItems: 'center', marginBottom: 4 },
+  bankTransferText: { fontSize: 14, fontWeight: '600', color: '#374151' },
 
   featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
   featureDot: { color: '#22c55e', fontFamily: 'Outfit-Bold', fontSize: 13, marginTop: 1 },
