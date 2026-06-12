@@ -11,6 +11,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { CurrencyProvider } from './src/context/CurrencyContext';
 import { queryClient } from './src/utils/reactQueryClient';
 import Navigation from './src/navigation';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 const createDefaultChannel = () =>
   notifee.createChannel({
@@ -84,19 +85,21 @@ const App = () => {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <CurrencyProvider>
-              <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-              <Navigation />
-              <Toast />
-            </CurrencyProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <CurrencyProvider>
+                <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+                <Navigation />
+                <Toast />
+              </CurrencyProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 };
 
