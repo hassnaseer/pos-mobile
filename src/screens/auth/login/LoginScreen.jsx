@@ -5,7 +5,7 @@ import {  View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import colors from '../../../theme/colors';
-import logo from '../../../assets/images/newlogo.png';
+import logo from '../../../assets/images/newLogo.png';
 import showIcon from '../../../assets/icons/eye-open.png';
 import hiddenIcon from '../../../assets/icons/eye-closed.png';
 import { useLoginMutation } from '../../../services/api/authApi';

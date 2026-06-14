@@ -5,7 +5,7 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import logo from '../../assets/images/newlogo.png';
+import logo from '../../assets/images/newLogo.png';
 
 const SimpleSplashScreen = ({ onFinish }) => {
   useEffect(() => {

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
-import logo from '../../assets/images/newlogo.png';
+import logo from '../../assets/images/newLogo.png';
 import backgroundImage from '../../assets/images/splash_bgImg.jpg';
 import colors from '../../../src/theme/colors';
 
