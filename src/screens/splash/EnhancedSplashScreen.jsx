@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
-import logo from '../../assets/images/logo.png';
+import logo from '../../assets/images/newlogo.png';
 import backgroundImage from '../../assets/images/splash_bgImg.jpg';
 import colors from '../../../src/theme/colors';
 
@@ -31,7 +31,9 @@ const EnhancedSplashScreen = ({ onLogin, onFinish, navigation }) => {
         <View style={styles.contentContainer}>
           {/* Main Content */}
           <View style={styles.mainContent}>
-            <Image source={logo} style={{ width: 80, height: 80 }} resizeMode="contain" />
+            <View style={styles.logoBox}>
+              <Image source={logo} style={{ width: 64, height: 64 }} resizeMode="contain" />
+            </View>
             <Text style={styles.headline}>Your all-in-one{'\n'}POS solution</Text>
             <Text style={styles.tagline}>Fast. Reliable. Built for your business.</Text>
           </View>
@@ -80,15 +82,24 @@ const styles = StyleSheet.create({
     paddingBottom: height * 0.05,
   },
   mainContent: {
-    // flex: 1,
-    // justifyContent: 'center',
     backgroundColor: '#FFFFFF80',
     marginHorizontal: 20,
-    padding:10,
-
+    padding: 10,
     borderRadius: 8,
-    // width:'90%',
-    // marginVertical: 40,
+  },
+  logoBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headline: {
     fontSize: 36,

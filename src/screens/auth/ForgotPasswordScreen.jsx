@@ -6,7 +6,7 @@ import {
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import colors from '../../theme/colors';
-import logo from '../../assets/images/logo.png';
+import logo from '../../assets/images/newlogo.png';
 import { useForgotPasswordMutation } from '../../services/api/authApi';
 
 const schema = Yup.object({ email: Yup.string().email('Invalid email').required('Required') });

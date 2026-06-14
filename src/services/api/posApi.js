@@ -1944,3 +1944,216 @@ export const useUpsertSALearnGuide = () => {
   });
 };
 
+// ─── Super Admin: Business Categories ────────────────────────────────────────
+export const useSABusinessCategories = () =>
+  useQuery({
+    queryKey: ['sa-business-categories'],
+    queryFn: async () => {
+      const res = await apiClient.get('/super-admin/business-categories');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useCreateSABusinessCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/super-admin/business-categories', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-business-categories'] }),
+  });
+};
+
+export const useUpdateSABusinessCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/business-categories/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-business-categories'] }),
+  });
+};
+
+export const useDeleteSABusinessCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/super-admin/business-categories/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-business-categories'] }),
+  });
+};
+
+// ─── Super Admin: Custom Plans ────────────────────────────────────────────────
+export const useSACustomPlans = () =>
+  useQuery({
+    queryKey: ['sa-custom-plans'],
+    queryFn: async () => {
+      const res = await apiClient.get('/super-admin/custom-plans');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useActivateSACustomPlan = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.patch(`/super-admin/custom-plans/${id}/activate`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans'] }),
+  });
+};
+
+export const useWithdrawSACustomPlan = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.patch(`/super-admin/custom-plans/${id}/withdraw`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans'] }),
+  });
+};
+
+// ─── Super Admin: Payment Queue ───────────────────────────────────────────────
+export const useSAPaymentQueue = () =>
+  useQuery({
+    queryKey: ['sa-payment-queue'],
+    queryFn: async () => {
+      const res = await apiClient.get('/super-admin/payment-requests');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useApproveSAPayment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/payment-requests/${id}/approve`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-payment-queue'] }),
+  });
+};
+
+export const useRejectSAPayment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/payment-requests/${id}/reject`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-payment-queue'] }),
+  });
+};
+
+// ─── Super Admin: Error Logs ──────────────────────────────────────────────────
+export const useSAErrorLogs = () =>
+  useQuery({
+    queryKey: ['sa-error-logs'],
+    queryFn: async () => {
+      const res = await apiClient.get('/super-admin/error-logs');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+// ─── Admin Medical: Reminders ─────────────────────────────────────────────────
+export const useMedicalReminders = (patientId = '', status = '') =>
+  useQuery({
+    queryKey: ['medical-reminders', patientId, status],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (patientId) p.set('patientId', patientId);
+      if (status) p.set('status', status);
+      const res = await apiClient.get(`/admin/medical/reminders${p.toString() ? `?${p}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useCreateMedicalReminder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/medical/reminders', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['medical-reminders'] }),
+  });
+};
+
+export const useUpdateMedicalReminder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/medical/reminders/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['medical-reminders'] }),
+  });
+};
+
+export const useDeleteMedicalReminder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/medical/reminders/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['medical-reminders'] }),
+  });
+};
+
+// ─── Admin Medical: Insurance ─────────────────────────────────────────────────
+export const useMedicalInsurance = (patientId = '') =>
+  useQuery({
+    queryKey: ['medical-insurance', patientId],
+    queryFn: async () => {
+      const p = patientId ? `?patientId=${patientId}` : '';
+      const res = await apiClient.get(`/admin/medical/insurance${p}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useCreateMedicalInsurance = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/medical/insurance', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['medical-insurance'] }),
+  });
+};
+
+export const useUpdateMedicalInsurance = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/medical/insurance/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['medical-insurance'] }),
+  });
+};
+
+export const useDeleteMedicalInsurance = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/medical/insurance/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['medical-insurance'] }),
+  });
+};
+
+// ─── Admin Medical: Patients list ────────────────────────────────────────────
+export const usePatientsList = () =>
+  useQuery({
+    queryKey: ['medical-patients'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/medical/patients');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+// ─── Admin Medical: Patient Visits (Tracking) ─────────────────────────────────
+export const usePatientVisits = patientId =>
+  useQuery({
+    queryKey: ['patient-visits', patientId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/medical/patients/${patientId}/visits`);
+      return res?.data ?? res ?? [];
+    },
+    enabled: !!patientId,
+    staleTime: 30_000,
+  });
+
+export const useCreatePatientVisit = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ patientId, ...data }) => apiClient.post(`/admin/medical/patients/${patientId}/visits`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['patient-visits'] }),
+  });
+};
+
+export const useUpdatePatientVisit = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/medical/visits/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['patient-visits'] }),
+  });
+};
+

@@ -63,6 +63,9 @@ import AppointmentsScreen from '../screens/main/admin/Medical/AppointmentsScreen
 import PatientsScreen from '../screens/main/admin/Medical/PatientsScreen';
 import DoctorsScreen from '../screens/main/admin/Medical/DoctorsScreen';
 import AppointmentTypesScreen from '../screens/main/admin/Medical/AppointmentTypesScreen';
+import RemindersScreen from '../screens/main/admin/Medical/RemindersScreen';
+import InsuranceScreen from '../screens/main/admin/Medical/InsuranceScreen';
+import PatientTrackingScreen from '../screens/main/admin/Medical/PatientTrackingScreen';
 
 // Restaurant
 import RestaurantDashboardScreen from '../screens/main/admin/Restaurant/RestaurantDashboardScreen';
@@ -103,6 +106,10 @@ import SAPlatformTeamScreen from '../screens/main/super-admin/PlatformTeam/SAPla
 import SADocumentsScreen from '../screens/main/super-admin/Documents/SADocumentsScreen';
 import SAActivityLogsScreen from '../screens/main/super-admin/ActivityLogs/SAActivityLogsScreen';
 import SALearnGuidesScreen from '../screens/main/super-admin/LearnGuides/SALearnGuidesScreen';
+import SABusinessCategoriesScreen from '../screens/main/super-admin/BusinessCategories/SABusinessCategoriesScreen';
+import SACustomPlansScreen from '../screens/main/super-admin/CustomPlans/SACustomPlansScreen';
+import SAPaymentQueueScreen from '../screens/main/super-admin/PaymentQueue/SAPaymentQueueScreen';
+import SAErrorLogsScreen from '../screens/main/super-admin/ErrorLogs/SAErrorLogsScreen';
 
 // Staff Dashboard (all 3 variants inside)
 import StaffDashboardScreen from '../screens/main/staff/StaffDashboardScreen';
@@ -209,6 +216,9 @@ const ADMIN_SCREENS = [
   { name: 'Patients',            component: PatientsScreen },
   { name: 'Doctors',             component: DoctorsScreen },
   { name: 'MedicalStaffCheckin', component: MedicalStaffCheckinScreen },
+  { name: 'MedicalReminders',    component: RemindersScreen },
+  { name: 'MedicalInsurance',    component: InsuranceScreen },
+  { name: 'PatientTracking',     component: PatientTrackingScreen },
 
   // Restaurant
   { name: 'RestaurantDashboard', component: RestaurantDashboardScreen },
@@ -298,8 +308,12 @@ const SA_SCREENS = [
   { name: 'SADemoRequests',  component: SADemoRequestsScreen },
   { name: 'SAPlatformTeam',  component: SAPlatformTeamScreen },
   { name: 'SADocuments',     component: SADocumentsScreen },
-  { name: 'SAActivityLogs',  component: SAActivityLogsScreen },
-  { name: 'SALearnGuides',   component: SALearnGuidesScreen },
+  { name: 'SAActivityLogs',       component: SAActivityLogsScreen },
+  { name: 'SALearnGuides',        component: SALearnGuidesScreen },
+  { name: 'SABusinessCategories', component: SABusinessCategoriesScreen },
+  { name: 'SACustomPlans',        component: SACustomPlansScreen },
+  { name: 'SAPaymentQueue',       component: SAPaymentQueueScreen },
+  { name: 'SAErrorLogs',          component: SAErrorLogsScreen },
 ];
 
 const SuperAdminNavigator = ({ unreadCount }) => {

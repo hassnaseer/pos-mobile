@@ -93,6 +93,9 @@ const ADMIN_MENU = [
   { id: 'doctors',         title: 'Doctors',            route: 'Doctors',             icon: staffIcon,     permission: PERMISSIONS.ACCESS_MEDICAL },
   { id: 'appt-types',      title: 'Appointment Types',  route: 'AppointmentTypes',    icon: rolesIcon,     permission: PERMISSIONS.ACCESS_MEDICAL },
   { id: 'medical-checkin', title: 'Staff Check-in',     route: 'MedicalStaffCheckin', icon: ordersIcon,    permission: PERMISSIONS.MANAGE_ATTENDANCE, adminOnly: true },
+  { id: 'medical-reminders', title: 'Reminders',        route: 'MedicalReminders',    icon: ticketsIcon,   permission: PERMISSIONS.ACCESS_MEDICAL },
+  { id: 'medical-insurance', title: 'Insurance',        route: 'MedicalInsurance',    icon: reportsIcon,   permission: PERMISSIONS.ACCESS_MEDICAL },
+  { id: 'patient-tracking',  title: 'Patient Tracking', route: 'PatientTracking',     icon: customersIcon, permission: PERMISSIONS.ACCESS_MEDICAL },
 
   // ── Specialty: Restaurant ─────────────────────────────────────────────────────
   { id: 'restaurant-dash',   title: 'Restaurant Dashboard', route: 'RestaurantDashboard', icon: dashIcon,     permission: PERMISSIONS.ACCESS_RESTAURANT },
@@ -148,8 +151,12 @@ const SUPER_ADMIN_MENU = [
   { id: 'sa-demo-requests',  title: 'Demo Requests',     route: 'SADemoRequests',  icon: ordersIcon },
   { id: 'sa-platform-team',  title: 'Platform Team',     route: 'SAPlatformTeam',  icon: staffIcon },
   { id: 'sa-documents',      title: 'Documents',         route: 'SADocuments',     icon: reportsIcon },
-  { id: 'sa-activity-logs',  title: 'Activity Logs',     route: 'SAActivityLogs',  icon: reportsIcon },
-  { id: 'sa-learn-guides',   title: 'Learn Guides',      route: 'SALearnGuides',   icon: dashIcon },
+  { id: 'sa-activity-logs',        title: 'Activity Logs',       route: 'SAActivityLogs',       icon: reportsIcon },
+  { id: 'sa-learn-guides',         title: 'Learn Guides',        route: 'SALearnGuides',        icon: dashIcon },
+  { id: 'sa-business-categories',  title: 'Business Categories', route: 'SABusinessCategories', icon: productsIcon },
+  { id: 'sa-custom-plans',         title: 'Custom Plans',        route: 'SACustomPlans',        icon: rolesIcon },
+  { id: 'sa-payment-queue',        title: 'Payment Queue',       route: 'SAPaymentQueue',       icon: ordersIcon },
+  { id: 'sa-error-logs',           title: 'Error Logs',          route: 'SAErrorLogs',          icon: reportsIcon },
 ];
 
 const SUPPORT_STAFF_MENU = [
