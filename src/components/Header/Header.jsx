@@ -4,7 +4,7 @@ import {
   Modal, TouchableWithoutFeedback,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import SearchBar from '../Searchbar/SearchBar';
 import { useAuth } from '../../context/AuthContext';
 import { useLogout } from '../../services/api/authApi';
@@ -14,6 +14,33 @@ import colors from '../../theme/colors';
 import menuIcon from '../../assets/icons/menu-01.png';
 import bellIcon from '../../assets/icons/bell-01.png';
 import { useSearchStore } from '../../store/searchStore';
+
+const SCREEN_TITLES = {
+  // Admin
+  Dashboard: 'Dashboard', MyBusinesses: 'My Businesses', POS: 'Point of Sale',
+  Products: 'Products', Categories: 'Categories', Customers: 'Customers',
+  Orders: 'Orders', Tickets: 'Tickets', Staff: 'Staff', Reports: 'Reports',
+  Integrations: 'Integrations', ActivityLogs: 'Activity Logs', Attendance: 'Attendance',
+  Suppliers: 'Suppliers', Manufacturers: 'Manufacturers', Roles: 'Roles',
+  Departments: 'Departments', Taxes: 'Taxes', MiscCharges: 'Misc Charges',
+  Settings: 'Settings', SupportChat: 'Support Chat',
+  HRMSDashboard: 'HRMS', HRMSLeave: 'Leave', HRMSClaims: 'Claims',
+  HRMSAnnouncements: 'Announcements', HRMSPayroll: 'Payroll', HRMSTasks: 'Tasks',
+  Marketplace: 'Marketplace', VendorOrders: 'Vendor Orders', VendorProfile: 'Vendor Profile',
+  VendorListings: 'Listings', IncomingOrders: 'Incoming Orders',
+  MedicalDashboard: 'Medical', Appointments: 'Appointments', Patients: 'Patients',
+  Doctors: 'Doctors', RestaurantDashboard: 'Restaurant',
+  // Super Admin
+  SADashboard: 'Dashboard', SABusinesses: 'Businesses', SABusinessTypes: 'Business Types',
+  SAPackagePlans: 'Package Plans', SARoles: 'Roles', SAReports: 'Revenue Reports',
+  SASupport: 'Support Chat', SALegalPages: 'Legal Pages', SASettings: 'Settings',
+  SAVendors: 'Vendors', SADemoRequests: 'Demo Requests', SAPlatformTeam: 'Platform Team',
+  SADocuments: 'Documents', SAActivityLogs: 'Activity Logs', SALearnGuides: 'Learn Guides',
+  SABusinessCategories: 'Business Categories', SACustomPlans: 'Custom Plans',
+  SAPaymentQueue: 'Payment Queue', SAErrorLogs: 'Error Logs', SASupportTickets: 'Support Tickets',
+  SABusinessTypeForm: 'Business Type', SAPackagePlanForm: 'Package Plan',
+  SACustomPlanForm: 'Custom Plan', SABusinessForm: 'Edit Business',
+};
 
 const Header = ({
   showMenuButton = true,
@@ -30,8 +57,11 @@ const Header = ({
   const avatarRef = useRef(null);
   const setSearchQuery = useSearchStore(state => state.setSearchQuery);
   const navigation = useNavigation();
+  const route = useRoute();
   const { user, userRole, logout: contextLogout } = useAuth();
   const { mutate: apiLogout, isPending } = useLogout();
+
+  const pageTitle = SCREEN_TITLES[route?.name] ?? null;
 
   const initial = (user?.name ?? 'U')[0].toUpperCase();
 
@@ -66,6 +96,9 @@ const Header = ({
             <TouchableOpacity style={styles.iconButton} onPress={onMenuPress} activeOpacity={0.7}>
               <Image source={menuIcon} style={styles.menuIconStyle} />
             </TouchableOpacity>
+          ) : null}
+          {pageTitle && !showSearchBar ? (
+            <Text style={styles.pageTitle} numberOfLines={1}>{pageTitle}</Text>
           ) : null}
         </View>
 
@@ -144,6 +177,7 @@ const styles = StyleSheet.create({
   centerSection: { flex: 1, marginHorizontal: 10 },
   rightSection: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: { padding: 6, borderWidth: 1, borderColor: '#EAECF0', borderRadius: 8, position: 'relative' },
+  pageTitle: { fontSize: 16, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginLeft: 10 },
   menuIconStyle: { width: 20, height: 20, resizeMode: 'contain' },
   backIcon: { width: 20, height: 20, resizeMode: 'contain', tintColor: '#666' },
   notificationBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: colors.warning, borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },

@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   bigInput: {
     backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E5E7EB',
     borderRadius: 10, padding: 14, fontSize: 14, fontFamily: 'Outfit-Regular',
-    minHeight: 400, textAlignVertical: 'top', marginBottom: 16,
+    color: '#1a1a1a', minHeight: 400, textAlignVertical: 'top', marginBottom: 16,
   },
   saveBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 15 },

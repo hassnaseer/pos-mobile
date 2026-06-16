@@ -211,6 +211,15 @@ export const useCreateCustomRole = () => {
   });
 };
 
+export const useUpdateCustomRole = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/custom-roles/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['custom-roles'] }),
+    meta: { successMessage: 'Role updated' },
+  });
+};
+
 export const useDeleteCustomRole = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -580,9 +589,11 @@ export const useSABusinesses = (params = {}) =>
   useQuery({
     queryKey: ['sa-businesses', params],
     queryFn: async () => {
-      const qs = new URLSearchParams(params).toString();
+      const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''));
+      const qs = new URLSearchParams(clean).toString();
       const res = await apiClient.get(`/super-admin/businesses${qs ? `?${qs}` : ''}`);
-      return res?.data ?? res ?? { data: [], pagination: {} };
+      if (Array.isArray(res)) return { data: res, pagination: {} };
+      return { data: res?.data ?? [], pagination: res?.pagination ?? {} };
     },
     staleTime: 30_000,
   });
@@ -597,15 +608,64 @@ export const useSABusinessTypes = () =>
     staleTime: 60_000,
   });
 
-export const useSARoles = () =>
+export const useCreateSABusinessType = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/super-admin/business-types', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-business-types'] }),
+  });
+};
+
+export const useUpdateSABusinessType = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.put(`/super-admin/business-types/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-business-types'] }),
+  });
+};
+
+export const useDeleteSABusinessType = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/super-admin/business-types/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-business-types'] }),
+  });
+};
+
+export const useSARoles = (params = {}) =>
   useQuery({
-    queryKey: ['sa-roles'],
+    queryKey: ['sa-roles', params],
     queryFn: async () => {
-      const res = await apiClient.get('/super-admin/roles');
+      const qs = new URLSearchParams(params).toString();
+      const res = await apiClient.get(`/super-admin/roles${qs ? `?${qs}` : ''}`);
       return res?.data ?? res ?? [];
     },
     staleTime: 60_000,
   });
+
+export const useCreateSARole = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/super-admin/roles', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-roles'] }),
+  });
+};
+
+export const useUpdateSARole = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/roles/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-roles'] }),
+  });
+};
+
+export const useDeleteSARole = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/super-admin/roles/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-roles'] }),
+  });
+};
 
 export const useSAPackagePlans = () =>
   useQuery({
@@ -623,6 +683,17 @@ export const useSARevenueReports = (params = {}) =>
     queryFn: async () => {
       const qs = new URLSearchParams(params).toString();
       const res = await apiClient.get(`/super-admin/revenue-reports${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? {};
+    },
+    staleTime: 60_000,
+  });
+
+export const useSADashboard = (params = {}) =>
+  useQuery({
+    queryKey: ['sa-dashboard', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(params).toString();
+      const res = await apiClient.get(`/super-admin/dashboard${qs ? `?${qs}` : ''}`);
       return res?.data ?? res ?? {};
     },
     staleTime: 60_000,
@@ -819,6 +890,68 @@ export const useBlockBusiness = () => {
 export const useSAResetBusinessPassword = () =>
   useMutation({
     mutationFn: id => apiClient.post(`/super-admin/businesses/${id}/reset-password`),
+  });
+
+export const useUpdateSABusiness = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/businesses/${id}`, data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['sa-businesses'] });
+      qc.invalidateQueries({ queryKey: ['sa-business', id] });
+    },
+  });
+};
+
+export const useDeleteSABusiness = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/super-admin/businesses/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-businesses'] }),
+  });
+};
+
+export const useSABusinessStats = id =>
+  useQuery({
+    queryKey: ['sa-business-stats', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/super-admin/businesses/${id}/stats`);
+      return res?.data ?? res ?? {};
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+
+export const useSABusinessStaff = id =>
+  useQuery({
+    queryKey: ['sa-business-staff', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/super-admin/businesses/${id}/staff`);
+      return res?.data ?? res ?? [];
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+
+export const useSABusinessSubscriptions = id =>
+  useQuery({
+    queryKey: ['sa-business-subs', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/super-admin/businesses/${id}/subscriptions`);
+      return res?.data ?? res ?? [];
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+
+export const useSAPermissions = () =>
+  useQuery({
+    queryKey: ['sa-permissions'],
+    queryFn: async () => {
+      const res = await apiClient.get('/super-admin/permissions');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 300_000,
   });
 
 // ─── Activity Logs ────────────────────────────────────────────────────────────
@@ -1849,7 +1982,7 @@ export const useSAPlatformTeam = () =>
   useQuery({
     queryKey: ['sa-platform-team'],
     queryFn: async () => {
-      const res = await apiClient.get('/super-admin/platform-team');
+      const res = await apiClient.get('/support/staff');
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
@@ -1858,7 +1991,7 @@ export const useSAPlatformTeam = () =>
 export const useCreateSAPlatformMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.post('/super-admin/platform-team', data),
+    mutationFn: data => apiClient.post('/support/staff', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-platform-team'] }),
   });
 };
@@ -1866,7 +1999,7 @@ export const useCreateSAPlatformMember = () => {
 export const useUpdateSAPlatformMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/platform-team/${id}`, data),
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/support/staff/${id}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-platform-team'] }),
   });
 };
@@ -1874,8 +2007,16 @@ export const useUpdateSAPlatformMember = () => {
 export const useDeleteSAPlatformMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: id => apiClient.delete(`/super-admin/platform-team/${id}`),
+    mutationFn: id => apiClient.delete(`/support/staff/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-platform-team'] }),
+  });
+};
+
+export const useCreateSACustomPlan = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/super-admin/custom-plans', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans'] }),
   });
 };
 
@@ -1976,6 +2117,26 @@ export const useDeleteSABusinessCategory = () => {
   return useMutation({
     mutationFn: id => apiClient.delete(`/super-admin/business-categories/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-business-categories'] }),
+  });
+};
+
+// ─── Super Admin: Support Tickets ────────────────────────────────────────────
+export const useSASupportTickets = (params = {}) =>
+  useQuery({
+    queryKey: ['sa-support-tickets', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(params).toString();
+      const res = await apiClient.get(`/support/tickets${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useUpdateSASupportTicket = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/support/tickets/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-support-tickets'] }),
   });
 };
 

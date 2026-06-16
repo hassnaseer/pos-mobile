@@ -48,69 +48,67 @@ const LoginScreen = ({ navigation }) => {
           <Image source={logo} style={styles.logo} resizeMode="contain" />
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.title}>Sign In</Text>
-          <Text style={styles.subtitle}>Vendixs</Text>
+        <Text style={styles.title}>Sign In</Text>
+        <Text style={styles.subtitle}>Vendixs</Text>
 
-          <Formik initialValues={{ email: '', password: '' }} validationSchema={schema} onSubmit={handleLogin}>
-            {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
-              <View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Email <Text style={styles.req}>*</Text></Text>
-                  <TextInput
-                    style={[styles.input, touched.email && errors.email && styles.inputErr]}
-                    placeholder="admin@example.com"
-                    placeholderTextColor="#999"
-                    value={values.email}
-                    onChangeText={handleChange('email')}
-                    onBlur={handleBlur('email')}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  {touched.email && errors.email && <Text style={styles.errText}>{errors.email}</Text>}
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>Password <Text style={styles.req}>*</Text></Text>
-                  <View style={styles.pwWrap}>
-                    <TextInput
-                      style={[styles.pwInput, touched.password && errors.password && styles.inputErr]}
-                      placeholder="••••••••"
-                      placeholderTextColor="#999"
-                      value={values.password}
-                      onChangeText={handleChange('password')}
-                      onBlur={handleBlur('password')}
-                      secureTextEntry={!showPassword}
-                    />
-                    <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
-                      <Image source={showPassword ? showIcon : hiddenIcon} style={styles.eyeImg} resizeMode="contain" />
-                    </TouchableOpacity>
-                  </View>
-                  {touched.password && errors.password && <Text style={styles.errText}>{errors.password}</Text>}
-                </View>
-
-                <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={isPending} activeOpacity={0.85}>
-                  {isPending
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Text style={styles.btnText}>Continue</Text>}
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotWrap}>
-                  <Text style={styles.forgotText}>Forgot Password?</Text>
-                </TouchableOpacity>
+        <Formik initialValues={{ email: '', password: '' }} validationSchema={schema} onSubmit={handleLogin}>
+          {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+            <View>
+              <View style={styles.field}>
+                <Text style={styles.label}>Email <Text style={styles.req}>*</Text></Text>
+                <TextInput
+                  style={[styles.input, touched.email && errors.email && styles.inputErr]}
+                  placeholder="admin@example.com"
+                  placeholderTextColor="#999"
+                  value={values.email}
+                  onChangeText={handleChange('email')}
+                  onBlur={handleBlur('email')}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {touched.email && errors.email && <Text style={styles.errText}>{errors.email}</Text>}
               </View>
-            )}
-          </Formik>
 
-          <View style={styles.legalRow}>
-            <TouchableOpacity onPress={() => navigation.navigate('LegalPage', { type: 'terms' })}>
-              <Text style={styles.legalLink}>Terms of Service</Text>
-            </TouchableOpacity>
-            <Text style={styles.legalSep}>·</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('LegalPage', { type: 'privacy' })}>
-              <Text style={styles.legalLink}>Privacy Policy</Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>Password <Text style={styles.req}>*</Text></Text>
+                <View style={styles.pwWrap}>
+                  <TextInput
+                    style={[styles.pwInput, touched.password && errors.password && styles.inputErr]}
+                    placeholder="••••••••"
+                    placeholderTextColor="#999"
+                    value={values.password}
+                    onChangeText={handleChange('password')}
+                    onBlur={handleBlur('password')}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+                    <Image source={showPassword ? showIcon : hiddenIcon} style={styles.eyeImg} resizeMode="contain" />
+                  </TouchableOpacity>
+                </View>
+                {touched.password && errors.password && <Text style={styles.errText}>{errors.password}</Text>}
+              </View>
+
+              <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={isPending} activeOpacity={0.85}>
+                {isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.btnText}>Continue</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotWrap}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Formik>
+
+        <View style={styles.legalRow}>
+          <TouchableOpacity onPress={() => navigation.navigate('LegalPage', { type: 'terms' })}>
+            <Text style={styles.legalLink}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalSep}>·</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('LegalPage', { type: 'privacy' })}>
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -118,11 +116,10 @@ const LoginScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f4f6f9' },
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 40 },
+  root: { flex: 1, backgroundColor: '#fff' },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40 },
   logoWrap: { alignItems: 'center', marginBottom: 24 },
   logo: { width: 110, height: 110 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
   title: { fontSize: 28, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, textAlign: 'center' },
   subtitle: { fontSize: 14, fontFamily: 'Outfit-Regular', color: colors.secondary, textAlign: 'center', marginBottom: 28 },
   field: { marginBottom: 16 },

@@ -8,7 +8,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 
-const EMPTY_FORM = { name: '', email: '', phone: '', address: '', contactPerson: '' };
+const EMPTY_FORM = { name: '', email: '', phone: '', address: '', contactPerson: '', notes: '' };
 
 const FIELDS = [
   { key: 'name',          label: 'Name *' },
@@ -16,12 +16,14 @@ const FIELDS = [
   { key: 'email',         label: 'Email',  keyboard: 'email-address' },
   { key: 'phone',         label: 'Phone',  keyboard: 'phone-pad' },
   { key: 'address',       label: 'Address' },
+  { key: 'notes',         label: 'Notes', multi: true },
 ];
 
 const SuppliersScreen = () => {
   const perms = usePermissions();
   const canManage = perms.can(PERMISSIONS.MANAGE_SUPPLIERS);
 
+  const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -32,12 +34,15 @@ const SuppliersScreen = () => {
   const { mutateAsync: update, isPending: updating } = useUpdateSupplier();
   const { mutate: remove } = useDeleteSupplier();
 
-  const suppliers = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const all = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const suppliers = search
+    ? all.filter(s => (s.name ?? '').toLowerCase().includes(search.toLowerCase()) || (s.email ?? '').toLowerCase().includes(search.toLowerCase()))
+    : all;
 
   const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); };
   const openEdit = s => {
     setEditing(s);
-    setForm({ name: s.name ?? '', email: s.email ?? '', phone: s.phone ?? '', address: s.address ?? '', contactPerson: s.contactPerson ?? '' });
+    setForm({ name: s.name ?? '', email: s.email ?? '', phone: s.phone ?? '', address: s.address ?? '', contactPerson: s.contactPerson ?? '', notes: s.notes ?? '' });
     setShowModal(true);
   };
 
@@ -63,7 +68,13 @@ const SuppliersScreen = () => {
   return (
     <View style={styles.root}>
       <View style={styles.topBar}>
-        <Text style={styles.heading}>Suppliers</Text>
+        <TextInput
+          style={styles.search}
+          placeholder="Search suppliers…"
+          placeholderTextColor="#9ca3af"
+          value={search}
+          onChangeText={setSearch}
+        />
         {canManage && (
           <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
             <Text style={styles.addBtnText}>+ Add</Text>
@@ -107,13 +118,14 @@ const SuppliersScreen = () => {
               <View key={f.key} style={styles.field}>
                 <Text style={styles.label}>{f.label}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, f.multi && { height: 70, textAlignVertical: 'top' }]}
                   value={form[f.key]}
                   onChangeText={set(f.key)}
                   keyboardType={f.keyboard ?? 'default'}
                   autoCapitalize="none"
                   placeholder={f.label.replace(' *', '')}
                   placeholderTextColor="#999"
+                  multiline={f.multi}
                 />
               </View>
             ))}
@@ -134,9 +146,9 @@ const SuppliersScreen = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
-  heading: { fontSize: 18, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
-  addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  topBar: { flexDirection: 'row', padding: 12, gap: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' },
+  search: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
+  addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10, justifyContent: 'center' },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 12, marginTop: 8, borderRadius: 10, padding: 14, gap: 10 },
   rowInfo: { flex: 1 },

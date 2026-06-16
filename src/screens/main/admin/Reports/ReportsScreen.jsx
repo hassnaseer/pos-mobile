@@ -145,7 +145,7 @@ const TicketsTab = ({ data, fmt }) => (
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
-const PERIODS = ['7d', '30d', '90d', '1y'];
+const PERIODS = ['7d', '30d', '90d', '1y', 'all'];
 
 const ReportsScreen = () => {
   const [tab, setTab] = useState('summary');

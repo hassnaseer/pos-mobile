@@ -24,9 +24,15 @@ const SAPaymentQueueScreen = () => {
   const [reason, setReason] = useState('');
 
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterSource, setFilterSource] = useState('');
   const STATUSES = ['pending', 'approved', 'rejected'];
+  const SOURCES  = ['direct', 'signup', 'upgrade'];
 
-  const filtered = filterStatus ? requests.filter(r => r.status === filterStatus) : requests;
+  const filtered = requests.filter(r => {
+    if (filterStatus && (r.status ?? '').toLowerCase() !== filterStatus) return false;
+    if (filterSource && (r.source ?? '').toLowerCase() !== filterSource) return false;
+    return true;
+  });
 
   const handleApprove = item =>
     Alert.alert('Approve', `Approve payment of PKR ${item.amount} from ${item.businessName ?? item.business?.name}?`, [
@@ -53,7 +59,13 @@ const SAPaymentQueueScreen = () => {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterWrap} contentContainerStyle={styles.filterRow}>
         {['', ...STATUSES].map(s => (
           <TouchableOpacity key={s || 'all'} style={[styles.chip, filterStatus === s && styles.chipActive]} onPress={() => setFilterStatus(s)}>
-            <Text style={[styles.chipText, filterStatus === s && styles.chipTextActive]}>{s || 'All'}</Text>
+            <Text style={[styles.chipText, filterStatus === s && styles.chipTextActive]}>{s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All Status'}</Text>
+          </TouchableOpacity>
+        ))}
+        <View style={styles.chipDivider} />
+        {['', ...SOURCES].map(s => (
+          <TouchableOpacity key={s || 'all-src'} style={[styles.chip, { borderColor: '#8b5cf6' }, filterSource === s && { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }]} onPress={() => setFilterSource(s)}>
+            <Text style={[styles.chipText, { color: '#8b5cf6' }, filterSource === s && { color: '#fff' }]}>{s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All Sources'}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -78,10 +90,10 @@ const SAPaymentQueueScreen = () => {
                 <Text style={styles.label}>Amount</Text>
                 <Text style={styles.amount}>PKR {item.amount ?? '—'}</Text>
               </View>
-              {item.plan && <View style={styles.row}><Text style={styles.label}>Plan</Text><Text style={styles.value}>{item.plan}</Text></View>}
+              {item.plan && <View style={styles.row}><Text style={styles.label}>Plan</Text><Text style={styles.value}>{typeof item.plan === 'string' ? item.plan : (item.plan?.name ?? '')}</Text></View>}
               {item.screenshotUrl ? <Text style={styles.sub}>Receipt attached</Text> : null}
               {item.submittedAt && <Text style={styles.sub}>{new Date(item.submittedAt).toLocaleString()}</Text>}
-              {item.status === 'pending' && (
+              {(item.status ?? '').toLowerCase() === 'pending' && (
                 <View style={styles.btnRow}>
                   <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item)} disabled={approving}>
                     {approving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.approveBtnText}>Approve</Text>}
@@ -121,12 +133,13 @@ const SAPaymentQueueScreen = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
-  filterWrap: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', maxHeight: 54 },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  filterWrap: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666' },
+  chipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666', lineHeight: 18 },
   chipTextActive: { color: '#fff' },
+  chipDivider: { width: 1, height: 24, backgroundColor: '#e0e0e0', alignSelf: 'center', marginHorizontal: 4 },
   card: { backgroundColor: '#fff', marginHorizontal: 12, marginTop: 10, borderRadius: 12, padding: 14 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   bizName: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: '#1a1a1a', flex: 1, marginRight: 8 },

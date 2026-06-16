@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Modal,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { useSADemoRequests, useUpdateSADemoStatus } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
 
@@ -137,16 +136,22 @@ export default function SADemoRequestsScreen() {
             <Text style={styles.modalTitle}>Update Status</Text>
             <Text style={styles.modalSub}>{selected?.name ?? selected?.email}</Text>
 
-            <View style={styles.pickerWrap}>
-              <Picker
-                selectedValue={newStatus}
-                onValueChange={setNewStatus}
-                style={styles.picker}
-              >
-                {STATUS_OPTIONS.map(s => (
-                  <Picker.Item key={s} label={s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')} value={s} />
-                ))}
-              </Picker>
+            <View style={styles.statusChips}>
+              {STATUS_OPTIONS.map(s => {
+                const sc = STATUS_COLORS[s] ?? { bg: '#f3f4f6', text: '#6b7280' };
+                const active = newStatus === s;
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.statusChip, { borderColor: sc.text }, active && { backgroundColor: sc.bg }]}
+                    onPress={() => setNewStatus(s)}
+                  >
+                    <Text style={[styles.statusChipText, { color: sc.text }]}>
+                      {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <View style={styles.modalActions}>
@@ -193,8 +198,9 @@ const styles = StyleSheet.create({
   modalBox: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   modalTitle: { fontSize: 17, fontFamily: 'Outfit-Bold', color: '#111827', marginBottom: 4 },
   modalSub: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6b7280', marginBottom: 12 },
-  pickerWrap: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff', marginBottom: 8 },
-  picker: { height: 150 },
+  statusChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  statusChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5 },
+  statusChipText: { fontSize: 13, fontFamily: 'Outfit-SemiBold' },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   cancelBtn: { flex: 1, borderRadius: 8, paddingVertical: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },
   cancelText: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: '#374151' },

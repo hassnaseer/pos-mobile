@@ -26,7 +26,7 @@ const actionColor = action => {
 };
 
 export default function SAActivityLogsScreen() {
-  const { data: logs = [], isLoading } = useSAActivityLogs();
+  const { data: logs = [], isLoading, isError } = useSAActivityLogs();
 
   const [search, setSearch]           = useState('');
   const [filterAction, setFilterAction] = useState('all');
@@ -137,9 +137,15 @@ export default function SAActivityLogsScreen() {
       <Text style={styles.count}>{filtered.length} of {logs.length} records</Text>
 
       {/* List */}
+      {isError && (
+        <View style={{ padding: 24, alignItems: 'center' }}>
+          <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
+          <Text style={styles.emptyText}>Activity logs endpoint is not available.{'\n'}This feature may not be enabled on your backend.</Text>
+        </View>
+      )}
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
-      ) : (
+      ) : isError ? null : (
         <FlatList
           data={filtered}
           keyExtractor={(item, i) => item.id ?? String(i)}

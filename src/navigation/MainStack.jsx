@@ -109,7 +109,12 @@ import SALearnGuidesScreen from '../screens/main/super-admin/LearnGuides/SALearn
 import SABusinessCategoriesScreen from '../screens/main/super-admin/BusinessCategories/SABusinessCategoriesScreen';
 import SACustomPlansScreen from '../screens/main/super-admin/CustomPlans/SACustomPlansScreen';
 import SAPaymentQueueScreen from '../screens/main/super-admin/PaymentQueue/SAPaymentQueueScreen';
+import SABusinessTypeFormScreen from '../screens/main/super-admin/BusinessTypes/SABusinessTypeFormScreen';
+import SAPackagePlanFormScreen from '../screens/main/super-admin/PackagePlans/SAPackagePlanFormScreen';
+import SACustomPlanFormScreen from '../screens/main/super-admin/CustomPlans/SACustomPlanFormScreen';
+import SABusinessFormScreen from '../screens/main/super-admin/Businesses/SABusinessFormScreen';
 import SAErrorLogsScreen from '../screens/main/super-admin/ErrorLogs/SAErrorLogsScreen';
+import SASupportTicketsScreen from '../screens/main/super-admin/SupportTickets/SASupportTicketsScreen';
 
 // Staff Dashboard (all 3 variants inside)
 import StaffDashboardScreen from '../screens/main/staff/StaffDashboardScreen';
@@ -299,7 +304,6 @@ const SA_SCREENS = [
   { name: 'SABusinesses',    component: SABusinessesScreen },
   { name: 'SABusinessTypes', component: SABusinessTypesScreen },
   { name: 'SAPackagePlans',  component: SAPackagePlansScreen },
-  { name: 'SARoles',         component: SARolesScreen },
   { name: 'SAReports',       component: SAReportsScreen },
   { name: 'SASupport',       component: SASupportScreen },
   { name: 'SALegalPages',    component: SALegalPagesScreen },
@@ -314,6 +318,7 @@ const SA_SCREENS = [
   { name: 'SACustomPlans',        component: SACustomPlansScreen },
   { name: 'SAPaymentQueue',       component: SAPaymentQueueScreen },
   { name: 'SAErrorLogs',          component: SAErrorLogsScreen },
+  { name: 'SASupportTickets',     component: SASupportTicketsScreen },
 ];
 
 const SuperAdminNavigator = ({ unreadCount }) => {
@@ -326,7 +331,11 @@ const SuperAdminNavigator = ({ unreadCount }) => {
         {SA_SCREENS.map(({ name, component: C }) => (
           <Stack.Screen key={name} name={name} component={C} options={{ header: menuHdr }} />
         ))}
-        <Stack.Screen name="SABusinessDetail" component={SABusinessDetailScreen} options={{ header: backHdr }} />
+        <Stack.Screen name="SABusinessDetail"   component={SABusinessDetailScreen}   options={{ header: backHdr }} />
+        <Stack.Screen name="SABusinessTypeForm" component={SABusinessTypeFormScreen} options={{ header: backHdr }} />
+        <Stack.Screen name="SAPackagePlanForm"  component={SAPackagePlanFormScreen}  options={{ header: backHdr }} />
+        <Stack.Screen name="SACustomPlanForm"   component={SACustomPlanFormScreen}   options={{ header: backHdr }} />
+        <Stack.Screen name="SABusinessForm"     component={SABusinessFormScreen}     options={{ header: backHdr }} />
         <Stack.Screen name="Notifications"    component={NotificationsScreen}    options={{ header: backHdr }} />
         <Stack.Screen name="Profile"          component={ProfileScreen}          options={{ header: backHdr }} />
       </Stack.Navigator>
@@ -360,6 +369,10 @@ export default function MainStack() {
     () => Array.isArray(notifs) ? notifs.filter(n => !n.isRead).length : 0,
     [notifs],
   );
+
+  // userRole is null briefly during logout — render nothing to avoid
+  // flashing AdminNavigator before the navigation resets to Auth.
+  if (!userRole) return null;
 
   if (userRole === ROLES.SUPER_ADMIN)   return <SuperAdminNavigator unreadCount={unreadCount} />;
   if (userRole === ROLES.SUPPORT_STAFF) return <SupportNavigator    unreadCount={unreadCount} />;

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import apiClient from '../services/api/globalApi';
+import { isSuperAdmin } from '../utils/permissions';
 
 const CURRENCY_SYMBOLS = {
   USD: '$', EUR: '€', GBP: '£', PKR: 'Rs', INR: '₹', AED: 'د.إ',
@@ -35,7 +36,7 @@ export function CurrencyProvider({ children }) {
   const [invoiceTerms, setInvoiceTerms] = useState('');
 
   const fetchSettings = useCallback(async () => {
-    if (!user) return;
+    if (!user || isSuperAdmin(user.role)) return;
     try {
       const res = await apiClient.get('/admin/settings');
       const data = res?.data ?? res;

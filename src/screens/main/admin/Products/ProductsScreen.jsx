@@ -54,6 +54,7 @@ const ProductsScreen = () => {
   const canManage = perms.can(PERMISSIONS.MANAGE_PRODUCTS);
   const { fmt } = useCurrency();
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -74,7 +75,11 @@ const ProductsScreen = () => {
   const conditions = Array.isArray(rawConditions)? rawConditions: (rawConditions?.data?? []);
   const taxes      = Array.isArray(rawTaxes)     ? rawTaxes     : (rawTaxes?.data     ?? []);
 
-  const filtered = products.filter(p => p.name?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = products.filter(p => {
+    if (categoryFilter && String(p.categoryId ?? p.category?.id ?? '') !== String(categoryFilter)) return false;
+    if (search && !(p.name ?? '').toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); };
   const openEdit = p => {
@@ -144,6 +149,20 @@ const ProductsScreen = () => {
         <TextInput style={styles.search} placeholder="Search products…" placeholderTextColor="#999" value={search} onChangeText={setSearch} />
         {canManage && <TouchableOpacity style={styles.addBtn} onPress={openCreate}><Text style={styles.addBtnText}>+ Add</Text></TouchableOpacity>}
       </View>
+
+      {categories.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterRow}>
+          {[{ id: '', name: 'All' }, ...categories].map(c => (
+            <TouchableOpacity
+              key={c.id || 'all'}
+              style={[styles.catChip, categoryFilter === c.id && styles.catChipActive]}
+              onPress={() => setCategoryFilter(c.id)}
+            >
+              <Text style={[styles.catChipText, categoryFilter === c.id && styles.catChipTextActive]}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       <FlatList
         data={filtered}
@@ -244,6 +263,12 @@ const ProductsScreen = () => {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
   topBar: { flexDirection: 'row', padding: 12, gap: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
+  filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', maxHeight: 52 },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  catChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0' },
+  catChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  catChipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666' },
+  catChipTextActive: { color: '#fff' },
   search: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular' },
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 14 },
