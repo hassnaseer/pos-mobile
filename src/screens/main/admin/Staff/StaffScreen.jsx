@@ -4,8 +4,8 @@ import {
   Modal, ActivityIndicator, Alert, RefreshControl, Image, ScrollView, Switch,
 } from 'react-native';
 import {
-  useStaff, useCreateStaff, useUpdateStaff, useDeleteStaff,
-  useCustomRoles, useDepartments,
+  useStaffInfinite, useCreateStaff, useUpdateStaff, useDeleteStaff,
+  useCustomRoles, useDepartments, flattenPages,
 } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
@@ -15,11 +15,11 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const EMPTY_FORM = {
   fullName: '', email: '', password: '',
-  phone: '', baseSalary: '',
+  phoneNumber: '', baseSalary: '',
   customRoleId: '', departmentId: '',
   workStartTime: '', workEndTime: '',
   workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-  isMedical: false,
+  isMedical: false, isActive: true,
 };
 
 const InlinePicker = ({ label, value, options, onSelect, keyField = 'id', labelField = 'name' }) => {
@@ -64,14 +64,16 @@ const StaffScreen = () => {
   const [form, setForm]     = useState(EMPTY_FORM);
   const [editId, setEditId] = useState(null);
 
-  const { data: rawStaff = [], isLoading, refetch } = useStaff();
+  const {
+    data: staffData, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch,
+  } = useStaffInfinite();
   const { data: rawRoles = [] }                      = useCustomRoles();
   const { data: rawDepts = [] }                      = useDepartments();
   const { mutateAsync: create, isPending: creating } = useCreateStaff();
   const { mutateAsync: update, isPending: updating } = useUpdateStaff();
   const { mutate: remove }                           = useDeleteStaff();
 
-  const members     = Array.isArray(rawStaff) ? rawStaff : (rawStaff?.data ?? []);
+  const members     = flattenPages(staffData);
   const roles       = Array.isArray(rawRoles) ? rawRoles : (rawRoles?.data ?? []);
   const departments = Array.isArray(rawDepts) ? rawDepts : (rawDepts?.data ?? []);
 
@@ -90,7 +92,7 @@ const StaffScreen = () => {
       fullName:     s.fullName ?? s.name ?? '',
       email:        s.email ?? '',
       password:     '',
-      phone:        s.phone ?? '',
+      phoneNumber:  s.phoneNumber ?? s.phone ?? '',
       baseSalary:   s.baseSalary != null ? String(s.baseSalary) : '',
       customRoleId: s.customRoleId ?? '',
       departmentId: s.departmentId ?? s.department?.id ?? '',
@@ -98,6 +100,7 @@ const StaffScreen = () => {
       workEndTime:  s.workEndTime ?? '',
       workingDays:  Array.isArray(s.workingDays) ? s.workingDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
       isMedical:    s.isMedical ?? false,
+      isActive:     s.isActive ?? true,
     });
     setEditId(s.id);
     setModal('edit');
@@ -115,7 +118,7 @@ const StaffScreen = () => {
     const payload = {
       fullName:     form.fullName.trim(),
       email:        form.email.trim(),
-      phone:        form.phone || undefined,
+      phoneNumber:  form.phoneNumber || undefined,
       baseSalary:   form.baseSalary ? parseFloat(form.baseSalary) : undefined,
       customRoleId: form.customRoleId || undefined,
       departmentId: form.departmentId || undefined,
@@ -123,6 +126,7 @@ const StaffScreen = () => {
       workEndTime:  form.workEndTime || undefined,
       workingDays:  form.workingDays.length ? form.workingDays : undefined,
       isMedical:    form.isMedical,
+      isActive:     form.isActive,
       ...(modal === 'add' && { password: form.password }),
     };
     try {
@@ -154,6 +158,9 @@ const StaffScreen = () => {
         data={members}
         keyExtractor={s => String(s.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={!isLoading && <Text style={styles.empty}>No staff members yet.</Text>}
         renderItem={({ item }) => (
@@ -210,9 +217,9 @@ const StaffScreen = () => {
             {/* Required fields */}
             <Text style={styles.section}>Basic Info</Text>
             {[
-              { key: 'fullName', label: 'Full Name *', placeholder: 'Jane Smith' },
-              { key: 'email',    label: 'Email *',     placeholder: 'jane@example.com', keyboard: 'email-address' },
-              { key: 'phone',    label: 'Phone',        placeholder: '+1 234 567 890',  keyboard: 'phone-pad' },
+              { key: 'fullName',    label: 'Full Name *', placeholder: 'Jane Smith' },
+              { key: 'email',      label: 'Email *',     placeholder: 'jane@example.com', keyboard: 'email-address' },
+              { key: 'phoneNumber',label: 'Phone',        placeholder: '+1 234 567 890',  keyboard: 'phone-pad' },
             ].map(f => (
               <View key={f.key} style={styles.field}>
                 <Text style={styles.label}>{f.label}</Text>
@@ -324,6 +331,29 @@ const StaffScreen = () => {
               />
             </View>
 
+            {/* Account status — edit only */}
+            {modal === 'edit' && (
+              <View style={styles.statusToggle}>
+                <View>
+                  <Text style={styles.label}>Account Status</Text>
+                  <Text style={styles.statusHint}>
+                    {form.isActive ? 'Employee can log in' : 'Employee is blocked'}
+                  </Text>
+                </View>
+                <View style={styles.statusRight}>
+                  <Text style={[styles.statusLabel, { color: form.isActive ? '#16a34a' : '#9ca3af' }]}>
+                    {form.isActive ? 'Active' : 'Inactive'}
+                  </Text>
+                  <Switch
+                    value={form.isActive}
+                    onValueChange={set('isActive')}
+                    trackColor={{ false: '#D0D5DD', true: '#bbf7d0' }}
+                    thumbColor={form.isActive ? '#16a34a' : '#9ca3af'}
+                  />
+                </View>
+              </View>
+            )}
+
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModal(null)}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -386,6 +416,10 @@ const styles = StyleSheet.create({
   dayChipText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.secondary },
   dayChipTextActive: { color: '#fff' },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  statusToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f9fafb', borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb' },
+  statusHint: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 2 },
+  statusRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusLabel: { fontSize: 13, fontFamily: 'Outfit-SemiBold' },
   pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: 320, padding: 8 },
   pickerOption: { paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderColor: '#f0f0f0' },

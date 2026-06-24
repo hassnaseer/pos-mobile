@@ -3,26 +3,8 @@ import {
   View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity,
   TextInput, Modal, ActivityIndicator, Alert, ScrollView, Switch,
 } from 'react-native';
-import { useSARoles, useCreateSARole, useUpdateSARole, useDeleteSARole } from '../../../../services/api/posApi';
+import { useSARoles, useCreateSARole, useUpdateSARole, useDeleteSARole, useSAPermissions } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
-
-const SA_PERMISSIONS = [
-  { code: 'manage_businesses',    label: 'Manage Businesses',    category: 'Businesses' },
-  { code: 'view_businesses',      label: 'View Businesses',      category: 'Businesses' },
-  { code: 'manage_plans',         label: 'Manage Plans',         category: 'Plans' },
-  { code: 'view_plans',           label: 'View Plans',           category: 'Plans' },
-  { code: 'manage_roles',         label: 'Manage Roles',         category: 'Roles' },
-  { code: 'manage_subscriptions', label: 'Manage Subscriptions', category: 'Subscriptions' },
-  { code: 'view_reports',         label: 'View Reports',         category: 'Reporting' },
-  { code: 'manage_platform',      label: 'Manage Platform',      category: 'Platform' },
-  { code: 'manage_legal',         label: 'Manage Legal Pages',   category: 'Platform' },
-];
-
-const byCategory = SA_PERMISSIONS.reduce((acc, p) => {
-  if (!acc[p.category]) acc[p.category] = [];
-  acc[p.category].push(p);
-  return acc;
-}, {});
 
 const SARolesScreen = () => {
   const [search, setSearch] = useState('');
@@ -35,6 +17,18 @@ const SARolesScreen = () => {
 
   const { data: raw = [], isLoading, refetch, isError } = useSARoles();
   const roles = Array.isArray(raw) ? raw : (raw?.data ?? []);
+
+  const { data: rawPerms = [] } = useSAPermissions();
+  const allPermissions = Array.isArray(rawPerms) ? rawPerms : (rawPerms?.data ?? []);
+
+  const byCategory = useMemo(() => {
+    return allPermissions.reduce((acc, p) => {
+      const cat = p.category ?? 'Other';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(p);
+      return acc;
+    }, {});
+  }, [allPermissions]);
 
   const { mutateAsync: create, isPending: creating } = useCreateSARole();
   const { mutateAsync: update, isPending: updating } = useUpdateSARole();
@@ -90,6 +84,8 @@ const SARolesScreen = () => {
   };
 
   const isSaving = creating || updating;
+
+  const fmtCat = cat => cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   return (
     <View style={styles.root}>
@@ -170,10 +166,10 @@ const SARolesScreen = () => {
               {isExpanded && perms.length > 0 && (
                 <View style={styles.permWrap}>
                   {perms.map((p, i) => {
-                    const match = SA_PERMISSIONS.find(x => x.code === p);
+                    const match = allPermissions.find(x => x.code === p);
                     return (
                       <View key={i} style={styles.permTag}>
-                        <Text style={styles.permText}>{match?.label ?? p.replace(/_/g, ' ')}</Text>
+                        <Text style={styles.permText}>{match?.name ?? p.replace(/_/g, ' ')}</Text>
                       </View>
                     );
                   })}
@@ -223,10 +219,13 @@ const SARolesScreen = () => {
               <Text style={styles.permsLabel}>Permissions</Text>
               {Object.entries(byCategory).map(([cat, catPerms]) => (
                 <View key={cat}>
-                  <Text style={styles.catLabel}>{cat}</Text>
+                  <Text style={styles.catLabel}>{fmtCat(cat)}</Text>
                   {catPerms.map(p => (
                     <View key={p.code} style={styles.permRow}>
-                      <Text style={styles.permLabel}>{p.label}</Text>
+                      <View style={styles.permInfo}>
+                        <Text style={styles.permLabel}>{p.name}</Text>
+                        {p.description ? <Text style={styles.permDesc} numberOfLines={1}>{p.description}</Text> : null}
+                      </View>
                       <Switch
                         value={!!selectedPerms[p.code]}
                         onValueChange={() => togglePerm(p.code)}
@@ -295,9 +294,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontFamily: 'Outfit-Medium', color: '#111827', marginBottom: 6 },
   input: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
   permsLabel: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: '#111827', marginBottom: 6, marginTop: 4 },
-  catLabel: { fontSize: 11, fontFamily: 'Outfit-SemiBold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 10, marginBottom: 4 },
-  permRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderColor: '#f5f5f5' },
+  catLabel: { fontSize: 11, fontFamily: 'Outfit-SemiBold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12, marginBottom: 4 },
+  permRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderColor: '#f5f5f5', gap: 8 },
+  permInfo: { flex: 1 },
   permLabel: { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
+  permDesc: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 1 },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 16, marginBottom: 8 },
   cancelBtn: { flex: 1, borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   cancelText: { fontFamily: 'Outfit-Medium', color: '#6b7280' },

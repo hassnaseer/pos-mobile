@@ -3,7 +3,7 @@ import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   TextInput, RefreshControl, ActivityIndicator, Alert, ScrollView, Modal,
 } from 'react-native';
-import { useSASupportTickets, useUpdateSASupportTicket } from '../../../../services/api/posApi';
+import { useSASupportTickets, useUpdateSASupportTicket, flattenPages } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
 
 const STATUS_STYLE = {
@@ -25,8 +25,10 @@ const STATUSES = ['', 'open', 'in_progress', 'resolved', 'closed'];
 const fmtDate = d => d ? new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
 const SASupportTicketsScreen = () => {
-  const { data: raw = [], isLoading, refetch } = useSASupportTickets();
-  const tickets = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const {
+    data: ticketData, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch,
+  } = useSASupportTickets();
+  const tickets = flattenPages(ticketData);
   const { mutateAsync: updateTicket } = useUpdateSASupportTicket();
 
   const [search, setSearch] = useState('');
@@ -61,7 +63,6 @@ const SASupportTicketsScreen = () => {
 
   return (
     <View style={styles.root}>
-      {/* Search */}
       <View style={styles.topBar}>
         <TextInput
           style={styles.search}
@@ -72,10 +73,8 @@ const SASupportTicketsScreen = () => {
         />
       </View>
 
-      {/* Status filter */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterRow}>
         {STATUSES.map(s => {
-          const st = s ? STATUS_STYLE[s] : null;
           const isActive = statusFilter === s;
           return (
             <TouchableOpacity
@@ -91,10 +90,8 @@ const SASupportTicketsScreen = () => {
         })}
       </ScrollView>
 
-      {/* Count */}
       <Text style={styles.count}>{filtered.length} ticket{filtered.length !== 1 ? 's' : ''}</Text>
 
-      {/* List */}
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
@@ -102,6 +99,9 @@ const SASupportTicketsScreen = () => {
           data={filtered}
           keyExtractor={t => String(t.id)}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+          onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
           contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 24 }}
           ListEmptyComponent={<Text style={styles.empty}>No tickets found.</Text>}
           renderItem={({ item }) => {
@@ -135,7 +135,6 @@ const SASupportTicketsScreen = () => {
         />
       )}
 
-      {/* Detail modal */}
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <View style={styles.overlay}>
           <View style={styles.modalBox}>
@@ -220,9 +219,9 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f9fafb' },
   topBar: { padding: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
   search: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827', backgroundColor: '#f9fafb' },
-  filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', maxHeight: 52 },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0' },
+  filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', flexGrow: 0 },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center', gap: 8 },
+  chip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666' },
   chipTextActive: { color: '#fff' },

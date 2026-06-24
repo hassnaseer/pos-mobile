@@ -8,15 +8,14 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 
-const EMPTY_FORM = { name: '', email: '', phone: '', address: '', contactPerson: '', notes: '' };
+const EMPTY_FORM = { name: '', email: '', phone: '', address: '', notes: '' };
 
 const FIELDS = [
-  { key: 'name',          label: 'Name *' },
-  { key: 'contactPerson', label: 'Contact Person' },
-  { key: 'email',         label: 'Email',  keyboard: 'email-address' },
-  { key: 'phone',         label: 'Phone',  keyboard: 'phone-pad' },
-  { key: 'address',       label: 'Address' },
-  { key: 'notes',         label: 'Notes', multi: true },
+  { key: 'name',    label: 'Name *' },
+  { key: 'email',   label: 'Email',  keyboard: 'email-address' },
+  { key: 'phone',   label: 'Phone',  keyboard: 'phone-pad' },
+  { key: 'address', label: 'Address' },
+  { key: 'notes',   label: 'Notes', multi: true },
 ];
 
 const SuppliersScreen = () => {
@@ -42,7 +41,7 @@ const SuppliersScreen = () => {
   const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); };
   const openEdit = s => {
     setEditing(s);
-    setForm({ name: s.name ?? '', email: s.email ?? '', phone: s.phone ?? '', address: s.address ?? '', contactPerson: s.contactPerson ?? '', notes: s.notes ?? '' });
+    setForm({ name: s.name ?? '', email: s.email ?? '', phone: s.phone ?? '', address: s.address ?? '', notes: s.notes ?? '' });
     setShowModal(true);
   };
 
@@ -90,7 +89,6 @@ const SuppliersScreen = () => {
           <View style={styles.row}>
             <View style={styles.rowInfo}>
               <Text style={styles.rowName}>{item.name}</Text>
-              {item.contactPerson ? <Text style={styles.rowSub}>{item.contactPerson}</Text> : null}
               {item.email ? <Text style={styles.rowSub}>{item.email}</Text> : null}
               {item.phone ? <Text style={styles.rowSub}>{item.phone}</Text> : null}
             </View>

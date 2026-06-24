@@ -8,6 +8,7 @@ import {
   useUpdateSABusinessType, useSABusinessCategories,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import ConfirmModal from '../../../../components/Modal/ConfirmModal';
 
 const DASHBOARD_OPTIONS = [
   { value: '', label: 'Standard POS' },
@@ -28,25 +29,34 @@ const SABusinessTypesScreen = ({ navigation }) => {
   const { mutateAsync: update } = useUpdateSABusinessType();
 
   const [menuItem, setMenuItem] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmToggle, setConfirmToggle] = useState(null);
+  const [toggling, setToggling] = useState(false);
 
   const handleDelete = item => {
     setMenuItem(null);
-    Alert.alert(
-      'Delete Business Type',
-      `Delete "${item.name}"? This may affect existing businesses.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => remove(item.id) },
-      ],
-    );
+    setConfirmDelete(item);
   };
 
-  const handleToggleActive = async item => {
+  const doDelete = () => {
+    remove(confirmDelete.id);
+    setConfirmDelete(null);
+  };
+
+  const handleToggleActive = item => {
     setMenuItem(null);
+    setConfirmToggle(item);
+  };
+
+  const doToggle = async () => {
+    setToggling(true);
     try {
-      await update({ id: item.id, active: !item.active });
+      await update({ id: confirmToggle.id, active: !confirmToggle.active });
     } catch {
       Alert.alert('Error', 'Failed to update status');
+    } finally {
+      setToggling(false);
+      setConfirmToggle(null);
     }
   };
 
@@ -135,6 +145,27 @@ const SABusinessTypesScreen = ({ navigation }) => {
           </TouchableOpacity>
         </Modal>
       )}
+
+      <ConfirmModal
+        visible={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={doDelete}
+        title="Delete Business Type"
+        message={`Delete "${confirmDelete?.name}"? This may affect existing businesses.`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
+
+      <ConfirmModal
+        visible={!!confirmToggle}
+        onClose={() => setConfirmToggle(null)}
+        onConfirm={doToggle}
+        title={confirmToggle?.active !== false ? 'Set Inactive' : 'Set Active'}
+        message={`${confirmToggle?.active !== false ? 'Deactivate' : 'Activate'} "${confirmToggle?.name}"?`}
+        confirmLabel={confirmToggle?.active !== false ? 'Deactivate' : 'Activate'}
+        variant={confirmToggle?.active !== false ? 'warning' : 'success'}
+        loading={toggling}
+      />
     </View>
   );
 };
@@ -151,7 +182,7 @@ const styles = StyleSheet.create({
   rowInfo: { flex: 1 },
   rowName: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
   rowSub: { fontSize: 12, fontFamily: 'Outfit-Regular', color: colors.secondary, marginTop: 2 },
-  rowMeta: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  rowMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   rowMetaText: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280' },
   rowRight: { alignItems: 'center', gap: 4 },
   menuBtn: { padding: 4 },

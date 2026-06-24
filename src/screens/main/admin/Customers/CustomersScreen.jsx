@@ -4,7 +4,7 @@ import {
   Modal, ActivityIndicator, Alert, RefreshControl, ScrollView,
 } from 'react-native';
 import {
-  useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer,
+  useCustomersInfinite, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, flattenPages,
 } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
@@ -23,13 +23,16 @@ const CustomersScreen = () => {
   const [form, setForm]       = useState(EMPTY_FORM);
   const [editId, setEditId]   = useState(null);
 
-  const { data: raw = [], isLoading, refetch } = useCustomers();
+  const {
+    data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch,
+  } = useCustomersInfinite(search ? { search } : {});
   const { mutateAsync: create, isPending: creating } = useCreateCustomer();
   const { mutateAsync: update, isPending: updating } = useUpdateCustomer();
-  const { mutate: remove } = useDeleteCustomer();
+  const { mutateAsync: remove } = useDeleteCustomer();
 
-  const customers = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const customers = flattenPages(data);
   const filtered  = customers.filter(c =>
+    !search ||
     c.name?.toLowerCase().includes(search.toLowerCase()) ||
     c.email?.toLowerCase().includes(search.toLowerCase()) ||
     c.phone?.includes(search),
@@ -58,7 +61,16 @@ const CustomersScreen = () => {
 
   const handleDelete = c => Alert.alert('Delete Customer', `Delete "${c.name}"?`, [
     { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: () => remove(c.id) },
+    {
+      text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await remove(c.id);
+        } catch (err) {
+          const msg = err?.response?.data?.error ?? err?.response?.data?.message ?? 'Failed to delete customer';
+          Alert.alert('Cannot Delete', msg);
+        }
+      },
+    },
   ]);
 
   return (
@@ -82,6 +94,9 @@ const CustomersScreen = () => {
         data={filtered}
         keyExtractor={c => String(c.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={!isLoading && <Text style={styles.empty}>No customers found.</Text>}
         renderItem={({ item }) => (

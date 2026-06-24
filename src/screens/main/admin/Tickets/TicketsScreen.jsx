@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput,
   Modal, ActivityIndicator, Alert, RefreshControl, ScrollView, Switch,
@@ -11,6 +11,7 @@ import {
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
+import CascadingCategorySelect from '../../../../components/Ui/CascadingCategorySelect';
 import colors from '../../../../theme/colors';
 
 const STATUS_COLORS = {
@@ -39,25 +40,25 @@ const EMPTY_FORM = {
   miscLines: [],
 };
 
-// ─── Inline Select ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Inline Select â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const InlineSelect = ({ label, value, options, onSelect, keyField = 'id', labelField = 'name' }) => {
   const [open, setOpen] = useState(false);
   const selected = options.find(o => (o[keyField] ?? o) === value);
-  const displayLabel = selected ? (selected[labelField] ?? selected) : 'Select…';
+  const displayLabel = selected ? (selected[labelField] ?? selected) : 'Selectâ€¦';
 
   return (
     <View style={styles.field}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TouchableOpacity style={styles.selectBtn} onPress={() => setOpen(true)}>
         <Text style={[styles.selectText, !selected && { color: '#999' }]}>{displayLabel}</Text>
-        <Text style={styles.chevronIcon}>▾</Text>
+        <Text style={styles.chevronIcon}>â–¾</Text>
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="fade">
         <TouchableOpacity style={styles.pickerBackdrop} activeOpacity={1} onPress={() => setOpen(false)}>
           <View style={styles.pickerSheet}>
             <ScrollView>
               <TouchableOpacity style={styles.pickerOption} onPress={() => { onSelect(''); setOpen(false); }}>
-                <Text style={styles.pickerOptionText}>— None —</Text>
+                <Text style={styles.pickerOptionText}>â€” None â€”</Text>
               </TouchableOpacity>
               {options.map(opt => {
                 const k = opt[keyField] ?? opt;
@@ -76,7 +77,7 @@ const InlineSelect = ({ label, value, options, onSelect, keyField = 'id', labelF
   );
 };
 
-// ─── Product Search Modal ──────────────────────────────────────────────────────
+// â”€â”€â”€ Product Search Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ProductSearchModal = ({ visible, onClose, onAdd, products = [] }) => {
   const [search, setSearch] = useState('');
   const filtered = search.length >= 1
@@ -91,13 +92,13 @@ const ProductSearchModal = ({ visible, onClose, onAdd, products = [] }) => {
         <View style={[styles.fullModalCard, { maxHeight: '80%' }]}>
           <View style={styles.formHeader}>
             <Text style={styles.modalTitle}>Add Part</Text>
-            <TouchableOpacity onPress={handleClose}><Text style={styles.closeX}>✕</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleClose}><Text style={styles.closeX}>âœ•</Text></TouchableOpacity>
           </View>
           <TextInput
             style={[styles.input, { marginBottom: 10 }]}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search products…"
+            placeholder="Search productsâ€¦"
             placeholderTextColor="#999"
             autoFocus
           />
@@ -137,7 +138,7 @@ const ProductSearchModal = ({ visible, onClose, onAdd, products = [] }) => {
   );
 };
 
-// ─── Misc Charge Picker ────────────────────────────────────────────────────────
+// â”€â”€â”€ Misc Charge Picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const MiscChargeModal = ({ visible, onClose, onAdd, charges = [] }) => (
   <Modal visible={visible} transparent animationType="fade">
     <TouchableOpacity style={styles.pickerBackdrop} activeOpacity={1} onPress={onClose}>
@@ -169,7 +170,7 @@ const MiscChargeModal = ({ visible, onClose, onAdd, charges = [] }) => (
   </Modal>
 );
 
-// ─── Create/Edit form ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Create/Edit form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [showProductSearch, setShowProductSearch] = useState(false);
@@ -326,16 +327,16 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
           <View style={styles.fullModalCard}>
             <View style={styles.formHeader}>
               <Text style={styles.modalTitle}>{editing ? 'Edit Ticket' : 'New Repair Ticket'}</Text>
-              <TouchableOpacity onPress={onClose}><Text style={styles.closeX}>✕</Text></TouchableOpacity>
+              <TouchableOpacity onPress={onClose}><Text style={styles.closeX}>âœ•</Text></TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-              {/* ── Customer ── */}
+              {/* â”€â”€ Customer â”€â”€ */}
               <Text style={styles.formSection}>Customer</Text>
               <InlineSelect
                 label="Existing Customer"
                 value={form.customerId}
-                options={customers.map(c => ({ id: c.id, name: `${c.name}${c.phone ? ` · ${c.phone}` : ''}` }))}
+                options={customers.map(c => ({ id: c.id, name: `${c.name}${c.phone ? ` Â· ${c.phone}` : ''}` }))}
                 onSelect={val => {
                   const c = customers.find(x => x.id === val);
                   setForm(p => ({ ...p, customerId: val, customerName: c?.name ?? p.customerName, customerPhone: c?.phone ?? p.customerPhone }));
@@ -344,7 +345,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
               <F label="Customer Name *" fkey="customerName" placeholder="John Doe" />
               <F label="Customer Phone" fkey="customerPhone" placeholder="+1 234 567 890" keyboard="phone-pad" />
 
-              {/* ── Ticket Info ── */}
+              {/* â”€â”€ Ticket Info â”€â”€ */}
               <Text style={styles.formSection}>Ticket Info</Text>
               <InlineSelect
                 label="Status"
@@ -352,12 +353,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                 options={statuses.map(s => ({ id: s.id, name: s.name }))}
                 onSelect={set('statusId')}
               />
-              <InlineSelect
-                label="Category"
-                value={form.categoryId}
-                options={categories.map(c => ({ id: c.id, name: c.parent ? `${c.parent.name} › ${c.name}` : c.name }))}
-                onSelect={set('categoryId')}
-              />
+              <CascadingCategorySelect categories={categories} value={form.categoryId} onChange={set('categoryId')} label="Category" />
               <View style={styles.field}>
                 <Text style={styles.label}>Priority</Text>
                 <View style={styles.chipRow}>
@@ -373,7 +369,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                 </View>
               </View>
 
-              {/* ── Device ── */}
+              {/* â”€â”€ Device â”€â”€ */}
               <Text style={styles.formSection}>Device</Text>
               <InlineSelect
                 label="Manufacturer"
@@ -393,10 +389,10 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
               <F label="Model" fkey="model" placeholder="e.g. iPhone 15 Pro" />
               <F label="Serial Number" fkey="serialNumber" placeholder="SN123456" />
               <F label="Device Type" fkey="deviceType" placeholder="e.g. Smartphone" />
-              <F label="Accessories" fkey="accessories" placeholder="Charger, Case…" />
+              <F label="Accessories" fkey="accessories" placeholder="Charger, Caseâ€¦" />
               <F label="Physical Location" fkey="physicalLocation" placeholder="Shelf A3" />
 
-              {/* ── Phone Lock ── */}
+              {/* â”€â”€ Phone Lock â”€â”€ */}
               <Text style={styles.formSection}>Phone Lock</Text>
               <View style={styles.field}>
                 <Text style={styles.label}>Lock Type</Text>
@@ -419,7 +415,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                 <F label="Pattern Sequence" fkey="patternSequence" placeholder="e.g. 1-2-3-6-9" />
               )}
 
-              {/* ── Specifications ── */}
+              {/* â”€â”€ Specifications â”€â”€ */}
               <Text style={styles.formSection}>Specifications</Text>
               {form.specs.map((s, i) => (
                 <View key={i} style={styles.specRow}>
@@ -438,7 +434,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                     placeholderTextColor="#999"
                   />
                   <TouchableOpacity style={styles.removeBtn} onPress={() => removeSpec(i)}>
-                    <Text style={styles.removeBtnText}>✕</Text>
+                    <Text style={styles.removeBtnText}>âœ•</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -449,12 +445,12 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                 <Text style={styles.addLineBtnText}>+ Add Specification</Text>
               </TouchableOpacity>
 
-              {/* ── Issue & Notes ── */}
+              {/* â”€â”€ Issue & Notes â”€â”€ */}
               <Text style={styles.formSection}>Issue & Notes</Text>
-              <F label="Issue *" fkey="issue" placeholder="Describe the problem…" multi />
-              <F label="Notes" fkey="notes" placeholder="Internal notes…" multi />
+              <F label="Issue *" fkey="issue" placeholder="Describe the problemâ€¦" multi />
+              <F label="Notes" fkey="notes" placeholder="Internal notesâ€¦" multi />
 
-              {/* ── Parts Used ── */}
+              {/* â”€â”€ Parts Used â”€â”€ */}
               <Text style={styles.formSection}>Parts Used</Text>
               {form.lines.map((l, i) => (
                 <View key={i} style={styles.lineItem}>
@@ -483,7 +479,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                       />
                     </View>
                     <TouchableOpacity style={[styles.removeBtn, { alignSelf: 'flex-end' }]} onPress={() => removeLine(i)}>
-                      <Text style={styles.removeBtnText}>✕</Text>
+                      <Text style={styles.removeBtnText}>âœ•</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -492,7 +488,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                 <Text style={styles.addLineBtnText}>+ Add Part</Text>
               </TouchableOpacity>
 
-              {/* ── Misc Charges ── */}
+              {/* â”€â”€ Misc Charges â”€â”€ */}
               <Text style={styles.formSection}>Misc Charges</Text>
               {form.miscLines.map((l, i) => (
                 <View key={i} style={styles.lineItem}>
@@ -510,7 +506,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                       />
                     </View>
                     <TouchableOpacity style={[styles.removeBtn, { alignSelf: 'flex-end' }]} onPress={() => removeMisc(i)}>
-                      <Text style={styles.removeBtnText}>✕</Text>
+                      <Text style={styles.removeBtnText}>âœ•</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -519,7 +515,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                 <Text style={styles.addLineBtnText}>+ Add Charge</Text>
               </TouchableOpacity>
 
-              {/* ── Financials ── */}
+              {/* â”€â”€ Financials â”€â”€ */}
               <Text style={styles.formSection}>Financials</Text>
               <F label="Estimated Cost" fkey="estimatedCost" placeholder="0.00" keyboard="decimal-pad" />
               <F label="Advance Payment" fkey="advancePayment" placeholder="0.00" keyboard="decimal-pad" />
@@ -569,7 +565,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                 </View>
               </View>
 
-              {/* ── Assignment ── */}
+              {/* â”€â”€ Assignment â”€â”€ */}
               <Text style={styles.formSection}>Assignment</Text>
               <InlineSelect
                 label="Assign To"
@@ -610,7 +606,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
   );
 };
 
-// ─── Status update modal ──────────────────────────────────────────────────────
+// â”€â”€â”€ Status update modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const StatusModal = ({ visible, ticket, onClose, onUpdate, isUpdating }) => {
   const { data: rawStatuses = [] } = useTicketStatuses();
   const statuses = Array.isArray(rawStatuses) ? rawStatuses : (rawStatuses?.data ?? []);
@@ -637,7 +633,7 @@ const StatusModal = ({ visible, ticket, onClose, onUpdate, isUpdating }) => {
   );
 };
 
-// ─── Ticket detail modal ──────────────────────────────────────────────────────
+// â”€â”€â”€ Ticket detail modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TicketDetailModal = ({ ticketId, onClose, onEdit, isAdmin, fmt }) => {
   const { data: ticket, isLoading } = useTicketDetail(ticketId);
   const { mutateAsync: update, isPending: updating } = useUpdateTicket();
@@ -670,8 +666,8 @@ const TicketDetailModal = ({ ticketId, onClose, onEdit, isAdmin, fmt }) => {
       <View style={styles.fullModalBg}>
         <View style={styles.fullModalCard}>
           <View style={styles.formHeader}>
-            <Text style={styles.modalTitle}>{ticket?.ticketNumber ?? '…'}</Text>
-            <TouchableOpacity onPress={onClose}><Text style={styles.closeX}>✕</Text></TouchableOpacity>
+            <Text style={styles.modalTitle}>{ticket?.ticketNumber ?? 'â€¦'}</Text>
+            <TouchableOpacity onPress={onClose}><Text style={styles.closeX}>âœ•</Text></TouchableOpacity>
           </View>
           {isLoading ? (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: 40 }} />
@@ -719,7 +715,7 @@ const TicketDetailModal = ({ ticketId, onClose, onEdit, isAdmin, fmt }) => {
                   <Text style={styles.formSection}>Parts Used</Text>
                   {ticket.products.map(tp => (
                     <View key={tp.id} style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>{tp.product?.name ?? '—'} × {tp.quantity}</Text>
+                      <Text style={styles.infoLabel}>{tp.product?.name ?? 'â€”'} Ã— {tp.quantity}</Text>
                       <Text style={styles.infoValue}>{fmt(tp.quantity * tp.unitPrice)}</Text>
                     </View>
                   ))}
@@ -778,7 +774,7 @@ const TicketDetailModal = ({ ticketId, onClose, onEdit, isAdmin, fmt }) => {
                         <Text style={styles.cancelText}>Mark Fully Paid</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[styles.cancelBtn, { paddingHorizontal: 14 }]} onPress={() => { setCollectingPayment(false); setPaymentInput(''); }}>
-                        <Text style={styles.cancelText}>✕</Text>
+                        <Text style={styles.cancelText}>âœ•</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -820,8 +816,8 @@ const TicketDetailModal = ({ ticketId, onClose, onEdit, isAdmin, fmt }) => {
   );
 };
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
-const TicketsScreen = () => {
+// â”€â”€â”€ Main screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const TicketsScreen = ({ navigation }) => {
   const perms = usePermissions();
   const canCreate = perms.can(PERMISSIONS.CREATE_TICKETS);
   const canUpdate = perms.can(PERMISSIONS.UPDATE_TICKETS);
@@ -870,19 +866,19 @@ const TicketsScreen = () => {
       <View style={styles.toolbar}>
         <TextInput
           style={styles.search}
-          placeholder="Search tickets…"
+          placeholder="Search ticketsâ€¦"
           placeholderTextColor="#999"
           value={search}
           onChangeText={setSearch}
         />
         {canCreate && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => { setEditing(null); setShowForm(true); }}>
+          <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('CreateTicket')}>
             <Text style={styles.addBtnText}>+ New</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 }}>
         {['', ...statusNames].map(s => (
           <TouchableOpacity key={s} style={[styles.filterChip, statusFilter === s && styles.filterChipActive]} onPress={() => setStatusFilter(s)}>
             <Text style={[styles.filterChipText, statusFilter === s && { color: '#fff' }]}>{s || 'All'}</Text>
@@ -919,7 +915,7 @@ const TicketsScreen = () => {
                   <Text style={styles.cost}>Est: {fmt(item.estimatedCost)}</Text>
                 )}
                 {item.assignedUser && (
-                  <Text style={styles.assigned}>→ {item.assignedUser.name}</Text>
+                  <Text style={styles.assigned}>â†’ {item.assignedUser.name}</Text>
                 )}
                 <View style={styles.cardActions}>
                   <TouchableOpacity style={styles.actionBtn} onPress={() => setViewId(item.id)}>
@@ -976,8 +972,8 @@ const styles = StyleSheet.create({
   search: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular' },
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 14 },
-  filterRow: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#f0f0f0', maxHeight: 48 },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0', marginTop: 8 },
+  filterRow: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#f0f0f0', flexGrow: 0 },
+  filterChip: { height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' },
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterChipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: colors.secondary },
   card: { backgroundColor: '#fff', borderRadius: 10, padding: 14, marginTop: 10 },

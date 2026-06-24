@@ -29,6 +29,8 @@ import SuppliersScreen from '../screens/main/admin/Suppliers/SuppliersScreen';
 import ManufacturersScreen from '../screens/main/admin/Manufacturers/ManufacturersScreen';
 import DeviceConditionsScreen from '../screens/main/admin/DeviceConditions/DeviceConditionsScreen';
 import TicketsScreen from '../screens/main/admin/Tickets/TicketsScreen';
+import CreateTicketScreen from '../screens/main/admin/Tickets/CreateTicketScreen';
+import ProductFormScreen from '../screens/main/admin/Products/ProductFormScreen';
 import ReportsScreen from '../screens/main/admin/Reports/ReportsScreen';
 import IntegrationsScreen from '../screens/main/admin/Integrations/IntegrationsScreen';
 import MiscChargesScreen from '../screens/main/admin/MiscCharges/MiscChargesScreen';
@@ -288,9 +290,11 @@ const AdminNavigator = ({ unreadCount, userRole }) => {
         {SETTINGS_SCREENS.map(({ name, component: C }) => (
           <Stack.Screen key={name} name={name} component={C} options={{ header: backHdr }} />
         ))}
-        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ header: backHdr }} />
-        <Stack.Screen name="OrderDetail"   component={OrderDetailScreen}   options={{ header: backHdr }} />
-        <Stack.Screen name="Profile"       component={ProfileScreen}       options={{ header: backHdr }} />
+        <Stack.Screen name="Notifications"   component={NotificationsScreen}   options={{ header: backHdr }} />
+        <Stack.Screen name="OrderDetail"    component={OrderDetailScreen}    options={{ header: backHdr }} />
+        <Stack.Screen name="Profile"        component={ProfileScreen}        options={{ header: backHdr }} />
+        <Stack.Screen name="CreateTicket"   component={CreateTicketScreen}   options={{ header: backHdr }} />
+        <Stack.Screen name="ProductForm"    component={ProductFormScreen}    options={{ header: backHdr }} />
       </Stack.Navigator>
       <SidebarOverlay />
       <ChatFAB />

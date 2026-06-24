@@ -11,6 +11,7 @@ import {
 } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
+import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -120,7 +121,21 @@ const BusinessTab = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      {settings?.storeId && (
+        <View style={styles.storeIdRow}>
+          <Text style={styles.storeIdLabel}>Store ID</Text>
+          <View style={styles.storeIdBadge}><Text style={styles.storeIdText}>{settings.storeId}</Text></View>
+        </View>
+      )}
       <Text style={styles.sectionTitle}>Business Information</Text>
+      {settings?.businessType && (
+        <View style={styles.field}>
+          <Text style={styles.label}>Business Type</Text>
+          <View style={[styles.input, { justifyContent: 'center', backgroundColor: '#f9fafb' }]}>
+            <Text style={{ fontFamily: 'Outfit-Regular', fontSize: 14, color: '#6b7280' }}>{settings.businessType}</Text>
+          </View>
+        </View>
+      )}
       <Field label="Business Name" value={form.name} onChangeText={set('name')} placeholder="My Business" />
       <Field label="Owner Name" value={form.ownerName} onChangeText={set('ownerName')} placeholder="John Doe" />
       <Field label="Email" value={form.email} onChangeText={set('email')} placeholder="email@business.com" keyboardType="email-address" />
@@ -144,6 +159,7 @@ const BusinessTab = () => {
 const GeneralTab = () => {
   const { data: settings, isLoading } = useAdminSettings();
   const { mutateAsync: updateSettings, isPending: saving } = useUpdateAdminSettings();
+  const { refreshCurrency } = useCurrency();
   const perms = usePermissions();
   const showVendorSuggestions = perms.can(PERMISSIONS.POS_SALES) || perms.can(PERMISSIONS.CREATE_TICKETS);
   const [form, setForm] = useState({
@@ -173,6 +189,7 @@ const GeneralTab = () => {
         ...form,
         defaultTaxRate: form.defaultTaxRate ? parseFloat(form.defaultTaxRate) : null,
       });
+      refreshCurrency();
     } catch {
       Alert.alert('Error', 'Failed to save settings');
     }
@@ -562,6 +579,10 @@ const styles = StyleSheet.create({
   body: { padding: 12 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginBottom: 8 },
+  storeIdRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  storeIdLabel: { fontSize: 13, fontFamily: 'Outfit-Medium', color: '#6b7280' },
+  storeIdBadge: { backgroundColor: '#f3f4f6', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  storeIdText:  { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#374151' },
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 8, gap: 10 },

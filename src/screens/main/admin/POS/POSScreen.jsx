@@ -4,7 +4,7 @@ import {
   Alert, ActivityIndicator, Modal, Image, ScrollView, SafeAreaView,
 } from 'react-native';
 import productsIcon from '../../../../assets/icons/layers.png';
-import { useProducts, useCustomers, useCheckout, useTaxes, useMiscCharges } from '../../../../services/api/posApi';
+import { useProducts, useCustomers, useCreateCustomer, useCheckout, useTaxes, useMiscCharges } from '../../../../services/api/posApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
 
@@ -57,22 +57,35 @@ const POSScreen = () => {
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeMode, setBarcodeMode]   = useState(false);
   const [barcodeStatus, setBarcodeStatus] = useState('idle'); // idle | found | notfound
-  const [cart, setCart]             = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [lastOrder, setLastOrder]   = useState(null);
+  const [cart, setCart]                     = useState([]);
+  const [paymentMethod, setPaymentMethod]   = useState('Cash');
+  const [showReceipt, setShowReceipt]       = useState(false);
+  const [lastOrder, setLastOrder]           = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
 
   const barcodeRef = useRef(null);
 
   const { fmt } = useCurrency();
   const { data: productsRaw = [], isLoading: loadingProducts } = useProducts();
-  const { data: globalTaxes = [] } = useTaxes();       // fallback global taxes
+  const { data: customersRaw = [] } = useCustomers();
+  const { mutateAsync: createCustomer, isPending: addingCustomer } = useCreateCustomer();
+  const { data: globalTaxes = [] } = useTaxes();
   const { data: miscCharges = [] } = useMiscCharges();
   const { mutateAsync: checkout, isPending: checkingOut } = useCheckout();
 
+  const allCustomers = Array.isArray(customersRaw) ? customersRaw : (customersRaw?.data ?? []);
+  const filteredCustomers = customerSearch.trim()
+    ? allCustomers.filter(c =>
+        (c.name ?? '').toLowerCase().includes(customerSearch.toLowerCase()) ||
+        (c.phone ?? '').includes(customerSearch)
+      )
+    : allCustomers.slice(0, 20);
+
   const products = Array.isArray(productsRaw) ? productsRaw : (productsRaw?.data ?? []);
   const filtered = products.filter(p =>
-    p.name?.toLowerCase().includes(search.toLowerCase()) && p.stock > 0,
+    p.name?.toLowerCase().includes(search.toLowerCase()),
   );
 
   // ─── Add to cart ──────────────────────────────────────────────────────────
@@ -161,9 +174,11 @@ const POSScreen = () => {
           taxRefId:   i.taxRef?.id ?? null,
         })),
         paymentMethod,
+        customerId: selectedCustomer?.id ?? undefined,
       });
       setLastOrder(result?.data ?? result);
       setCart([]);
+      setSelectedCustomer(null);
       setTab('products');
       setShowReceipt(true);
     } catch (err) {
@@ -244,21 +259,31 @@ const POSScreen = () => {
               contentContainerStyle={styles.prodGrid}
               renderItem={({ item }) => {
                 const inCart = cart.find(c => c.id === item.id);
+                const outOfStock = !item.stock || item.stock <= 0;
                 return (
-                  <TouchableOpacity style={[styles.prodCard, inCart && styles.prodCardActive]} onPress={() => addToCart(item)} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    style={[styles.prodCard, inCart && styles.prodCardActive, outOfStock && styles.prodCardOos]}
+                    onPress={() => !outOfStock && addToCart(item)}
+                    activeOpacity={outOfStock ? 1 : 0.8}
+                  >
                     <View style={styles.prodImageBox}>
                       {item.imageUrl
-                        ? <Image source={{ uri: item.imageUrl }} style={styles.prodImage} resizeMode="cover" />
-                        : <Image source={productsIcon} style={styles.prodPlaceholder} resizeMode="contain" />}
+                        ? <Image source={{ uri: item.imageUrl }} style={[styles.prodImage, outOfStock && styles.prodImageOos]} resizeMode="cover" />
+                        : <Image source={productsIcon} style={[styles.prodPlaceholder, outOfStock && styles.prodImageOos]} resizeMode="contain" />}
+                      {outOfStock && (
+                        <View style={styles.oosBadge}>
+                          <Text style={styles.oosBadgeText}>Out of Stock</Text>
+                        </View>
+                      )}
                     </View>
                     {inCart && (
                       <View style={styles.inCartBadge}>
                         <Text style={styles.inCartText}>{inCart.qty}</Text>
                       </View>
                     )}
-                    <Text style={styles.prodName} numberOfLines={2}>{item.name}</Text>
+                    <Text style={[styles.prodName, outOfStock && styles.prodNameOos]} numberOfLines={2}>{item.name}</Text>
                     <Text style={styles.prodPrice}>{fmt(item.price)}</Text>
-                    <Text style={styles.prodStock}>Stock: {item.stock}</Text>
+                    <Text style={styles.prodStock}>Stock: {item.stock ?? 0}</Text>
                     {item.taxRef && (
                       <Text style={styles.prodTaxBadge}>{item.taxRef.name}</Text>
                     )}
@@ -315,6 +340,19 @@ const POSScreen = () => {
                 </View>
               </View>
 
+              {/* Customer assignment */}
+              <TouchableOpacity style={styles.customerRow} onPress={() => setShowCustomerPicker(true)}>
+                <Text style={styles.customerLabel}>Customer</Text>
+                <Text style={selectedCustomer ? styles.customerName : styles.customerPlaceholder}>
+                  {selectedCustomer ? selectedCustomer.name : 'Walk-in / Select customer…'}
+                </Text>
+                {selectedCustomer && (
+                  <TouchableOpacity onPress={() => setSelectedCustomer(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.customerClear}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+
               <View style={styles.pmRow}>
                 {['Cash', 'Card', 'Online'].map(m => (
                   <TouchableOpacity
@@ -341,6 +379,58 @@ const POSScreen = () => {
           )}
         </View>
       )}
+
+      {/* Customer Picker Modal */}
+      <Modal visible={showCustomerPicker} animationType="slide" transparent onRequestClose={() => setShowCustomerPicker(false)}>
+        <View style={styles.modalBg}>
+          <View style={styles.customerSheet}>
+            <Text style={styles.customerSheetTitle}>Select Customer</Text>
+            <TextInput
+              style={styles.customerSearchInput}
+              placeholder="Search by name or phone…"
+              placeholderTextColor="#999"
+              value={customerSearch}
+              onChangeText={setCustomerSearch}
+              autoFocus
+            />
+            <ScrollView style={{ maxHeight: 320 }}>
+              <TouchableOpacity style={styles.customerOption} onPress={() => { setSelectedCustomer(null); setCustomerSearch(''); setShowCustomerPicker(false); }}>
+                <Text style={styles.customerOptionText}>— Walk-in (no customer) —</Text>
+              </TouchableOpacity>
+              {filteredCustomers.map(c => (
+                <TouchableOpacity key={c.id} style={styles.customerOption} onPress={() => { setSelectedCustomer(c); setCustomerSearch(''); setShowCustomerPicker(false); }}>
+                  <Text style={[styles.customerOptionText, selectedCustomer?.id === c.id && { color: colors.primary, fontFamily: 'Outfit-SemiBold' }]}>{c.name}</Text>
+                  {c.phone ? <Text style={styles.customerOptionSub}>{c.phone}</Text> : null}
+                </TouchableOpacity>
+              ))}
+              {customerSearch.trim().length > 0 && (
+                <TouchableOpacity
+                  style={styles.addCustomerBtn}
+                  disabled={addingCustomer}
+                  onPress={async () => {
+                    try {
+                      const res = await createCustomer({ name: customerSearch.trim() });
+                      const newCustomer = res?.data ?? res;
+                      setSelectedCustomer(newCustomer);
+                      setCustomerSearch('');
+                      setShowCustomerPicker(false);
+                    } catch {
+                      Alert.alert('Error', 'Failed to add customer');
+                    }
+                  }}
+                >
+                  {addingCustomer
+                    ? <ActivityIndicator size="small" color={colors.primary} />
+                    : <Text style={styles.addCustomerBtnText}>+ Add "{customerSearch.trim()}" as new customer</Text>}
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+            <TouchableOpacity style={styles.customerSheetClose} onPress={() => { setCustomerSearch(''); setShowCustomerPicker(false); }}>
+              <Text style={styles.customerSheetCloseText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Receipt Modal */}
       <Modal visible={showReceipt} transparent animationType="fade">
@@ -399,6 +489,11 @@ const styles = StyleSheet.create({
   prodPrice:      { fontSize: 15, fontFamily: 'Outfit-Bold', color: colors.primary },
   prodStock:      { fontSize: 11, fontFamily: 'Outfit-Regular', color: colors.secondary, marginTop: 3 },
   prodTaxBadge:   { fontSize: 10, fontFamily: 'Outfit-Regular', color: '#9CA3AF', marginTop: 2 },
+  prodCardOos:    { opacity: 0.55 },
+  prodImageOos:   { opacity: 0.4 },
+  prodNameOos:    { color: '#9CA3AF' },
+  oosBadge:       { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 4, alignItems: 'center' },
+  oosBadgeText:   { fontSize: 10, fontFamily: 'Outfit-SemiBold', color: '#fff' },
   empty:          { textAlign: 'center', color: colors.secondary, fontFamily: 'Outfit-Regular', marginTop: 20 },
   floatCartBtn:   { position: 'absolute', bottom: 16, left: 16, right: 16, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, elevation: 6 },
   floatCartText:  { color: '#fff', fontSize: 15, fontFamily: 'Outfit-Bold' },
@@ -427,6 +522,21 @@ const styles = StyleSheet.create({
   totalFinal:     { paddingTop: 8, borderTopWidth: 1, borderColor: '#f0f0f0', marginTop: 4 },
   totalFinalLabel:{ fontSize: 16, fontFamily: 'Outfit-Bold', color: colors.defaultBlack },
   totalFinalVal:  { fontSize: 16, fontFamily: 'Outfit-Bold', color: colors.primary },
+  customerRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9fafb', borderRadius: 8, padding: 10, marginBottom: 10, gap: 8, borderWidth: 1, borderColor: '#e5e7eb' },
+  customerLabel:        { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#6b7280', width: 68 },
+  customerName:         { flex: 1, fontSize: 13, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
+  customerPlaceholder:  { flex: 1, fontSize: 13, fontFamily: 'Outfit-Regular', color: '#9ca3af' },
+  customerClear:        { fontSize: 14, color: '#9ca3af', paddingHorizontal: 4 },
+  customerSheet:        { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
+  customerSheetTitle:   { fontSize: 17, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginBottom: 12 },
+  customerSearchInput:  { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', marginBottom: 8 },
+  customerOption:       { paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderColor: '#f0f0f0' },
+  customerOptionText:   { fontSize: 14, fontFamily: 'Outfit-Regular', color: colors.defaultBlack },
+  customerOptionSub:    { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 2 },
+  customerSheetClose:   { marginTop: 12, alignItems: 'center', paddingVertical: 12, borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 8 },
+  customerSheetCloseText: { fontFamily: 'Outfit-Medium', color: colors.secondary },
+  addCustomerBtn:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4, borderTopWidth: 1, borderColor: '#e0f2fe', backgroundColor: '#f0f9ff', minHeight: 46 },
+  addCustomerBtnText:   { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: colors.primary },
   pmRow:     { flexDirection: 'row', gap: 8, marginBottom: 12 },
   pmBtn:     { flex: 1, borderRadius: 8, paddingVertical: 10, borderWidth: 1, borderColor: '#D0D5DD', alignItems: 'center' },
   pmBtnActive:{ backgroundColor: colors.primary, borderColor: colors.primary },

@@ -1,102 +1,90 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, RefreshControl, ScrollView } from 'react-native';
-import { useOrders } from '../../../../services/api/posApi';
+import React, { useState } from 'react';
+import {
+  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  ActivityIndicator, RefreshControl, ScrollView,
+} from 'react-native';
+import { useOrdersInfinite, flattenPages } from '../../../../services/api/posApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
 
 const STATUS_STYLE = {
-  Completed: { bg: '#dcfce7', text: '#16a34a' },
-  Pending:   { bg: '#fef3c7', text: '#d97706' },
-  Cancelled: { bg: '#fee2e2', text: '#dc2626' },
+  paid:       { bg: '#dcfce7', text: '#16a34a', label: 'Paid' },
+  pending:    { bg: '#fef9c3', text: '#b45309', label: 'Pending' },
+  cancelled:  { bg: '#fee2e2', text: '#dc2626', label: 'Cancelled' },
+  refunded:   { bg: '#ede9fe', text: '#7c3aed', label: 'Refunded' },
 };
 
-const STATUSES = ['', 'Completed', 'Pending', 'Cancelled'];
-
-const fmtDate = d => d ? new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+const STATUSES = ['', 'paid', 'pending', 'cancelled', 'refunded'];
 
 const OrdersScreen = ({ navigation }) => {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const { fmt } = useCurrency();
-  const { data: raw = [], isLoading, refetch } = useOrders({ limit: 200 });
-  const orders = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const [statusFilter, setStatusFilter] = useState('');
 
-  const filtered = useMemo(() => {
-    return orders.filter(o => {
-      if (statusFilter && o.status !== statusFilter) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return (
-          (o.orderNumber ?? '').toLowerCase().includes(q) ||
-          (o.customer?.name ?? '').toLowerCase().includes(q) ||
-          (o.customerName ?? '').toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [orders, search, statusFilter]);
+  const {
+    data: orderData, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch,
+  } = useOrdersInfinite({ status: statusFilter });
+
+  const orders = flattenPages(orderData);
 
   return (
     <View style={styles.root}>
-      <View style={styles.topBar}>
-        <TextInput
-          style={styles.search}
-          placeholder="Search by order# or customer…"
-          placeholderTextColor="#999"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterRow}>
-        {STATUSES.map(s => {
-          const isActive = statusFilter === s;
-          return (
-            <TouchableOpacity
-              key={s || 'all'}
-              style={[styles.chip, isActive && styles.chipActive]}
-              onPress={() => setStatusFilter(s)}
-            >
-              <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{s || 'All'}</Text>
-            </TouchableOpacity>
-          );
-        })}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterWrap}
+        contentContainerStyle={styles.filterRow}
+      >
+        {STATUSES.map(s => (
+          <TouchableOpacity
+            key={s || 'all'}
+            style={[styles.chip, statusFilter === s && styles.chipActive]}
+            onPress={() => setStatusFilter(s)}
+          >
+            <Text style={[styles.chipText, statusFilter === s && styles.chipTextActive]}>
+              {s ? (STATUS_STYLE[s]?.label ?? s) : 'All'}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
 
       <FlatList
-        data={filtered}
+        data={orders}
         keyExtractor={o => String(o.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
+        contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 24 }}
+        ListEmptyComponent={!isLoading && <Text style={styles.empty}>No orders found.</Text>}
         renderItem={({ item }) => {
-          const st = STATUS_STYLE[item.status] ?? { bg: '#f3f4f6', text: '#6b7280' };
-          const customerName = item.customer?.name ?? item.customerName ?? null;
+          const st = STATUS_STYLE[(item.status ?? '').toLowerCase()] ?? STATUS_STYLE.pending;
           return (
             <TouchableOpacity
-              style={styles.row}
-              onPress={() => navigation.navigate('OrderDetail', { order: item })}
-              activeOpacity={0.8}
+              style={styles.card}
+              onPress={() => navigation.navigate('OrderDetail', { id: item.id })}
+              activeOpacity={0.85}
             >
-              <View style={styles.rowTop}>
-                <View>
-                  <Text style={styles.orderNum}>{item.orderNumber ?? `#${item.id}`}</Text>
-                  {customerName ? <Text style={styles.customerName}>{customerName}</Text> : null}
-                </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.invoiceNo}>#{item.invoiceNo ?? item.id}</Text>
                 <View style={[styles.badge, { backgroundColor: st.bg }]}>
-                  <Text style={[styles.badgeText, { color: st.text }]}>{item.status}</Text>
+                  <Text style={[styles.badgeText, { color: st.text }]}>{st.label}</Text>
                 </View>
               </View>
-              <View style={styles.rowBottom}>
-                <Text style={styles.meta}>
-                  {item.paymentMethod ?? '—'} · {item.itemCount ?? '—'} items
+              {item.customerName && (
+                <Text style={styles.customer} numberOfLines={1}>{item.customerName}</Text>
+              )}
+              <View style={styles.cardRow}>
+                <Text style={styles.date}>
+                  {item.createdAt ? new Date(item.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                 </Text>
-                <Text style={styles.total}>{fmt(item.totalAmount ?? 0)}</Text>
+                <Text style={styles.amount}>{fmt(item.total ?? item.grandTotal ?? 0)}</Text>
               </View>
-              {item.createdAt ? <Text style={styles.date}>{fmtDate(item.createdAt)}</Text> : null}
+              {item.paymentMethod && (
+                <Text style={styles.meta}>{item.paymentMethod}</Text>
+              )}
             </TouchableOpacity>
           );
         }}
-        ListEmptyComponent={!isLoading && <Text style={styles.empty}>No orders found.</Text>}
-        contentContainerStyle={{ paddingBottom: 20 }}
       />
     </View>
   );
@@ -104,25 +92,22 @@ const OrdersScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
-  topBar: { padding: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
-  search: { backgroundColor: '#f4f6f9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
-  filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', maxHeight: 52 },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0' },
+  filterWrap: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', flexGrow: 0 },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', gap: 8 },
+  chip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666' },
+  chipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666', lineHeight: 18 },
   chipTextActive: { color: '#fff' },
-  row: { backgroundColor: '#fff', marginHorizontal: 12, marginTop: 8, borderRadius: 10, padding: 14 },
-  rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-  orderNum: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: '#111827' },
-  customerName: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 2 },
-  badge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
-  badgeText: { fontSize: 12, fontFamily: 'Outfit-SemiBold' },
-  rowBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  meta: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6b7280' },
-  total: { fontSize: 15, fontFamily: 'Outfit-Bold', color: colors.primary },
-  date: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 6 },
-  empty: { textAlign: 'center', color: '#6b7280', fontFamily: 'Outfit-Regular', marginTop: 40 },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 14 },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  invoiceNo: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: '#1a1a1a' },
+  badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeText: { fontSize: 11, fontFamily: 'Outfit-SemiBold' },
+  customer: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#555', marginBottom: 4 },
+  date: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#999' },
+  amount: { fontSize: 14, fontFamily: 'Outfit-Bold', color: colors.primary },
+  meta: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#aaa', marginTop: 2 },
+  empty: { textAlign: 'center', color: '#999', fontFamily: 'Outfit-Regular', marginTop: 40 },
 });
 
 export default OrdersScreen;

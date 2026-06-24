@@ -19,9 +19,9 @@ const ActivityLogsScreen = () => {
 
   const { data, isLoading, isFetching } = useActivityLogs({ page, limit: LIMIT });
 
-  const logs       = data?.data  ?? [];
-  const total      = data?.total ?? 0;
-  const totalPages = Math.ceil(total / LIMIT) || 1;
+  const logs       = data?.data              ?? [];
+  const total      = data?.pagination?.total ?? 0;
+  const totalPages = data?.pagination?.totalPages ?? (Math.ceil(total / LIMIT) || 1);
 
   const renderItem = ({ item }) => (
     <View style={styles.row}>
@@ -33,8 +33,8 @@ const ActivityLogsScreen = () => {
         <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
       </View>
       <Text style={styles.user} numberOfLines={1}>
-        {item.user?.name ?? 'System'}
-        {item.impersonatedBy ? ` (via ${item.impersonatedBy?.name})` : ''}
+        {item.user?.fullName ?? item.user?.name ?? 'System'}
+        {item.impersonatedBy ? ` (via ${item.impersonatedBy?.fullName ?? item.impersonatedBy?.name})` : ''}
       </Text>
       {item.details ? (
         <Text style={styles.details} numberOfLines={2}>

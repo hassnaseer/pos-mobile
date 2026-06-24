@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity,
-  RefreshControl, Image, ScrollView, Modal, Alert,
+  RefreshControl, ActivityIndicator, Image, ScrollView, Modal, Alert,
 } from 'react-native';
+import ConfirmModal from '../../../../components/Modal/ConfirmModal';
 import { useNavigation } from '@react-navigation/native';
 import {
-  useSABusinesses, useSABusinessTypes, useDeleteSABusiness,
+  useSABusinessesInfinite, useSABusinessTypes, useDeleteSABusiness, flattenPages,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
 
@@ -57,16 +58,18 @@ const SABusinessesScreen = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [bizTypeFilter, setBizTypeFilter] = useState('');
   const [menuItem, setMenuItem]         = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const { data, isLoading, refetch } = useSABusinesses({
+  const {
+    data: bizData, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch,
+  } = useSABusinessesInfinite({
     search: search || undefined,
     status: statusFilter || undefined,
-    limit: 50,
   });
   const { data: rawTypes = [] } = useSABusinessTypes();
   const { mutateAsync: deleteBiz } = useDeleteSABusiness();
 
-  const businesses = data?.data ?? [];
+  const businesses = flattenPages(bizData);
   const types = Array.isArray(rawTypes) ? rawTypes : (rawTypes?.data ?? []);
 
   const filtered = useMemo(() => {
@@ -78,16 +81,13 @@ const SABusinessesScreen = () => {
 
   const handleDelete = item => {
     setMenuItem(null);
-    Alert.alert('Delete Business', `Delete "${item.name}"? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try { await deleteBiz(item.id); }
-          catch { Alert.alert('Error', 'Failed to delete business'); }
-        },
-      },
-    ]);
+    setConfirmDelete(item);
+  };
+
+  const doDelete = async () => {
+    try { await deleteBiz(confirmDelete.id); }
+    catch { Alert.alert('Error', 'Failed to delete business'); }
+    finally { setConfirmDelete(null); }
   };
 
   return (
@@ -138,6 +138,9 @@ const SABusinessesScreen = () => {
         data={filtered}
         keyExtractor={b => String(b.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
         renderItem={({ item }) => {
           const st = STATUS_STYLE[item.status] ?? { bg: '#f3f4f6', text: '#6b7280' };
           return (
@@ -183,6 +186,16 @@ const SABusinessesScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
       />
 
+      <ConfirmModal
+        visible={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={doDelete}
+        title="Delete Business"
+        message={`Delete "${confirmDelete?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
+
       {/* 3-dot action menu */}
       {menuItem && (
         <Modal transparent animationType="fade" visible onRequestClose={() => setMenuItem(null)}>
@@ -214,9 +227,9 @@ const styles = StyleSheet.create({
   topBar: { padding: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
   search: { backgroundColor: '#f4f6f9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
 
-  filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0' },
+  filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', flexGrow: 0 },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', gap: 8 },
+  chip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 13, fontFamily: 'Outfit-Medium', color: '#666', lineHeight: 18 },
   chipTextActive: { color: '#fff' },

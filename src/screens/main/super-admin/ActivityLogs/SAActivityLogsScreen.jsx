@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, ActivityIndicator,
 } from 'react-native';
-import { useSAActivityLogs } from '../../../../services/api/posApi';
+import { useSAActivityLogs, flattenPages } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
 
 const fmtDate = d => {
@@ -26,7 +26,10 @@ const actionColor = action => {
 };
 
 export default function SAActivityLogsScreen() {
-  const { data: logs = [], isLoading, isError } = useSAActivityLogs();
+  const {
+    data, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage,
+  } = useSAActivityLogs();
+  const logs = flattenPages(data);
 
   const [search, setSearch]           = useState('');
   const [filterAction, setFilterAction] = useState('all');
@@ -150,6 +153,9 @@ export default function SAActivityLogsScreen() {
           data={filtered}
           keyExtractor={(item, i) => item.id ?? String(i)}
           renderItem={renderItem}
+          onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
           ListEmptyComponent={
             <Text style={styles.emptyText}>No logs match your filters</Text>

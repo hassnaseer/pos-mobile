@@ -3,8 +3,9 @@ import {
   View, Text, FlatList, StyleSheet, TouchableOpacity, Modal,
   TextInput, ActivityIndicator, Alert, RefreshControl, ScrollView,
 } from 'react-native';
-import { useSAPaymentQueue, useApproveSAPayment, useRejectSAPayment } from '../../../../services/api/posApi';
+import { useSAPaymentQueue, useApproveSAPayment, useRejectSAPayment, flattenPages } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import ConfirmModal from '../../../../components/Modal/ConfirmModal';
 
 const STATUS_STYLE = {
   pending:  { bg: '#fef9c3', text: '#b45309' },
@@ -13,8 +14,10 @@ const STATUS_STYLE = {
 };
 
 const SAPaymentQueueScreen = () => {
-  const { data: raw = [], isLoading, refetch } = useSAPaymentQueue();
-  const requests = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const {
+    data: paymentData, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch,
+  } = useSAPaymentQueue();
+  const requests = flattenPages(paymentData);
 
   const { mutateAsync: approve, isPending: approving } = useApproveSAPayment();
   const { mutateAsync: reject, isPending: rejecting } = useRejectSAPayment();
@@ -22,6 +25,7 @@ const SAPaymentQueueScreen = () => {
   const [rejectModal, setRejectModal] = useState(false);
   const [selected, setSelected] = useState(null);
   const [reason, setReason] = useState('');
+  const [approveTarget, setApproveTarget] = useState(null);
 
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSource, setFilterSource] = useState('');
@@ -34,16 +38,13 @@ const SAPaymentQueueScreen = () => {
     return true;
   });
 
-  const handleApprove = item =>
-    Alert.alert('Approve', `Approve payment of PKR ${item.amount} from ${item.businessName ?? item.business?.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Approve', onPress: async () => {
-          try { await approve({ id: item.id }); }
-          catch { Alert.alert('Error', 'Approve failed'); }
-        },
-      },
-    ]);
+  const handleApprove = item => { setApproveTarget(item); };
+
+  const doApprove = async () => {
+    try { await approve({ id: approveTarget.id }); }
+    catch { Alert.alert('Error', 'Approve failed'); }
+    finally { setApproveTarget(null); }
+  };
 
   const openReject = item => { setSelected(item); setReason(''); setRejectModal(true); };
 
@@ -74,6 +75,9 @@ const SAPaymentQueueScreen = () => {
         data={filtered}
         keyExtractor={r => String(r.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={!isLoading && <Text style={styles.empty}>No payment requests.</Text>}
         renderItem={({ item }) => {
@@ -127,15 +131,26 @@ const SAPaymentQueueScreen = () => {
           </View>
         </View>
       </Modal>
+
+      <ConfirmModal
+        visible={!!approveTarget}
+        onClose={() => setApproveTarget(null)}
+        onConfirm={doApprove}
+        title="Approve Payment"
+        message={`Approve PKR ${approveTarget?.amount} from ${approveTarget?.businessName ?? approveTarget?.business?.name ?? ''}?`}
+        confirmLabel="Approve"
+        variant="success"
+        loading={approving}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
-  filterWrap: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0' },
+  filterWrap: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', flexGrow: 0 },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', gap: 8 },
+  chip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666', lineHeight: 18 },
   chipTextActive: { color: '#fff' },

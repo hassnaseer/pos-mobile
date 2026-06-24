@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  StyleSheet, ActivityIndicator, Alert, Modal, RefreshControl,
+  StyleSheet, ActivityIndicator, Alert, Modal, RefreshControl, Switch,
 } from 'react-native';
 import {
   useMiscCharges, useCreateMiscCharge, useUpdateMiscCharge, useDeleteMiscCharge,
@@ -10,7 +10,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 
-const EMPTY_FORM = { name: '', amount: '', type: 'fixed' };
+const EMPTY_FORM = { name: '', amount: '', type: 'fixed', description: '', isActive: true };
 
 const MiscChargesScreen = () => {
   const perms = usePermissions();
@@ -38,7 +38,7 @@ const MiscChargesScreen = () => {
 
   const openEdit = item => {
     setEditItem(item);
-    setForm({ name: item.name ?? '', amount: String(item.amount ?? ''), type: item.type ?? 'fixed' });
+    setForm({ name: item.name ?? '', amount: String(item.amount ?? ''), type: item.type ?? 'fixed', description: item.description ?? '', isActive: item.isActive !== false });
     setModalVisible(true);
   };
 
@@ -47,7 +47,7 @@ const MiscChargesScreen = () => {
     const amt = parseFloat(form.amount);
     if (!form.amount || isNaN(amt)) return Alert.alert('Validation', 'Enter a valid amount');
     try {
-      const payload = { name: form.name.trim(), amount: amt, type: form.type };
+      const payload = { name: form.name.trim(), amount: amt, type: form.type, description: form.description.trim() || undefined, isActive: form.isActive };
       if (editItem) {
         await update({ id: editItem.id, ...payload });
       } else {
@@ -158,6 +158,26 @@ const MiscChargesScreen = () => {
               ))}
             </View>
 
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
+              placeholder="Optional description"
+              placeholderTextColor="#999"
+              value={form.description}
+              onChangeText={v => setForm(p => ({ ...p, description: v }))}
+              multiline
+            />
+
+            <View style={styles.activeRow}>
+              <Text style={styles.label}>Active</Text>
+              <Switch
+                value={form.isActive}
+                onValueChange={v => setForm(p => ({ ...p, isActive: v }))}
+                trackColor={{ false: '#e5e7eb', true: colors.primary + '60' }}
+                thumbColor={form.isActive ? colors.primary : '#9ca3af'}
+              />
+            </View>
+
             <View style={styles.sheetActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -206,6 +226,7 @@ const styles = StyleSheet.create({
   typeBtnActive:  { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
   typeBtnText:    { fontFamily: 'Outfit-Medium', fontSize: 14, color: '#666' },
   typeBtnTextActive: { color: colors.primary },
+  activeRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   sheetActions:   { flexDirection: 'row', gap: 12, marginTop: 24 },
   cancelBtn:      { flex: 1, paddingVertical: 13, borderRadius: 8, borderWidth: 1.5, borderColor: '#D0D5DD', alignItems: 'center' },
   cancelText:     { fontFamily: 'Outfit-SemiBold', fontSize: 15, color: '#666' },

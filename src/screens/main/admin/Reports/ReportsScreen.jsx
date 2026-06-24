@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl,
@@ -14,6 +14,7 @@ const TABS = [
   { key: 'inventory', label: 'Inventory' },
   { key: 'customers', label: 'Customers' },
   { key: 'tickets',   label: 'Tickets' },
+  { key: 'finance',   label: 'Finance' },
 ];
 
 const StatCard = ({ label, value, sub, color }) => (
@@ -143,6 +144,24 @@ const TicketsTab = ({ data, fmt }) => (
   </>
 );
 
+const FinanceTab = ({ data, fmt }) => (
+  <>
+    <View style={styles.grid}>
+      <StatCard label="Gross Revenue" value={fmt(data.totalRevenue)}  color="#22c55e" />
+      <StatCard label="Total COGS"    value={fmt(data.totalCost)}      color="#ef4444" />
+      <StatCard label="Gross Profit"  value={fmt(data.grossProfit)}    color="#8b5cf6" />
+      <StatCard label="Profit Margin" value={data.profitMargin != null ? `${Number(data.profitMargin).toFixed(1)}%` : '—'} color="#f59e0b" />
+    </View>
+    {data.byCategory?.length > 0 && (
+      <Section title="Revenue by Category">
+        {data.byCategory.map((c, i) => (
+          <Row key={i} label={c.name} value={`${fmt(c.revenue)} · ${fmt(c.profit)} profit`} />
+        ))}
+      </Section>
+    )}
+  </>
+);
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 const PERIODS = ['7d', '30d', '90d', '1y', 'all'];
@@ -196,6 +215,7 @@ const ReportsScreen = () => {
           {tab === 'inventory' && data && <InventoryTab data={data} fmt={fmt} />}
           {tab === 'customers' && data && <CustomersTab data={data} fmt={fmt} />}
           {tab === 'tickets'   && data && <TicketsTab   data={data} fmt={fmt} />}
+          {tab === 'finance'   && data && <FinanceTab   data={data} fmt={fmt} />}
           {!data && <Text style={styles.empty}>No data available for this period.</Text>}
         </ScrollView>
       )}
@@ -205,7 +225,7 @@ const ReportsScreen = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
-  tabsWrap: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', maxHeight: 50 },
+  tabsWrap: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', flexGrow: 0},
   tabs: { flexDirection: 'row', paddingHorizontal: 4 },
   tab: { paddingHorizontal: 16, paddingVertical: 14 },
   tabActive: { borderBottomWidth: 2, borderColor: colors.primary },

@@ -11,8 +11,8 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 
-const EMPTY_MFR = { name: '', description: '', country: '', website: '' };
-const EMPTY_DEV = { name: '', model: '', description: '' };
+const EMPTY_MFR = { name: '', phone: '', email: '', address: '' };
+const EMPTY_DEV = { name: '', model: '', deviceType: '' };
 
 // ─── Device sub-list ─────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ const DeviceList = ({ manufacturerId, canManage }) => {
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
 
   const openAdd = () => { setEditing(null); setForm(EMPTY_DEV); setModal(true); };
-  const openEdit = d => { setEditing(d); setForm({ name: d.name ?? '', model: d.model ?? '', description: d.description ?? '' }); setModal(true); };
+  const openEdit = d => { setEditing(d); setForm({ name: d.name ?? '', model: d.model ?? '', deviceType: d.deviceType ?? '' }); setModal(true); };
 
   const handleSave = async () => {
     if (!form.name.trim()) { Alert.alert('Error', 'Device name is required'); return; }
@@ -58,6 +58,7 @@ const DeviceList = ({ manufacturerId, canManage }) => {
           <View style={styles.deviceInfo}>
             <Text style={styles.deviceName}>{d.name}</Text>
             {d.model ? <Text style={styles.deviceSub}>{d.model}</Text> : null}
+            {d.deviceType ? <Text style={styles.deviceSub}>{d.deviceType}</Text> : null}
           </View>
           {canManage && (
             <View style={styles.rowActions}>
@@ -91,8 +92,8 @@ const DeviceList = ({ manufacturerId, canManage }) => {
               <TextInput style={styles.input} value={form.model} onChangeText={set('model')} placeholder="e.g. 15 Pro Max" placeholderTextColor="#999" />
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} value={form.description} onChangeText={set('description')} placeholder="Optional" placeholderTextColor="#999" multiline />
+              <Text style={styles.label}>Device Type</Text>
+              <TextInput style={styles.input} value={form.deviceType} onChangeText={set('deviceType')} placeholder="e.g. Smartphone, Laptop" placeholderTextColor="#999" />
             </View>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModal(false)}>
@@ -119,7 +120,8 @@ const ManufacturerItem = ({ item, canManage, onEdit, onDelete }) => {
       <TouchableOpacity style={styles.mfrHeader} onPress={() => setExpanded(e => !e)} activeOpacity={0.7}>
         <View style={styles.mfrInfo}>
           <Text style={styles.mfrName}>{item.name}</Text>
-          {item.country ? <Text style={styles.mfrSub}>{item.country}</Text> : null}
+          {item.email ? <Text style={styles.mfrSub}>{item.email}</Text> : null}
+          {item.phone ? <Text style={styles.mfrSub}>{item.phone}</Text> : null}
         </View>
         <View style={styles.mfrRight}>
           {canManage && (
@@ -162,7 +164,7 @@ const ManufacturersScreen = () => {
   const openAdd = () => { setEditing(null); setForm(EMPTY_MFR); setModalVisible(true); };
   const openEdit = item => {
     setEditing(item);
-    setForm({ name: item.name ?? '', description: item.description ?? '', country: item.country ?? '', website: item.website ?? '' });
+    setForm({ name: item.name ?? '', phone: item.phone ?? '', email: item.email ?? '', address: item.address ?? '' });
     setModalVisible(true);
   };
 
@@ -224,16 +226,16 @@ const ManufacturersScreen = () => {
               <TextInput style={styles.input} value={form.name} onChangeText={set('name')} placeholder="e.g. Apple" placeholderTextColor="#999" />
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Country</Text>
-              <TextInput style={styles.input} value={form.country} onChangeText={set('country')} placeholder="e.g. United States" placeholderTextColor="#999" />
+              <Text style={styles.label}>Email</Text>
+              <TextInput style={styles.input} value={form.email} onChangeText={set('email')} placeholder="contact@apple.com" placeholderTextColor="#999" keyboardType="email-address" autoCapitalize="none" />
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Website</Text>
-              <TextInput style={styles.input} value={form.website} onChangeText={set('website')} placeholder="https://apple.com" placeholderTextColor="#999" autoCapitalize="none" keyboardType="url" />
+              <Text style={styles.label}>Phone</Text>
+              <TextInput style={styles.input} value={form.phone} onChangeText={set('phone')} placeholder="+1 234 567 8900" placeholderTextColor="#999" keyboardType="phone-pad" />
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} value={form.description} onChangeText={set('description')} placeholder="Optional" placeholderTextColor="#999" multiline />
+              <Text style={styles.label}>Address</Text>
+              <TextInput style={styles.input} value={form.address} onChangeText={set('address')} placeholder="123 Main St, City" placeholderTextColor="#999" />
             </View>
 
             <View style={styles.modalActions}>

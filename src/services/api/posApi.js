@@ -1,4 +1,31 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// ─── Pagination helpers ───────────────────────────────────────────────────────
+const getNextPage = (lastPage) => {
+  try {
+    if (!lastPage || typeof lastPage !== 'object' || Array.isArray(lastPage)) return undefined;
+    if (lastPage.pagination && typeof lastPage.pagination === 'object') {
+      const { page, totalPages } = lastPage.pagination;
+      if (typeof page === 'number' && typeof totalPages === 'number') {
+        return page < totalPages ? page + 1 : undefined;
+      }
+    }
+    const page = typeof lastPage.page === 'number' ? lastPage.page : 1;
+    const total = typeof lastPage.total === 'number' ? lastPage.total : 0;
+    const limit = typeof lastPage.limit === 'number' ? lastPage.limit : 20;
+    const totalPages = typeof lastPage.totalPages === 'number' ? lastPage.totalPages : Math.ceil(total / (limit || 20));
+    return page < totalPages ? page + 1 : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+export const flattenPages = (data) =>
+  data?.pages?.flatMap(p =>
+    Array.isArray(p) ? p :
+    Array.isArray(p?.data) ? p.data :
+    []
+  ) ?? [];
 import apiClient from './globalApi';
 
 // ─── Products ────────────────────────────────────────────────────────────────
@@ -10,6 +37,19 @@ export const useProducts = (params = {}) =>
       const res = await apiClient.get(`/admin/products${qs ? `?${qs}` : ''}`);
       return res?.data ?? res ?? [];
     },
+    staleTime: 30_000,
+  });
+
+export const useProductsInfinite = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['products-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/admin/products?${qs}`);
+      return res?.data ?? res ?? {};
+    },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 30_000,
   });
 
@@ -90,6 +130,19 @@ export const useCustomers = (params = {}) =>
     staleTime: 30_000,
   });
 
+export const useCustomersInfinite = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['customers-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/admin/customers?${qs}`);
+      return res?.data ?? res ?? {};
+    },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
+    staleTime: 30_000,
+  });
+
 export const useCreateCustomer = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -129,6 +182,19 @@ export const useOrders = (params = {}) =>
     staleTime: 30_000,
   });
 
+export const useOrdersInfinite = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['orders-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/admin/orders?${qs}`);
+      return res?.data ?? res ?? {};
+    },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
+    staleTime: 30_000,
+  });
+
 export const useOrder = id =>
   useQuery({
     queryKey: ['orders', id],
@@ -138,6 +204,15 @@ export const useOrder = id =>
     },
     enabled: !!id,
   });
+
+export const useDeleteOrder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/orders/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
+    meta: { successMessage: 'Invoice deleted' },
+  });
+};
 
 // ─── POS Checkout ────────────────────────────────────────────────────────────
 export const useCheckout = () => {
@@ -161,6 +236,19 @@ export const useStaff = () =>
       const res = await apiClient.get('/admin/staff');
       return res?.data ?? res ?? [];
     },
+    staleTime: 60_000,
+  });
+
+export const useStaffInfinite = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['staff-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/admin/staff?${qs}`);
+      return res?.data ?? res ?? {};
+    },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 60_000,
   });
 
@@ -474,6 +562,19 @@ export const useTickets = (params = {}) =>
     staleTime: 30_000,
   });
 
+export const useTicketsInfinite = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['tickets-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/admin/tickets?${qs}`);
+      return res?.data ?? res ?? {};
+    },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
+    staleTime: 30_000,
+  });
+
 export const useCreateTicket = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -595,6 +696,21 @@ export const useSABusinesses = (params = {}) =>
       if (Array.isArray(res)) return { data: res, pagination: {} };
       return { data: res?.data ?? [], pagination: res?.pagination ?? {} };
     },
+    staleTime: 30_000,
+  });
+
+export const useSABusinessesInfinite = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['sa-businesses-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const clean = Object.fromEntries(Object.entries({ ...params, page: pageParam, limit: 20 }).filter(([, v]) => v != null && v !== ''));
+      const qs = new URLSearchParams(clean).toString();
+      const res = await apiClient.get(`/super-admin/businesses?${qs}`);
+      if (Array.isArray(res)) return { data: res, pagination: { page: 1, totalPages: 1 } };
+      return { data: res?.data ?? [], pagination: res?.pagination ?? { page: pageParam, totalPages: 1 } };
+    },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 30_000,
   });
 
@@ -960,8 +1076,13 @@ export const useActivityLogs = (params = {}) =>
     queryKey: ['activity-logs', params],
     queryFn: async () => {
       const qs = new URLSearchParams(params).toString();
-      const res = await apiClient.get(`/admin/activity-logs${qs ? `?${qs}` : ''}`);
-      return res?.data ?? res ?? { data: [], total: 0 };
+      const res = await apiClient.get(`/activity-log${qs ? `?${qs}` : ''}`);
+      // Backend returns: { status, data: { data: [...], pagination: {...} } }
+      const inner = res?.data ?? res ?? {};
+      return {
+        data:       inner?.data        ?? [],
+        pagination: inner?.pagination  ?? { page: 1, limit: 20, total: 0, totalPages: 1 },
+      };
     },
     staleTime: 30_000,
   });
@@ -2016,7 +2137,7 @@ export const useCreateSACustomPlan = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: data => apiClient.post('/super-admin/custom-plans', data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans-inf'] }),
   });
 };
 
@@ -2056,13 +2177,20 @@ export const useDeleteSADocument = () => {
 };
 
 // ─── Super Admin: Activity Logs ───────────────────────────────────────────────
-export const useSAActivityLogs = () =>
-  useQuery({
-    queryKey: ['sa-activity-logs'],
-    queryFn: async () => {
-      const res = await apiClient.get('/super-admin/activity-logs');
-      return res?.data ?? res ?? [];
+export const useSAActivityLogs = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['sa-activity-logs-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 30 }).toString();
+      const res = await apiClient.get(`/activity-log?${qs}`);
+      const inner = res?.data ?? res;
+      return {
+        data: Array.isArray(inner) ? inner : (inner?.data ?? []),
+        pagination: inner?.pagination ?? { page: pageParam, totalPages: Math.ceil((inner?.total ?? 0) / 30) },
+      };
     },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 60_000,
   });
 
@@ -2122,13 +2250,16 @@ export const useDeleteSABusinessCategory = () => {
 
 // ─── Super Admin: Support Tickets ────────────────────────────────────────────
 export const useSASupportTickets = (params = {}) =>
-  useQuery({
-    queryKey: ['sa-support-tickets', params],
-    queryFn: async () => {
-      const qs = new URLSearchParams(params).toString();
-      const res = await apiClient.get(`/support/tickets${qs ? `?${qs}` : ''}`);
-      return res?.data ?? res ?? [];
+  useInfiniteQuery({
+    queryKey: ['sa-support-tickets-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/support/tickets?${qs}`);
+      const d = res?.data ?? res;
+      return { data: Array.isArray(d) ? d : (d?.data ?? []), pagination: d?.pagination ?? { page: pageParam, totalPages: 1 } };
     },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 30_000,
   });
 
@@ -2136,18 +2267,22 @@ export const useUpdateSASupportTicket = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }) => apiClient.patch(`/support/tickets/${id}`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-support-tickets'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-support-tickets-inf'] }),
   });
 };
 
 // ─── Super Admin: Custom Plans ────────────────────────────────────────────────
-export const useSACustomPlans = () =>
-  useQuery({
-    queryKey: ['sa-custom-plans'],
-    queryFn: async () => {
-      const res = await apiClient.get('/super-admin/custom-plans');
-      return res?.data ?? res ?? [];
+export const useSACustomPlans = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['sa-custom-plans-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/super-admin/custom-plans?${qs}`);
+      const d = res?.data ?? res;
+      return { data: Array.isArray(d) ? d : (d?.data ?? []), pagination: d?.pagination ?? { page: pageParam, totalPages: 1 } };
     },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 30_000,
   });
 
@@ -2155,7 +2290,7 @@ export const useActivateSACustomPlan = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: id => apiClient.patch(`/super-admin/custom-plans/${id}/activate`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans-inf'] }),
   });
 };
 
@@ -2163,18 +2298,22 @@ export const useWithdrawSACustomPlan = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: id => apiClient.patch(`/super-admin/custom-plans/${id}/withdraw`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans-inf'] }),
   });
 };
 
 // ─── Super Admin: Payment Queue ───────────────────────────────────────────────
-export const useSAPaymentQueue = () =>
-  useQuery({
-    queryKey: ['sa-payment-queue'],
-    queryFn: async () => {
-      const res = await apiClient.get('/super-admin/payment-requests');
-      return res?.data ?? res ?? [];
+export const useSAPaymentQueue = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['sa-payment-queue-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/super-admin/payment-requests?${qs}`);
+      const d = res?.data ?? res;
+      return { data: Array.isArray(d) ? d : (d?.data ?? []), pagination: d?.pagination ?? { page: pageParam, totalPages: 1 } };
     },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 30_000,
   });
 
@@ -2182,7 +2321,7 @@ export const useApproveSAPayment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/payment-requests/${id}/approve`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-payment-queue'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-payment-queue-inf'] }),
   });
 };
 
@@ -2190,18 +2329,22 @@ export const useRejectSAPayment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/payment-requests/${id}/reject`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-payment-queue'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-payment-queue-inf'] }),
   });
 };
 
 // ─── Super Admin: Error Logs ──────────────────────────────────────────────────
-export const useSAErrorLogs = () =>
-  useQuery({
-    queryKey: ['sa-error-logs'],
-    queryFn: async () => {
-      const res = await apiClient.get('/super-admin/error-logs');
-      return res?.data ?? res ?? [];
+export const useSAErrorLogs = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['sa-error-logs-inf', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/super-admin/error-logs?${qs}`);
+      const d = res?.data ?? res;
+      return { data: Array.isArray(d) ? d : (d?.data ?? []), pagination: d?.pagination ?? { page: pageParam, totalPages: 1 } };
     },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 30_000,
   });
 
@@ -2315,6 +2458,41 @@ export const useUpdatePatientVisit = () => {
   return useMutation({
     mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/medical/visits/${id}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['patient-visits'] }),
+  });
+};
+
+// ─── Super Admin: Bank Accounts ───────────────────────────────────────────────
+export const useSABankAccounts = () =>
+  useQuery({
+    queryKey: ['sa-bank-accounts'],
+    queryFn: async () => {
+      const res = await apiClient.get('/super-admin/bank-accounts');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useCreateSABankAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/super-admin/bank-accounts', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-bank-accounts'] }),
+  });
+};
+
+export const useUpdateSABankAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/bank-accounts/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-bank-accounts'] }),
+  });
+};
+
+export const useDeleteSABankAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/super-admin/bank-accounts/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-bank-accounts'] }),
   });
 };
 
