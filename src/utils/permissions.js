@@ -48,6 +48,7 @@ export const PERMISSIONS = {
   MANAGE_ATTENDANCE:      'manage_attendance',
   MANAGE_LEAVE:           'manage_leave',
   MANAGE_CLAIMS:          'manage_claims',
+  MANAGE_BUDGETS:         'manage_budgets',
   MANAGE_PAYROLL:         'manage_payroll',
   MANAGE_ANNOUNCEMENTS:   'manage_announcements',
   MANAGE_TASKS:           'manage_tasks',

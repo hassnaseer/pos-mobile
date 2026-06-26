@@ -65,7 +65,7 @@ const OTPVerificationScreen = ({ navigation, route }) => {
         return;
       }
       // data = { user, access_token }
-      await login(data.user, data.access_token ?? data.accessToken);
+      await login(data.user, data.access_token ?? data.accessToken, data.firebaseToken);
       navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (err) {
       const msg = typeof err === 'string' ? err : err?.message ?? 'Invalid code. Please try again.';

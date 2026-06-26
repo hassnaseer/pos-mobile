@@ -3,6 +3,22 @@ import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../services/api/globalApi';
 
+let firebaseAuth = null;
+try { firebaseAuth = require('@react-native-firebase/auth').default; } catch { firebaseAuth = null; }
+
+// Sign into Firebase with a custom token (after login) or anonymously (on logout/startup).
+// This makes request.auth non-null in Firestore Security Rules.
+async function syncFirebaseAuth(firebaseToken) {
+  if (!firebaseAuth) return;
+  try {
+    if (firebaseToken) {
+      await firebaseAuth().signInWithCustomToken(firebaseToken);
+    } else {
+      await firebaseAuth().signInAnonymously();
+    }
+  } catch { /* non-fatal — chat will degrade gracefully */ }
+}
+
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -75,13 +91,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (userData, token) => {
+  const login = async (userData, token, firebaseToken) => {
     try {
       await AsyncStorage.setItem('authToken', token);
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
       setIsAuthenticated(true);
       setUserRole(userData.role);
       setUser(userData);
+      await syncFirebaseAuth(firebaseToken);
     } catch (e) {
       console.error('login error:', e);
       throw e;
@@ -94,6 +111,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setUserRole(null);
       setUser(null);
+      await syncFirebaseAuth(); // fall back to anonymous so Firestore rules still pass
     } catch (e) {
       console.error('logout error:', e);
     }

@@ -27,7 +27,7 @@ const LoginScreen = ({ navigation }) => {
       // Backend returns { loggedIn, user, access_token } when already verified
       // or { email } when OTP verification is required
       if (data?.loggedIn && data?.user && (data?.access_token || data?.accessToken)) {
-        await login(data.user, data.access_token ?? data.accessToken);
+        await login(data.user, data.access_token ?? data.accessToken, data.firebaseToken);
         navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Main' }] });
       } else {
         navigation.navigate('OTPVerification', {
