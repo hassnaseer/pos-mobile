@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
-  ROLES, PERMISSIONS, SOCIAL_PERMISSIONS, HRMS_PERMISSIONS,
+  ROLES, PERMISSIONS, SOCIAL_PERMISSIONS, HRMS_PERMISSIONS, FINANCE_PERMISSIONS, SNOOKER_PERMISSIONS,
   isSuperAdmin, isAdmin, isAdminOrSuperAdmin,
   hasPermission, hasAnyPermission,
 } from '../utils/permissions';
@@ -47,10 +47,20 @@ export const usePermissions = () => {
     canManageAttendance: () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_ATTENDANCE),
     hasAnyHRMS:          () => isSuperAdmin(userRole) || hasAnyPermission(permissionCodes, HRMS_PERMISSIONS),
     hasAnySocial:        () => isSuperAdmin(userRole) || hasAnyPermission(permissionCodes, SOCIAL_PERMISSIONS),
-    canAccessMedical:    () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_MEDICAL),
-    canAccessRestaurant: () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_RESTAURANT),
-    canAccessFactory:    () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_FACTORY),
-    canAccessPharmacy:   () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_PHARMACY),
+    canAccessMedical:       () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_MEDICAL),
+    canManagePrescriptions: () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_PRESCRIPTIONS),
+    canAccessRestaurant:    () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_RESTAURANT),
+    canAccessFactory:       () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_FACTORY),
+    canAccessPharmacy:      () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_PHARMACY),
+    canManageBudgets:         () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_BUDGETS),
+    canManageSupplierBills:   () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_SUPPLIER_BILLS),
+    canManagePaymentAccounts: () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_PAYMENT_ACCOUNTS),
+    canManageProjects:        () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_PROJECTS),
+    canViewFinanceReports:    () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.VIEW_FINANCE_REPORTS),
+    hasAnyFinance:            () => isSuperAdmin(userRole) || hasAnyPermission(permissionCodes, FINANCE_PERMISSIONS),
+    canManageSnookerSessions: () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_SNOOKER_SESSIONS),
+    canManageSnookerTables:   () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_SNOOKER_TABLES),
+    hasAnySnooker:            () => isSuperAdmin(userRole) || hasAnyPermission(permissionCodes, SNOOKER_PERMISSIONS),
   }), [user, userRole, permissionCodes.join(',')]);
 
   return utils;

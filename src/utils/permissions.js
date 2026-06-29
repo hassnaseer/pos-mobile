@@ -5,6 +5,7 @@ export const ROLES = {
   STAFF: 'staff',
   SUPER_ADMIN: 'super-admin',
   SUPPORT_STAFF: 'support-staff',
+  DOCTOR: 'doctor',
 };
 
 // These codes MUST match the values stored in the database (from web frontend sidebarItems.ts)
@@ -73,12 +74,27 @@ export const PERMISSIONS = {
 
   // ── Devices ──────────────────────────────────────────────────────────────────
   DEVICE_ATTENDANCE:      'device_attendance',
+
+  // ── Medical extras ───────────────────────────────────────────────────────────
+  MANAGE_PRESCRIPTIONS:   'manage_prescriptions',
+
+  // ── Finance & Projects ────────────────────────────────────────────────────────
+  MANAGE_BUDGETS:             'manage_budgets',
+  MANAGE_SUPPLIER_BILLS:      'manage_supplier_bills',
+  MANAGE_PAYMENT_ACCOUNTS:    'manage_payment_accounts',
+  MANAGE_PROJECTS:            'manage_projects',
+  VIEW_FINANCE_REPORTS:       'view_finance_reports',
+
+  // ── Snooker ───────────────────────────────────────────────────────────────────
+  MANAGE_SNOOKER_SESSIONS:    'manage_snooker_sessions',
+  MANAGE_SNOOKER_TABLES:      'manage_snooker_tables',
 };
 
 export const isSuperAdmin    = role => role === ROLES.SUPER_ADMIN;
 export const isAdmin         = role => role === ROLES.ADMIN;
 export const isSupportStaff  = role => role === ROLES.SUPPORT_STAFF;
 export const isStaff         = role => role === ROLES.STAFF;
+export const isDoctor        = role => role === ROLES.DOCTOR;
 
 export const isAdminOrSuperAdmin = role =>
   role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN;
@@ -103,6 +119,19 @@ export const SOCIAL_PERMISSIONS = [
   PERMISSIONS.ACCESS_FACEBOOK,
   PERMISSIONS.ACCESS_INSTAGRAM,
   PERMISSIONS.ACCESS_WHATSAPP,
+];
+
+export const FINANCE_PERMISSIONS = [
+  PERMISSIONS.MANAGE_BUDGETS,
+  PERMISSIONS.MANAGE_SUPPLIER_BILLS,
+  PERMISSIONS.MANAGE_PAYMENT_ACCOUNTS,
+  PERMISSIONS.MANAGE_PROJECTS,
+  PERMISSIONS.VIEW_FINANCE_REPORTS,
+];
+
+export const SNOOKER_PERMISSIONS = [
+  PERMISSIONS.MANAGE_SNOOKER_SESSIONS,
+  PERMISSIONS.MANAGE_SNOOKER_TABLES,
 ];
 
 // HRMS management permission codes (any one grants HRMS Dashboard access)

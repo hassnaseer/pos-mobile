@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
   Modal, ActivityIndicator, Alert, RefreshControl, ScrollView,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
@@ -46,6 +47,7 @@ const EMPTY = { name: '', phone: '', email: '', age: '', gender: '', address: ''
 const GENDERS = ['Male', 'Female', 'Other'];
 
 const PatientsScreen = () => {
+  const navigation = useNavigation();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -133,6 +135,9 @@ const PatientsScreen = () => {
               {item.medicalHistory ? <Text style={styles.rowSub} numberOfLines={1}>{item.medicalHistory}</Text> : null}
             </View>
             <View style={styles.rowActions}>
+              <TouchableOpacity style={styles.rxBtn} onPress={() => navigation.navigate('PatientPrescriptions', { patientId: item.id, patientName: item.name })}>
+                <Text style={styles.rxText}>Rx</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
                 <Text style={styles.editText}>Edit</Text>
               </TouchableOpacity>
@@ -215,6 +220,8 @@ const styles = StyleSheet.create({
   rowName: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
   rowSub: { fontSize: 12, fontFamily: 'Outfit-Regular', color: colors.secondary, marginTop: 2 },
   rowActions: { flexDirection: 'row', gap: 6 },
+  rxBtn: { backgroundColor: '#f0fdf4', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 },
+  rxText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#16a34a' },
   editBtn: { backgroundColor: '#EBF0F5', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 },
   editText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary },
   delBtn: { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 },
