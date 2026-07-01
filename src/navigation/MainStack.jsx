@@ -121,6 +121,23 @@ import SASupportTicketsScreen from '../screens/main/super-admin/SupportTickets/S
 // Staff Dashboard (all 3 variants inside)
 import StaffDashboardScreen from '../screens/main/staff/StaffDashboardScreen';
 
+// Finance
+import BudgetsScreen        from '../screens/main/admin/Finance/BudgetsScreen';
+import ExpensesScreen        from '../screens/main/admin/Finance/ExpensesScreen';
+import PaymentAccountsScreen from '../screens/main/admin/Finance/PaymentAccountsScreen';
+import SupplierBillsScreen   from '../screens/main/admin/Finance/SupplierBillsScreen';
+
+// Projects
+import ProjectsScreen       from '../screens/main/admin/Projects/ProjectsScreen';
+import ProjectClientsScreen from '../screens/main/admin/Projects/ProjectClientsScreen';
+
+// Snooker
+import SnookerTablesScreen       from '../screens/main/admin/Snooker/SnookerTablesScreen';
+import SnookerSessionTypesScreen from '../screens/main/admin/Snooker/SnookerSessionTypesScreen';
+
+// Medical — prescriptions (sub-screen opened from PatientsScreen)
+import PatientPrescriptionsScreen from '../screens/main/admin/Medical/PatientPrescriptionsScreen';
+
 // Medical Staff Check-in (admin manual)
 import MedicalStaffCheckinScreen from '../screens/main/admin/Medical/MedicalStaffCheckinScreen';
 
@@ -243,6 +260,20 @@ const ADMIN_SCREENS = [
   { name: 'PharmacyOrders',      component: PharmacyOrdersScreen },
   { name: 'PharmacyConnections', component: PharmacyConnectionsScreen },
 
+  // Finance
+  { name: 'Budgets',         component: BudgetsScreen },
+  { name: 'Expenses',        component: ExpensesScreen },
+  { name: 'PaymentAccounts', component: PaymentAccountsScreen },
+  { name: 'SupplierBills',   component: SupplierBillsScreen },
+
+  // Projects
+  { name: 'Projects',        component: ProjectsScreen },
+  { name: 'ProjectClients',  component: ProjectClientsScreen },
+
+  // Snooker
+  { name: 'SnookerTables',       component: SnookerTablesScreen },
+  { name: 'SnookerSessionTypes', component: SnookerSessionTypesScreen },
+
   // Social Media
   { name: 'SocialAccounts',  component: SocialAccountsScreen },
   { name: 'SocialPosts',     component: SocialPostsScreen },
@@ -290,11 +321,12 @@ const AdminNavigator = ({ unreadCount, userRole }) => {
         {SETTINGS_SCREENS.map(({ name, component: C }) => (
           <Stack.Screen key={name} name={name} component={C} options={{ header: backHdr }} />
         ))}
-        <Stack.Screen name="Notifications"   component={NotificationsScreen}   options={{ header: backHdr }} />
-        <Stack.Screen name="OrderDetail"    component={OrderDetailScreen}    options={{ header: backHdr }} />
-        <Stack.Screen name="Profile"        component={ProfileScreen}        options={{ header: backHdr }} />
-        <Stack.Screen name="CreateTicket"   component={CreateTicketScreen}   options={{ header: backHdr }} />
-        <Stack.Screen name="ProductForm"    component={ProductFormScreen}    options={{ header: backHdr }} />
+        <Stack.Screen name="Notifications"          component={NotificationsScreen}          options={{ header: backHdr }} />
+        <Stack.Screen name="OrderDetail"           component={OrderDetailScreen}           options={{ header: backHdr }} />
+        <Stack.Screen name="Profile"               component={ProfileScreen}               options={{ header: backHdr }} />
+        <Stack.Screen name="CreateTicket"          component={CreateTicketScreen}          options={{ header: backHdr }} />
+        <Stack.Screen name="ProductForm"           component={ProductFormScreen}           options={{ header: backHdr }} />
+        <Stack.Screen name="PatientPrescriptions"  component={PatientPrescriptionsScreen}  options={{ header: backHdr }} />
       </Stack.Navigator>
       <SidebarOverlay />
       <ChatFAB />
@@ -323,6 +355,7 @@ const SA_SCREENS = [
   { name: 'SAPaymentQueue',       component: SAPaymentQueueScreen },
   { name: 'SAErrorLogs',          component: SAErrorLogsScreen },
   { name: 'SASupportTickets',     component: SASupportTicketsScreen },
+  { name: 'SARoles',              component: SARolesScreen },
 ];
 
 const SuperAdminNavigator = ({ unreadCount }) => {

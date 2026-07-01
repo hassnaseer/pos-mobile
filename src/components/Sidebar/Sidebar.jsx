@@ -65,6 +65,28 @@ const ADMIN_MENU = [
   // ── Integrations ─────────────────────────────────────────────────────────────
   { id: 'integrations', title: 'Integrations', route: 'Integrations', icon: rolesIcon, permission: PERMISSIONS.MANAGE_ECOMMERCE, adminOnly: true },
 
+  // ── Finance (expandable group) ────────────────────────────────────────────────
+  {
+    id: 'finance', title: 'Finance', icon: reportsIcon, isGroup: true,
+    canShow: p => p.hasAnyFinance(), adminOnly: true,
+    subItems: [
+      { id: 'budgets',          title: 'Budgets',          route: 'Budgets',         icon: reportsIcon,   permission: PERMISSIONS.MANAGE_BUDGETS },
+      { id: 'expenses',         title: 'Expenses',         route: 'Expenses',        icon: ordersIcon,    permission: PERMISSIONS.MANAGE_EXPENSES },
+      { id: 'payment-accounts', title: 'Payment Accounts', route: 'PaymentAccounts', icon: suppliersIcon, permission: PERMISSIONS.MANAGE_PAYMENT_ACCOUNTS },
+      { id: 'supplier-bills',   title: 'Supplier Bills',   route: 'SupplierBills',   icon: reportsIcon,   permission: PERMISSIONS.MANAGE_SUPPLIER_BILLS },
+    ],
+  },
+
+  // ── Projects (expandable group) ───────────────────────────────────────────────
+  {
+    id: 'projects-group', title: 'Projects', icon: productsIcon, isGroup: true,
+    canShow: p => p.can(PERMISSIONS.MANAGE_PROJECTS), adminOnly: true,
+    subItems: [
+      { id: 'projects',        title: 'Projects',        route: 'Projects',       icon: productsIcon  },
+      { id: 'project-clients', title: 'Project Clients', route: 'ProjectClients', icon: customersIcon },
+    ],
+  },
+
   // ── HRMS ──────────────────────────────────────────────────────────────────────
   { id: 'hrms-dash',           title: 'HRMS Dashboard',      route: 'HRMSDashboard',      icon: dashIcon,    canShow: p => p.hasAnyHRMS() },
   { id: 'fingerprint-devices', title: 'Fingerprint Devices', route: 'FingerprintDevices', icon: staffIcon,   permission: PERMISSIONS.DEVICE_ATTENDANCE, adminOnly: true },
@@ -113,6 +135,16 @@ const ADMIN_MENU = [
   { id: 'pharmacy-orders',      title: 'My Med Orders',    route: 'PharmacyOrders',      icon: ordersIcon,    permission: PERMISSIONS.ACCESS_PHARMACY },
   { id: 'pharmacy-connections', title: 'Connections',      route: 'PharmacyConnections', icon: rolesIcon,     permission: PERMISSIONS.ACCESS_PHARMACY },
 
+  // ── Specialty: Snooker ────────────────────────────────────────────────────────
+  {
+    id: 'snooker', title: 'Snooker', icon: rolesIcon, isGroup: true,
+    canShow: p => p.hasAnySnooker(), adminOnly: true,
+    subItems: [
+      { id: 'snooker-tables', title: 'Tables',        route: 'SnookerTables',       icon: rolesIcon,    permission: PERMISSIONS.MANAGE_SNOOKER_TABLES },
+      { id: 'snooker-types',  title: 'Session Types', route: 'SnookerSessionTypes', icon: productsIcon, permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS },
+    ],
+  },
+
   // ── Social Media (expandable group) ──────────────────────────────────────────
   {
     id: 'social', title: 'Social Media', icon: chatIcon, isGroup: true,
@@ -157,6 +189,7 @@ const SUPER_ADMIN_MENU = [
   { id: 'sa-custom-plans',         title: 'Custom Plans',        route: 'SACustomPlans',        icon: rolesIcon },
   { id: 'sa-payment-queue',        title: 'Payment Queue',       route: 'SAPaymentQueue',       icon: ordersIcon },
   { id: 'sa-error-logs',           title: 'Error Logs',          route: 'SAErrorLogs',          icon: reportsIcon },
+  { id: 'sa-roles',               title: 'SA Roles',            route: 'SARoles',              icon: rolesIcon },
 ];
 
 const SUPPORT_STAFF_MENU = [

@@ -53,6 +53,7 @@ export const usePermissions = () => {
     canAccessFactory:       () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_FACTORY),
     canAccessPharmacy:      () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.ACCESS_PHARMACY),
     canManageBudgets:         () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_BUDGETS),
+    canManageExpenses:        () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_EXPENSES),
     canManageSupplierBills:   () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_SUPPLIER_BILLS),
     canManagePaymentAccounts: () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_PAYMENT_ACCOUNTS),
     canManageProjects:        () => isSuperAdmin(userRole) || hasPermission(permissionCodes, PERMISSIONS.MANAGE_PROJECTS),

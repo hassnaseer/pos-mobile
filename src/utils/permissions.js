@@ -79,7 +79,7 @@ export const PERMISSIONS = {
   MANAGE_PRESCRIPTIONS:   'manage_prescriptions',
 
   // ── Finance & Projects ────────────────────────────────────────────────────────
-  MANAGE_BUDGETS:             'manage_budgets',
+  MANAGE_EXPENSES:            'manage_expenses',
   MANAGE_SUPPLIER_BILLS:      'manage_supplier_bills',
   MANAGE_PAYMENT_ACCOUNTS:    'manage_payment_accounts',
   MANAGE_PROJECTS:            'manage_projects',
@@ -123,6 +123,7 @@ export const SOCIAL_PERMISSIONS = [
 
 export const FINANCE_PERMISSIONS = [
   PERMISSIONS.MANAGE_BUDGETS,
+  PERMISSIONS.MANAGE_EXPENSES,
   PERMISSIONS.MANAGE_SUPPLIER_BILLS,
   PERMISSIONS.MANAGE_PAYMENT_ACCOUNTS,
   PERMISSIONS.MANAGE_PROJECTS,
