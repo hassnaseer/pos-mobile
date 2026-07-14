@@ -3,7 +3,9 @@ import { StatusBar, Platform, PermissionsAndroid } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
-import messaging from '@react-native-firebase/messaging';
+import {
+  getMessaging, requestPermission, onMessage, onNotificationOpenedApp, getInitialNotification,
+} from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import Toast from 'react-native-toast-message';
 
@@ -32,7 +34,7 @@ const App = () => {
             PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
           );
         } else {
-          await messaging().requestPermission();
+          await requestPermission(getMessaging());
         }
         await createDefaultChannel();
       } catch {}
@@ -42,7 +44,7 @@ const App = () => {
 
   // Foreground FCM → display via Notifee
   useEffect(() => {
-    const unsub = messaging().onMessage(async remoteMessage => {
+    const unsub = onMessage(getMessaging(), async remoteMessage => {
       try {
         await createDefaultChannel();
         await notifee.displayNotification({
@@ -64,14 +66,12 @@ const App = () => {
 
   // Notification tap — app in background
   useEffect(() => {
-    const unsub = messaging().onNotificationOpenedApp(() => {
+    const unsub = onNotificationOpenedApp(getMessaging(), () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });
-    messaging()
-      .getInitialNotification()
-      .then(msg => {
-        if (msg) queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      });
+    getInitialNotification(getMessaging()).then(msg => {
+      if (msg) queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    });
     return unsub;
   }, []);
 

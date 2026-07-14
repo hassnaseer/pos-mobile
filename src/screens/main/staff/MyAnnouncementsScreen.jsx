@@ -21,9 +21,11 @@ const MyAnnouncementsScreen = () => {
             <View style={styles.rowInfo}>
               <Text style={styles.rowName}>{item.title}</Text>
               {item.content ? <Text style={styles.rowContent}>{item.content}</Text> : null}
-              {item.createdAt && (
-                <Text style={styles.rowMeta}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-              )}
+              <Text style={styles.rowMeta}>
+                {item.postedBy?.name ? `Posted by ${item.postedBy.name}` : ''}
+                {item.postedBy?.name && item.createdAt ? ' · ' : ''}
+                {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
+              </Text>
             </View>
           </View>
         )}

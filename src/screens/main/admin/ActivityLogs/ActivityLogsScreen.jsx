@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity,
+  View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, RefreshControl,
 } from 'react-native';
 import { useActivityLogs } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
@@ -17,7 +17,7 @@ const actionColor = action => {
 const ActivityLogsScreen = () => {
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isFetching } = useActivityLogs({ page, limit: LIMIT });
+  const { data, isLoading, isFetching, refetch } = useActivityLogs({ page, limit: LIMIT });
 
   const logs       = data?.data              ?? [];
   const total      = data?.pagination?.total ?? 0;
@@ -54,6 +54,7 @@ const ActivityLogsScreen = () => {
           keyExtractor={item => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
           ListEmptyComponent={<Text style={styles.empty}>No activity logs found.</Text>}
           ListFooterComponent={
             totalPages > 1 ? (

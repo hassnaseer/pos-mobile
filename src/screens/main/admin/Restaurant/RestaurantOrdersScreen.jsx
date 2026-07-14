@@ -8,13 +8,13 @@ import apiClient from '../../../../services/api/globalApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
 
-const STATUSES = ['', 'pending', 'preparing', 'ready', 'delivered', 'cancelled'];
+const STATUSES = ['', 'Pending', 'Preparing', 'Ready', 'Served', 'Cancelled'];
 const STATUS_STYLE = {
-  pending:   { bg: '#fef9c3', text: '#b45309', label: 'Pending' },
-  preparing: { bg: '#dbeafe', text: '#1d4ed8', label: 'Preparing' },
-  ready:     { bg: '#dcfce7', text: '#16a34a', label: 'Ready' },
-  delivered: { bg: '#f3f4f6', text: '#6b7280', label: 'Delivered' },
-  cancelled: { bg: '#fee2e2', text: '#dc2626', label: 'Cancelled' },
+  Pending:   { bg: '#fef9c3', text: '#b45309', label: 'Pending' },
+  Preparing: { bg: '#dbeafe', text: '#1d4ed8', label: 'Preparing' },
+  Ready:     { bg: '#dcfce7', text: '#16a34a', label: 'Ready' },
+  Served:    { bg: '#f3f4f6', text: '#6b7280', label: 'Served' },
+  Cancelled: { bg: '#fee2e2', text: '#dc2626', label: 'Cancelled' },
 };
 
 const useRestaurantOrders = (status = '') =>
@@ -28,10 +28,10 @@ const useRestaurantOrders = (status = '') =>
     staleTime: 30_000,
   });
 
-const useUpdateRestaurantOrder = () => {
+const useUpdateRestaurantOrderStatus = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/restaurant/orders/${id}`, data),
+    mutationFn: ({ id, status }) => apiClient.patch(`/admin/restaurant/orders/${id}/status`, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['restaurant-orders'] }),
   });
 };
@@ -42,13 +42,13 @@ const RestaurantOrdersScreen = () => {
   const [selected, setSelected] = useState(null);
 
   const { data: raw = [], isLoading, refetch } = useRestaurantOrders(statusFilter);
-  const { mutateAsync: updateOrder, isPending: updating } = useUpdateRestaurantOrder();
+  const { mutateAsync: updateOrderStatus, isPending: updating } = useUpdateRestaurantOrderStatus();
 
   const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
 
   const handleStatusChange = async (order, newStatus) => {
-    try { await updateOrder({ id: order.id, status: newStatus }); }
-    catch (e) { Alert.alert('Error', e?.message ?? 'Failed to update status'); }
+    try { await updateOrderStatus({ id: order.id, status: newStatus }); }
+    catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed to update status'); }
   };
 
   const fmtDate = d => {
@@ -57,9 +57,9 @@ const RestaurantOrdersScreen = () => {
   };
 
   const NEXT_STATUS = {
-    pending:   'preparing',
-    preparing: 'ready',
-    ready:     'delivered',
+    Pending:   'Preparing',
+    Preparing: 'Ready',
+    Ready:     'Served',
   };
 
   return (
@@ -90,14 +90,14 @@ const RestaurantOrdersScreen = () => {
         contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 24 }}
         ListEmptyComponent={!isLoading && <Text style={styles.empty}>No restaurant orders.</Text>}
         renderItem={({ item }) => {
-          const st = STATUS_STYLE[(item.status ?? '').toLowerCase()] ?? STATUS_STYLE.pending;
-          const nextStatus = NEXT_STATUS[(item.status ?? '').toLowerCase()];
+          const st = STATUS_STYLE[item.status] ?? STATUS_STYLE.Pending;
+          const nextStatus = NEXT_STATUS[item.status];
           return (
             <TouchableOpacity style={styles.card} onPress={() => setSelected(item)} activeOpacity={0.85}>
               <View style={styles.cardHeader}>
                 <View>
-                  <Text style={styles.orderNo}>Order #{item.orderNo ?? item.id}</Text>
-                  {item.tableName && <Text style={styles.table}>Table: {item.tableName}</Text>}
+                  <Text style={styles.orderNo}>{item.orderNumber ?? `Order #${item.id}`}</Text>
+                  {item.table?.tableNumber != null && <Text style={styles.table}>Table {item.table.tableNumber}</Text>}
                 </View>
                 <View style={[styles.badge, { backgroundColor: st.bg }]}>
                   <Text style={[styles.badgeText, { color: st.text }]}>{st.label}</Text>
@@ -105,10 +105,10 @@ const RestaurantOrdersScreen = () => {
               </View>
               <View style={styles.cardRow}>
                 <Text style={styles.date}>{fmtDate(item.createdAt)}</Text>
-                <Text style={styles.amount}>{fmt(item.total ?? item.grandTotal ?? 0)}</Text>
+                <Text style={styles.amount}>{fmt(item.total ?? 0)}</Text>
               </View>
-              {item.itemCount != null && (
-                <Text style={styles.meta}>{item.itemCount} item{item.itemCount !== 1 ? 's' : ''}</Text>
+              {Array.isArray(item.items) && item.items.length > 0 && (
+                <Text style={styles.meta}>{item.items.length} item{item.items.length !== 1 ? 's' : ''}</Text>
               )}
               {nextStatus && (
                 <TouchableOpacity
@@ -130,19 +130,19 @@ const RestaurantOrdersScreen = () => {
         <View style={styles.overlay}>
           <View style={styles.modalBox}>
             {selected && (() => {
-              const st = STATUS_STYLE[(selected.status ?? '').toLowerCase()] ?? STATUS_STYLE.pending;
+              const st = STATUS_STYLE[selected.status] ?? STATUS_STYLE.Pending;
               return (
                 <>
                   <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Order #{selected.orderNo ?? selected.id}</Text>
+                    <Text style={styles.modalTitle}>{selected.orderNumber ?? `Order #${selected.id}`}</Text>
                     <TouchableOpacity onPress={() => setSelected(null)}>
                       <Text style={styles.closeBtn}>✕</Text>
                     </TouchableOpacity>
                   </View>
-                  {selected.tableName && <Text style={styles.modalMeta}>Table: {selected.tableName}</Text>}
+                  {selected.table?.tableNumber != null && <Text style={styles.modalMeta}>Table: {selected.table.tableNumber}</Text>}
                   <Text style={styles.modalMeta}>Date: {fmtDate(selected.createdAt)}</Text>
                   <Text style={styles.modalMeta}>Status: {st.label}</Text>
-                  <Text style={styles.modalMeta}>Total: {fmt(selected.total ?? selected.grandTotal ?? 0)}</Text>
+                  <Text style={styles.modalMeta}>Total: {fmt(selected.total ?? 0)}</Text>
 
                   {Array.isArray(selected.items) && selected.items.length > 0 && (
                     <>

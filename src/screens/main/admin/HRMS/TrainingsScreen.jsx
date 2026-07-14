@@ -6,6 +6,7 @@ import {
 import { useTrainings, useCreateTraining, useUpdateTraining, useDeleteTraining } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const EMPTY_FORM = { title: '', trainer: '', startDate: '', endDate: '', description: '' };
@@ -40,7 +41,7 @@ const TrainingsScreen = () => {
     try {
       editing ? await update({ id: editing.id, ...form }) : await create(form);
       setShowModal(false);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Save failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Save failed'); }
   };
 
   const handleDelete = t => Alert.alert('Delete Training', `Delete "${t.title}"?`, [
@@ -98,8 +99,6 @@ const TrainingsScreen = () => {
             {[
               { key: 'title',       label: 'Title *' },
               { key: 'trainer',     label: 'Trainer / Instructor' },
-              { key: 'startDate',   label: 'Start Date (YYYY-MM-DD)' },
-              { key: 'endDate',     label: 'End Date (YYYY-MM-DD)' },
               { key: 'description', label: 'Description' },
             ].map(f => (
               <View key={f.key} style={styles.field}>
@@ -107,6 +106,24 @@ const TrainingsScreen = () => {
                 <TextInput style={styles.input} value={form[f.key]} onChangeText={set(f.key)} placeholder={f.label.replace(' *', '')} placeholderTextColor="#999" />
               </View>
             ))}
+            <View style={styles.dateRow}>
+              <DatePicker
+                label="Start Date"
+                value={form.startDate}
+                onDateChange={set('startDate')}
+                placeholder="Select start date"
+                style={{ flex: 1, marginBottom: 0 }}
+              />
+              <View style={{ width: 12 }} />
+              <DatePicker
+                label="End Date"
+                value={form.endDate}
+                onDateChange={set('endDate')}
+                placeholder="Select end date"
+                minimumDate={form.startDate || undefined}
+                style={{ flex: 1, marginBottom: 0 }}
+              />
+            </View>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -145,6 +162,7 @@ const styles = StyleSheet.create({
   modalCard:    { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   modalTitle:   { fontSize: 20, fontFamily: 'Outfit-Bold', color: '#111', marginBottom: 16 },
   field:        { marginBottom: 12 },
+  dateRow:      { flexDirection: 'row', marginBottom: 12 },
   label:        { fontSize: 13, fontFamily: 'Outfit-Medium', color: '#444', marginBottom: 4 },
   input:        { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },

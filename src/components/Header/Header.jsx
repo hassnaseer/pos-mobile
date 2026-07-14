@@ -81,7 +81,14 @@ const Header = ({
   };
 
   const settingsRoute = userRole === ROLES.SUPER_ADMIN ? 'SASettings' : 'Settings';
-  const showSettings = userRole !== ROLES.SUPPORT_STAFF;
+  // Matches AppHeader.tsx exactly: super-admin gets its own settings route above,
+  // project-client/support-staff never see Settings at all, and any other staff
+  // member needs system_settings specifically (not just "not support-staff").
+  const showSettings = userRole === ROLES.SUPER_ADMIN || (
+    userRole !== ROLES.SUPPORT_STAFF &&
+    userRole !== 'project-client' &&
+    (userRole === ROLES.ADMIN || !!user?.permissionCodes?.includes('system_settings'))
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>

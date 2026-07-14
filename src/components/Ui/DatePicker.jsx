@@ -9,82 +9,99 @@ import {
 } from 'react-native';
 import colors from '../../theme/colors';
 
+const MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
+
+const pad2 = n => String(n).padStart(2, '0');
+
+// value / onDateChange always use ISO "YYYY-MM-DD" — matches every backend DTO.
+// Display label is formatted for humans ("31 Dec 2025").
+const toIso = (day, month, year) => `${year}-${pad2(month)}-${pad2(day)}`;
+
+const parseIso = value => {
+  if (!value) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!m) return null;
+  return { year: parseInt(m[1], 10), month: parseInt(m[2], 10), day: parseInt(m[3], 10) };
+};
+
+/**
+ * Reusable date picker — tap the field to open a day/month/year scroll picker.
+ * `value` and the value passed to `onDateChange` are both ISO "YYYY-MM-DD" strings.
+ */
 const DatePicker = ({
   value,
   onDateChange,
-  placeholder = 'dd-mm-yyyy',
+  placeholder = 'Select date',
   label,
   style,
   error,
+  minimumDate,
+  maximumDate,
+  disabled,
 }) => {
   const [show, setShow] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [selectedMonth, setSelectedMonth] = useState(1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const today = new Date();
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
-  // Helper function to get days in a given month
-  const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
-
-  // Parse existing value if provided
+  // Sync from the ISO value whenever the picker opens or the value changes
   useEffect(() => {
-    if (value && value.includes('-')) {
-      const parts = value.split('-');
-      if (parts.length === 3) {
-        setSelectedDay(parseInt(parts[0]) || 1);
-        setSelectedMonth(parseInt(parts[1]) || 1);
-        setSelectedYear(parseInt(parts[2]) || new Date().getFullYear());
-      }
+    const parsed = parseIso(value);
+    if (parsed) {
+      setSelectedDay(parsed.day);
+      setSelectedMonth(parsed.month);
+      setSelectedYear(parsed.year);
     }
-  }, [value]);
+  }, [value, show]);
 
   // Adjust day if month/year change and selected day is invalid
   useEffect(() => {
     const maxDays = getDaysInMonth(selectedMonth, selectedYear);
-    if (selectedDay > maxDays) {
-      setSelectedDay(maxDays);
-    }
-  }, [selectedMonth, selectedYear]);
+    if (selectedDay > maxDays) setSelectedDay(maxDays);
+  }, [selectedMonth, selectedYear, selectedDay]);
 
-  const formatDate = (day, month, year) => {
-    const d = String(day).padStart(2, '0');
-    const m = String(month).padStart(2, '0');
-    return `${d}-${m}-${year}`;
+  const displayLabel = (() => {
+    const parsed = parseIso(value);
+    if (!parsed) return placeholder;
+    return `${parsed.day} ${MONTH_NAMES[parsed.month - 1]} ${parsed.year}`;
+  })();
+
+  const handleOpen = () => {
+    if (disabled) return;
+    setShow(true);
   };
 
   const handleDone = () => {
-    const formatted = formatDate(selectedDay, selectedMonth, selectedYear);
-    onDateChange(formatted);
+    onDateChange(toIso(selectedDay, selectedMonth, selectedYear));
     setShow(false);
   };
 
-  const handleCancel = () => {
-    setShow(false);
-  };
+  const handleCancel = () => setShow(false);
 
-  // Generate arrays for pickers
-  const days = Array.from(
-    { length: getDaysInMonth(selectedMonth, selectedYear) },
-    (_, i) => i + 1
-  );
+  const minYear = minimumDate ? parseIso(minimumDate)?.year : new Date().getFullYear() - 50;
+  const maxYear = maximumDate ? parseIso(maximumDate)?.year : new Date().getFullYear() + 50;
+
+  const days = Array.from({ length: getDaysInMonth(selectedMonth, selectedYear) }, (_, i) => i + 1);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 100 }, (_, i) => currentYear - 50 + i);
-
-  const monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-  ];
+  const years = Array.from({ length: (maxYear ?? selectedYear + 50) - (minYear ?? selectedYear - 50) + 1 }, (_, i) => (minYear ?? selectedYear - 50) + i);
 
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
 
       <TouchableOpacity
-        style={[styles.inputContainer, error && styles.inputError]}
-        onPress={() => setShow(true)}
+        style={[styles.inputContainer, error && styles.inputError, disabled && styles.inputDisabled]}
+        onPress={handleOpen}
+        activeOpacity={disabled ? 1 : 0.7}
       >
         <Text style={[styles.inputText, !value && styles.placeholder]}>
-          {value || placeholder}
+          {displayLabel}
         </Text>
         <Text style={styles.icon}>📅</Text>
       </TouchableOpacity>
@@ -168,7 +185,7 @@ const DatePicker = ({
                           selectedMonth === month && styles.pickerItemTextSelected,
                         ]}
                       >
-                        {monthNames[month - 1]}
+                        {MONTH_NAMES[month - 1]}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -235,6 +252,9 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: '#DC2626',
+  },
+  inputDisabled: {
+    backgroundColor: '#F4F6F9',
   },
   inputText: {
     fontSize: 14,

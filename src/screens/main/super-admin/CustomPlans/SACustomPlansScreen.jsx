@@ -12,10 +12,10 @@ const STATUS_STYLE = {
   pending:   { bg: '#fef9c3', text: '#b45309', label: 'Pending' },
   active:    { bg: '#dcfce7', text: '#16a34a', label: 'Active' },
   withdrawn: { bg: '#fee2e2', text: '#dc2626', label: 'Withdrawn' },
-  rejected:  { bg: '#f3f4f6', text: '#6b7280', label: 'Rejected' },
+  declined:  { bg: '#f3f4f6', text: '#6b7280', label: 'Declined' },
 };
 
-const STATUSES = ['', 'pending', 'active', 'withdrawn', 'rejected'];
+const STATUSES = ['', 'pending', 'active', 'withdrawn', 'declined'];
 
 const SACustomPlansScreen = ({ navigation }) => {
   const {
@@ -93,29 +93,41 @@ const SACustomPlansScreen = ({ navigation }) => {
 
               <View style={styles.row}>
                 <Text style={styles.label}>Price</Text>
-                <Text style={styles.value}>${item.price ?? '—'} / {item.period ?? 'monthly'}</Text>
+                <Text style={styles.value}>${item.price ?? '—'} / {item.billingCycle ?? 'monthly'}</Text>
               </View>
-              {item.maxBranches != null && (
+              {item.limits?.branches != null && (
                 <View style={styles.row}>
                   <Text style={styles.label}>Branches</Text>
-                  <Text style={styles.value}>{item.maxBranches}</Text>
+                  <Text style={styles.value}>{item.limits.branches > 0 ? item.limits.branches : 'Unlimited'}</Text>
                 </View>
               )}
-              {item.maxStaff != null && (
+              {item.limits?.users != null && (
                 <View style={styles.row}>
                   <Text style={styles.label}>Staff</Text>
-                  <Text style={styles.value}>{item.maxStaff}</Text>
+                  <Text style={styles.value}>{item.limits.users > 0 ? item.limits.users : 'Unlimited'}</Text>
                 </View>
               )}
-              {item.description ? (
-                <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
+              {item.limits?.invoicesPerMonth != null && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Invoices/Month</Text>
+                  <Text style={styles.value}>{item.limits.invoicesPerMonth > 0 ? item.limits.invoicesPerMonth : 'Unlimited'}</Text>
+                </View>
+              )}
+              {item.notes ? (
+                <Text style={styles.desc} numberOfLines={2}>{item.notes}</Text>
               ) : null}
-              {item.submittedAt && (
-                <Text style={styles.sub}>{new Date(item.submittedAt).toLocaleDateString()}</Text>
+              {item.createdAt && (
+                <Text style={styles.sub}>{new Date(item.createdAt).toLocaleDateString()}</Text>
               )}
 
               {(item.status ?? '').toLowerCase() === 'pending' && (
                 <View style={styles.btnRow}>
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={() => navigation.navigate('SACustomPlanForm', { editing: item })}
+                  >
+                    <Text style={styles.editBtnText}>Edit</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.activateBtn}
                     onPress={() => handleActivate(item)}
@@ -169,6 +181,8 @@ const styles = StyleSheet.create({
   desc: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#666', marginTop: 4 },
   sub: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#aaa', marginTop: 4 },
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  editBtn: { flex: 1, backgroundColor: '#eff6ff', borderRadius: 8, paddingVertical: 9, alignItems: 'center' },
+  editBtnText: { color: '#1d4ed8', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
   activateBtn: { flex: 1, backgroundColor: '#16a34a', borderRadius: 8, paddingVertical: 9, alignItems: 'center' },
   activateBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
   withdrawBtn: { flex: 1, backgroundColor: '#fee2e2', borderRadius: 8, paddingVertical: 9, alignItems: 'center' },

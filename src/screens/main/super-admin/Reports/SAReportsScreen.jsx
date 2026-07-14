@@ -9,17 +9,18 @@ import colors from '../../../../theme/colors';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PERIODS = [
-  { key: 'monthly',   label: 'Monthly' },
-  { key: 'quarterly', label: 'Quarterly' },
-  { key: 'yearly',    label: 'Yearly' },
+  { key: 'daily',   label: 'Daily' },
+  { key: 'monthly', label: 'Monthly' },
+  { key: 'yearly',  label: 'Yearly' },
 ];
 
 const SAReportsScreen = () => {
   const { fmt } = useCurrency();
   const [period, setPeriod] = useState('monthly');
   const [year, setYear]     = useState(new Date().getFullYear());
+  const [month, setMonth]   = useState(new Date().getMonth() + 1);
 
-  const { data, isLoading, refetch } = useSARevenueReports({ period, year });
+  const { data, isLoading, refetch } = useSARevenueReports({ period, year, ...(period === 'daily' ? { month } : {}) });
 
   const trend         = data?.trend ?? [];
   const byBusinessType = data?.byBusinessType ?? [];
@@ -34,7 +35,7 @@ const SAReportsScreen = () => {
 
   const statCards = [
     { label: 'Total Revenue',  value: fmt(totalRev), color: '#22c55e', sub: 'Selected period' },
-    { label: 'Average',        value: fmt(avgRev),   color: '#3b82f6', sub: `Per ${period === 'monthly' ? 'month' : period}` },
+    { label: 'Average',        value: fmt(avgRev),   color: '#3b82f6', sub: `Per ${period === 'monthly' ? 'month' : period === 'daily' ? 'day' : 'year'}` },
     { label: 'Peak Revenue',   value: fmt(maxRev),   color: '#f59e0b', sub: 'Highest in period' },
     { label: 'Businesses',     value: String(totalBiz || 0), color: '#8b5cf6', sub: 'Active in period' },
   ];
@@ -56,15 +57,30 @@ const SAReportsScreen = () => {
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <View style={styles.yearRow}>
-          <TouchableOpacity onPress={() => setYear(y => y - 1)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-            <Text style={styles.yearArrow}>‹</Text>
-          </TouchableOpacity>
-          <Text style={styles.yearText}>{year}</Text>
-          <TouchableOpacity onPress={() => setYear(y => y + 1)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-            <Text style={styles.yearArrow}>›</Text>
-          </TouchableOpacity>
-        </View>
+        {period !== 'yearly' && (
+          <View style={styles.yearRow}>
+            <TouchableOpacity onPress={() => setYear(y => y - 1)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+              <Text style={styles.yearArrow}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.yearText}>{year}</Text>
+            <TouchableOpacity onPress={() => setYear(y => y + 1)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+              <Text style={styles.yearArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {period === 'daily' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {MONTHS.map((m, i) => (
+              <TouchableOpacity
+                key={m}
+                style={[styles.chip, month === i + 1 && styles.chipActive]}
+                onPress={() => setMonth(i + 1)}
+              >
+                <Text style={[styles.chipText, month === i + 1 && styles.chipTextActive]}>{m}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {isLoading

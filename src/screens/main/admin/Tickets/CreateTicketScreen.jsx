@@ -10,10 +10,17 @@ import {
   useTicketStatuses, useCategories, useTaxes, useMiscCharges, useProducts,
 } from '../../../../services/api/posApi';
 import CascadingCategorySelect from '../../../../components/Ui/CascadingCategorySelect';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 const WARRANTY_UNITS = ['days', 'months', 'years'];
+const convertWarrantyToDays = (value, unit) => {
+  const n = parseInt(value, 10) || 0;
+  if (unit === 'months') return n * 30;
+  if (unit === 'years') return n * 365;
+  return n;
+};
 
 const EMPTY_FORM = {
   customerName: '', customerPhone: '', customerId: '',
@@ -22,7 +29,7 @@ const EMPTY_FORM = {
   estimatedCost: '', advancePayment: '',
   expectedCompletion: '', notes: '', physicalLocation: '',
   manufacturerId: '', deviceId: '', assignedUserId: '',
-  statusId: '', categoryId: '',
+  status: '', categoryId: '',
   warrantyDays: '', warrantyUnit: 'days',
   lockType: '', lockCode: '', patternSequence: '',
   isTaxExcluded: false, taxId: '',
@@ -202,20 +209,19 @@ export default function CreateTicketScreen({ navigation }) {
       manufacturerId:     form.manufacturerId || undefined,
       deviceId:           form.deviceId || undefined,
       assignedUserId:     form.assignedUserId || undefined,
-      statusId:           form.statusId || undefined,
+      status:             form.status || undefined,
       categoryId:         form.categoryId || undefined,
-      warrantyDays:       form.warrantyDays ? parseInt(form.warrantyDays, 10) : undefined,
-      warrantyUnit:       form.warrantyDays ? form.warrantyUnit : undefined,
+      warrantyDays:       form.warrantyDays ? convertWarrantyToDays(form.warrantyDays, form.warrantyUnit) : undefined,
       lockType:           form.lockType || undefined,
-      lockCode:           form.lockType === 'passcode' ? (form.lockCode || undefined) : undefined,
-      patternSequence:    form.lockType === 'pattern' ? (form.patternSequence || undefined) : undefined,
+      lockCode:           form.lockType === 'passcode' ? (form.lockCode || undefined)
+        : form.lockType === 'pattern' ? (form.patternSequence || undefined) : undefined,
       isTaxExcluded:      form.isTaxExcluded,
       taxId:              form.taxId || undefined,
-      specs:              form.specs.filter(sp => sp.key?.trim()).map(sp => ({ key: sp.key.trim(), value: (sp.value ?? '').trim() })),
-      lines:              form.lines.filter(l => l.productId).map(l => ({
+      specifications:     form.specs.filter(sp => sp.key?.trim()).map(sp => ({ key: sp.key.trim(), value: (sp.value ?? '').trim() })),
+      products:           form.lines.filter(l => l.productId).map(l => ({
         productId: l.productId, quantity: parseInt(l.quantity, 10) || 1, unitPrice: parseFloat(l.unitPrice) || 0,
       })),
-      miscLines: form.miscLines.map(l => ({ miscChargeId: l.miscChargeId, price: parseFloat(l.price) || 0 })),
+      miscCharges: form.miscLines.map(l => ({ name: l.name, amount: parseFloat(l.price) || 0, type: l.type ?? 'fixed' })),
     };
     try {
       await createTicket(payload);
@@ -464,7 +470,7 @@ export default function CreateTicketScreen({ navigation }) {
             ))}
             <View style={s.miscGrid}>
               {miscCharges.map(c => (
-                <TouchableOpacity key={c.id} style={s.miscChip} onPress={() => setForm(p => ({ ...p, miscLines: [...p.miscLines, { miscChargeId: c.id, name: c.name, price: parseFloat(c.price ?? c.amount ?? 0) }] }))}>
+                <TouchableOpacity key={c.id} style={s.miscChip} onPress={() => setForm(p => ({ ...p, miscLines: [...p.miscLines, { miscChargeId: c.id, name: c.name, type: c.type ?? 'fixed', price: parseFloat(c.price ?? c.amount ?? 0) }] }))}>
                   <Text style={s.miscChipText}>{c.name}</Text>
                 </TouchableOpacity>
               ))}
@@ -528,12 +534,12 @@ export default function CreateTicketScreen({ navigation }) {
                 ))}
               </View>
             </View>
-            <InlineSelect label="Status" value={form.statusId} options={statuses.map(st => ({ id: st.id, name: st.name }))} onSelect={set('statusId')} />
+            <InlineSelect label="Status" value={form.status} options={statuses.map(st => ({ id: st.name, name: st.name }))} onSelect={set('status')} />
             <CascadingCategorySelect categories={categories} value={form.categoryId} onChange={set('categoryId')} label="Category" />
             <InlineSelect label="Assign To" value={form.assignedUserId}
               options={staffList.map(st => ({ id: st.id, name: st.name ?? st.fullName }))}
               onSelect={set('assignedUserId')} />
-            <F label="Expected Completion (YYYY-MM-DD)" fkey="expectedCompletion" placeholder="2025-01-01" />
+            <DatePicker label="Expected Completion" value={form.expectedCompletion} onDateChange={set('expectedCompletion')} placeholder="Select expected completion" />
           </>
         )}
 

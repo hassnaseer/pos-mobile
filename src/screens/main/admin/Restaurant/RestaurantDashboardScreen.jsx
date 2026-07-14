@@ -3,8 +3,11 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../../../services/api/globalApi';
-import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
+
+const ORDER_STATUS_COLOR = {
+  Pending: '#b45309', Preparing: '#b45309', Ready: '#1d4ed8', Served: '#16a34a', Cancelled: '#dc2626',
+};
 
 const useRestaurantDashboard = () =>
   useQuery({
@@ -35,8 +38,8 @@ const QuickLink = ({ label, route }) => {
 };
 
 const RestaurantDashboardScreen = () => {
-  const { fmt } = useCurrency();
   const { data = {}, isLoading, refetch } = useRestaurantDashboard();
+  const availableTables = Math.max(0, (data.tables ?? 0) - (data.occupiedTables ?? 0));
 
   return (
     <ScrollView
@@ -49,16 +52,32 @@ const RestaurantDashboardScreen = () => {
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <View style={styles.statsGrid}>
-          <StatCard label="Total Tables" value={data.totalTables} />
+          <StatCard label="Total Tables" value={data.tables} />
+          <StatCard label="Available Tables" value={`${availableTables}/${data.tables ?? 0}`} color="#16a34a" />
           <StatCard label="Occupied" value={data.occupiedTables} color="#dc2626" />
-          <StatCard label="Today's Orders" value={data.todayOrders} color="#7c3aed" />
-          <StatCard
-            label="Today's Revenue"
-            value={fmt(data.todayRevenue)}
-            color="#16a34a"
-          />
           <StatCard label="Pending Orders" value={data.pendingOrders} color="#b45309" />
-          <StatCard label="Menu Items" value={data.totalMenuItems} />
+          <StatCard label="Menu Items" value={data.menuItems} />
+        </View>
+      )}
+
+      <Text style={styles.sectionTitle}>Active Orders</Text>
+      {!isLoading && (
+        <View style={styles.ordersCard}>
+          {(data.recentOrders ?? []).length === 0 ? (
+            <Text style={styles.emptyOrders}>No recent orders</Text>
+          ) : data.recentOrders.map(order => {
+            const itemsLabel = Array.isArray(order.items) ? order.items.map(i => `${i.quantity}x ${i.name}`).join(', ') : '';
+            return (
+              <View key={order.id} style={styles.orderRow}>
+                <View style={styles.orderRowTop}>
+                  <Text style={styles.orderRowTitle}>{order.orderNumber} · Table {order.table?.tableNumber ?? '—'}</Text>
+                  <Text style={[styles.orderRowStatus, { color: ORDER_STATUS_COLOR[order.status] ?? '#6b7280' }]}>{order.status}</Text>
+                </View>
+                {itemsLabel ? <Text style={styles.orderRowItems} numberOfLines={1}>{itemsLabel}</Text> : null}
+                <Text style={styles.orderRowTotal}>${order.total}</Text>
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -84,6 +103,14 @@ const styles = StyleSheet.create({
   quickLink: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderColor: '#f0f0f0' },
   quickLinkText: { fontSize: 14, fontFamily: 'Outfit-Medium', color: colors.defaultBlack },
   arrow: { fontSize: 20, color: colors.secondary },
+  ordersCard: { marginHorizontal: 12, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' },
+  emptyOrders: { textAlign: 'center', color: colors.secondary, fontFamily: 'Outfit-Regular', padding: 20 },
+  orderRow: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderColor: '#f0f0f0' },
+  orderRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  orderRowTitle: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack, flex: 1, marginRight: 8 },
+  orderRowStatus: { fontSize: 11, fontFamily: 'Outfit-SemiBold' },
+  orderRowItems: { fontSize: 12, fontFamily: 'Outfit-Regular', color: colors.secondary, marginTop: 2 },
+  orderRowTotal: { fontSize: 13, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginTop: 4 },
 });
 
 export default RestaurantDashboardScreen;

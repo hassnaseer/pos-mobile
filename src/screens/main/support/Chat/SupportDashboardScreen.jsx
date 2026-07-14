@@ -6,8 +6,8 @@ import {
 import { useAuth } from '../../../../context/AuthContext';
 import colors from '../../../../theme/colors';
 
-let firestore;
-try { firestore = require('@react-native-firebase/firestore').default; } catch { firestore = null; }
+let fs;
+try { fs = require('@react-native-firebase/firestore'); } catch { fs = null; }
 
 const SupportDashboardScreen = () => {
   const { user } = useAuth();
@@ -21,47 +21,45 @@ const SupportDashboardScreen = () => {
   const permCodes = user?.permissionCodes ?? [];
 
   useEffect(() => {
-    if (!firestore || !user?.id) { setLoading(false); return; }
-    const db = firestore();
-    const unsub = db.collection('support_conversations')
-      .orderBy('lastMessageAt', 'desc')
-      .onSnapshot(snap => {
-        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // support-staff sees unassigned + assigned to them
-        const filtered = all.filter(c => c.assignedToId === null || c.assignedToId === user.id);
-        setConversations(filtered);
-        setLoading(false);
-      });
+    if (!fs || !user?.id) { setLoading(false); return; }
+    const db = fs.getFirestore();
+    const q = fs.query(fs.collection(db, 'support_conversations'), fs.orderBy('lastMessageAt', 'desc'));
+    const unsub = fs.onSnapshot(q, snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // support-staff sees unassigned + assigned to them
+      const filtered = all.filter(c => c.assignedToId === null || c.assignedToId === user.id);
+      setConversations(filtered);
+      setLoading(false);
+    });
     return unsub;
   }, [user?.id]);
 
   useEffect(() => {
-    if (!firestore || !selectedId) { setMessages([]); return; }
-    const db = firestore();
-    const unsub = db.collection('support_conversations').doc(selectedId)
-      .collection('messages').orderBy('timestamp', 'asc')
-      .onSnapshot(snap => {
-        setMessages(snap.docs.map(d => ({
-          id: d.id, ...d.data(),
-          timestamp: d.data().timestamp?.toDate?.() ?? new Date(),
-        })));
-        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
-      });
-    db.collection('support_conversations').doc(selectedId).update({ isReadBySupport: true }).catch(() => {});
+    if (!fs || !selectedId) { setMessages([]); return; }
+    const db = fs.getFirestore();
+    const convRef = fs.doc(db, 'support_conversations', selectedId);
+    const q = fs.query(fs.collection(convRef, 'messages'), fs.orderBy('timestamp', 'asc'));
+    const unsub = fs.onSnapshot(q, snap => {
+      setMessages(snap.docs.map(d => ({
+        id: d.id, ...d.data(),
+        timestamp: d.data().timestamp?.toDate?.() ?? new Date(),
+      })));
+      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+    });
+    fs.updateDoc(convRef, { isReadBySupport: true }).catch(() => {});
     return unsub;
   }, [selectedId]);
 
   const claimConversation = async convId => {
-    if (!firestore) return;
-    const db = firestore();
-    await db.collection('support_conversations').doc(convId).update({
+    if (!fs) return;
+    await fs.updateDoc(fs.doc(fs.getFirestore(), 'support_conversations', convId), {
       assignedToId: user.id,
       assignedToName: user.name,
     });
   };
 
   const send = async () => {
-    if (!text.trim() || !selectedId || !firestore) return;
+    if (!text.trim() || !selectedId || !fs) return;
     const conv = conversations.find(c => c.id === selectedId);
     if (!conv) return;
     // Support staff can only reply if assigned to them or unassigned
@@ -70,18 +68,19 @@ const SupportDashboardScreen = () => {
 
     const content = text.trim();
     setText('');
-    const db = firestore();
-    await db.collection('support_conversations').doc(selectedId).collection('messages').add({
+    const db = fs.getFirestore();
+    const convRef = fs.doc(db, 'support_conversations', selectedId);
+    await fs.addDoc(fs.collection(convRef, 'messages'), {
       senderId: user.id, senderName: user.name, senderRole: 'support-staff',
-      content, timestamp: firestore.FieldValue.serverTimestamp(),
+      content, timestamp: fs.serverTimestamp(),
     });
-    await db.collection('support_conversations').doc(selectedId).update({
-      lastMessage: content, lastMessageAt: firestore.FieldValue.serverTimestamp(),
+    await fs.updateDoc(convRef, {
+      lastMessage: content, lastMessageAt: fs.serverTimestamp(),
       isReadByCustomer: false, isReadBySupport: true,
     });
   };
 
-  if (!firestore) return (
+  if (!fs) return (
     <View style={styles.center}><Text style={styles.infoText}>Requires @react-native-firebase/firestore</Text></View>
   );
 

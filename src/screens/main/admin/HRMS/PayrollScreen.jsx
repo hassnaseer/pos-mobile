@@ -40,9 +40,10 @@ const SlipsModal = ({ runId, runLabel, onClose, fmt }) => {
                     <Text style={styles.slipName}>{s.employee?.name ?? s.employeeName ?? '—'}</Text>
                     <Text style={styles.slipSub}>
                       Base: {fmt(s.baseSalary ?? 0)}  ·  Claims: {fmt(s.claimsTotal ?? 0)}
+                      {s.transportDeduction > 0 ? `  ·  Transport: -${fmt(s.transportDeduction)}` : ''}
                     </Text>
                   </View>
-                  <Text style={styles.slipNet}>{fmt(s.netSalary ?? 0)}</Text>
+                  <Text style={styles.slipNet}>{fmt(s.netPay ?? 0)}</Text>
                 </View>
               ))}
             </ScrollView>
@@ -55,6 +56,8 @@ const SlipsModal = ({ runId, runLabel, onClose, fmt }) => {
 
 // ─── Run Payroll modal ───────────────────────────────────────────────────────
 const RunPayrollModal = ({ visible, onClose }) => {
+  const perms = usePermissions();
+  const canManageTransport = perms.can(PERMISSIONS.MANAGE_TRANSPORT);
   const { data: rawStaff = [] } = useStaff();
   const { mutateAsync: runPayroll, isPending } = useRunPayroll();
   const staffList = Array.isArray(rawStaff) ? rawStaff : (rawStaff?.data ?? []);
@@ -63,8 +66,12 @@ const RunPayrollModal = ({ visible, onClose }) => {
     month: String(new Date().getMonth() + 1),
     year:  String(CURRENT_YEAR),
     employeeId: '',
+    transportDeduction: '',
   });
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
+
+  const selectedEmployee = staffList.find(s => s.id === form.employeeId);
+  const selectedIsBlocked = selectedEmployee?.employeeType === 'training_nesting';
 
   const handleRun = async () => {
     try {
@@ -72,6 +79,7 @@ const RunPayrollModal = ({ visible, onClose }) => {
         month:      Number(form.month),
         year:       Number(form.year),
         employeeId: form.employeeId || undefined,
+        transportDeduction: form.employeeId && form.transportDeduction ? Number(form.transportDeduction) : undefined,
       });
       Alert.alert('Success', 'Payroll processed successfully');
       onClose();
@@ -148,11 +156,25 @@ const RunPayrollModal = ({ visible, onClose }) => {
                 <TouchableOpacity style={styles.pickerOption} onPress={() => { set('employeeId')(''); setOpen(false); }}>
                   <Text style={styles.pickerText}>All Employees</Text>
                 </TouchableOpacity>
-                {staffList.map(s => (
-                  <TouchableOpacity key={s.id} style={styles.pickerOption} onPress={() => { set('employeeId')(s.id); setOpen(false); }}>
-                    <Text style={[styles.pickerText, form.employeeId === s.id && { color: colors.primary, fontFamily: 'Outfit-SemiBold' }]}>{s.name ?? s.fullName}</Text>
-                  </TouchableOpacity>
-                ))}
+                {staffList.map(s => {
+                  const blocked = s.employeeType === 'training_nesting';
+                  return (
+                    <TouchableOpacity
+                      key={s.id}
+                      style={styles.pickerOption}
+                      disabled={blocked}
+                      onPress={() => { set('employeeId')(s.id); setOpen(false); }}
+                    >
+                      <Text style={[
+                        styles.pickerText,
+                        form.employeeId === s.id && { color: colors.primary, fontFamily: 'Outfit-SemiBold' },
+                        blocked && { color: '#D0D5DD' },
+                      ]}>
+                        {s.name ?? s.fullName}{blocked ? ' (Training & Nesting)' : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </View>
           </TouchableOpacity>
@@ -173,11 +195,28 @@ const RunPayrollModal = ({ visible, onClose }) => {
           <MonthPicker />
           <YearPicker />
           <StaffPicker />
+          {selectedIsBlocked && (
+            <Text style={styles.blockedText}>Payroll can't be run for employees in Training & Nesting status.</Text>
+          )}
+          {!!form.employeeId && !selectedIsBlocked && canManageTransport && (
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Transportation Deduction (optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                value={form.transportDeduction}
+                onChangeText={set('transportDeduction')}
+                placeholder="Leave blank if not applicable"
+                placeholderTextColor="#999"
+                keyboardType="decimal-pad"
+              />
+              <Text style={styles.runDesc}>The employee's half of the company pick-and-drop transport cost for this period.</Text>
+            </View>
+          )}
           <View style={styles.modalActions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleRun} disabled={isPending}>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleRun} disabled={isPending || selectedIsBlocked}>
               {isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveText}>Run Payroll</Text>}
             </TouchableOpacity>
           </View>
@@ -298,6 +337,8 @@ const styles = StyleSheet.create({
   runDesc:     { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6B7280', marginBottom: 16 },
   field:       { marginBottom: 14 },
   fieldLabel:  { fontSize: 13, fontFamily: 'Outfit-Medium', color: '#374151', marginBottom: 5 },
+  textInput:   { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111' },
+  blockedText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#DC2626', marginBottom: 14 },
   selectBtn:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
   selectText:  { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111' },
   chevron:     { fontSize: 12, color: '#6B7280' },

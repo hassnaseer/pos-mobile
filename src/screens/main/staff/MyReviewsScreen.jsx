@@ -4,6 +4,11 @@ import { useMyReviews } from '../../../services/api/posApi';
 import colors from '../../../theme/colors';
 
 const RATING_COLOR = { 1: '#EF4444', 2: '#F97316', 3: '#F59E0B', 4: '#10B981', 5: '#059669' };
+const STATUS_STYLE = {
+  draft:        { bg: '#f3f4f6', text: '#4b5563', label: 'Draft' },
+  submitted:    { bg: '#dbeafe', text: '#1d4ed8', label: 'Submitted' },
+  acknowledged: { bg: '#dcfce7', text: '#15803d', label: 'Acknowledged' },
+};
 
 const StarRating = ({ rating }) => {
   const r = Number(rating) || 0;
@@ -30,9 +35,16 @@ const MyReviewsScreen = () => {
           <View style={styles.row}>
             <View style={styles.header}>
               <View style={styles.headerLeft}>
-                <Text style={styles.rowPeriod}>{item.period ?? item.reviewPeriod ?? 'Performance Review'}</Text>
-                {item.reviewedAt && (
-                  <Text style={styles.rowMeta}>{new Date(item.reviewedAt).toLocaleDateString()}</Text>
+                <Text style={styles.rowPeriod}>Performance Review {item.reviewYear ?? ''}</Text>
+                {item.createdAt && (
+                  <Text style={styles.rowMeta}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                )}
+                {STATUS_STYLE[item.status] && (
+                  <View style={[styles.statusBadge, { backgroundColor: STATUS_STYLE[item.status].bg }]}>
+                    <Text style={[styles.statusBadgeText, { color: STATUS_STYLE[item.status].text }]}>
+                      {STATUS_STYLE[item.status].label}
+                    </Text>
+                  </View>
                 )}
               </View>
               <View style={[styles.ratingBadge, { backgroundColor: (RATING_COLOR[Math.round(item.rating)] ?? '#9CA3AF') + '20' }]}>
@@ -45,8 +57,11 @@ const MyReviewsScreen = () => {
             {item.comments ? (
               <Text style={styles.comments}>{item.comments}</Text>
             ) : null}
-            {item.reviewerName ? (
-              <Text style={styles.reviewer}>Reviewed by: {item.reviewerName}</Text>
+            {item.goals ? (
+              <Text style={styles.comments}>Goals: {item.goals}</Text>
+            ) : null}
+            {item.reviewedBy?.name ? (
+              <Text style={styles.reviewer}>Reviewed by: {item.reviewedBy.name}</Text>
             ) : null}
           </View>
         )}
@@ -64,6 +79,8 @@ const styles = StyleSheet.create({
   headerLeft:  { flex: 1 },
   rowPeriod:   { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: '#111' },
   rowMeta:     { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9CA3AF', marginTop: 2 },
+  statusBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, marginTop: 6 },
+  statusBadgeText: { fontSize: 10, fontFamily: 'Outfit-SemiBold' },
   ratingBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
   ratingNum:   { fontSize: 15, fontFamily: 'Outfit-Bold' },
   stars:       { flexDirection: 'row', gap: 2, marginBottom: 10 },

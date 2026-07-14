@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useOrder } from '../../../../services/api/posApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
@@ -14,21 +14,24 @@ const Row = ({ label, value }) => (
 const OrderDetailScreen = ({ route }) => {
   const { order: passedOrder } = route.params ?? {};
   const { fmt } = useCurrency();
-  const { data: fetched } = useOrder(passedOrder?.id);
+  const { data: fetched, isFetching, refetch } = useOrder(passedOrder?.id);
   const order = fetched ?? passedOrder;
 
   if (!order) return null;
 
-  const lines = order.lines ?? order.saleOrderLines ?? [];
-  const taxes = order.taxesJson ? (typeof order.taxesJson === 'string' ? JSON.parse(order.taxesJson) : order.taxesJson) : [];
+  const lines = order.lines ?? [];
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+    >
       <View style={styles.card}>
         <Text style={styles.orderNum}>{order.orderNumber}</Text>
         <Row label="Status" value={order.status} />
         <Row label="Payment" value={order.paymentMethod} />
-        <Row label="Date" value={order.createdAt ? new Date(order.createdAt).toLocaleString() : ''} />
+        <Row label="Date" value={order.placedAt ? new Date(order.placedAt).toLocaleString() : ''} />
         {order.customer && <Row label="Customer" value={order.customer.name} />}
       </View>
 
@@ -48,9 +51,6 @@ const OrderDetailScreen = ({ route }) => {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Summary</Text>
         <Row label="Subtotal" value={fmt(order.subtotal)} />
-        {taxes.map((t, i) => (
-          <Row key={i} label={`${t.name} (${t.percentage}%)`} value={fmt(t.amount)} />
-        ))}
         <Row label="Tax Total" value={fmt(order.taxAmount)} />
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>

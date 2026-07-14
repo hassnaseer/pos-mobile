@@ -40,7 +40,7 @@ const AppointmentTypesScreen = () => {
       const payload = { ...form, duration: form.duration ? parseInt(form.duration) : undefined };
       editing ? await update({ id: editing.id, ...payload }) : await create(payload);
       setShowModal(false);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Save failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Save failed'); }
   };
 
   const handleDelete = t => Alert.alert('Delete Type', `Delete "${t.name}"?`, [

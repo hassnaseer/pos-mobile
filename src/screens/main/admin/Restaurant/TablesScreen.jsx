@@ -85,6 +85,9 @@ const TablesScreen = () => {
   ]);
 
   const isSaving = creating || updating;
+  const availableCount = tables.filter(t => t.status === 'available').length;
+  const occupiedCount = tables.filter(t => t.status === 'occupied').length;
+  const reservedCount = tables.filter(t => t.status === 'reserved').length;
 
   return (
     <View style={styles.root}>
@@ -93,6 +96,12 @@ const TablesScreen = () => {
         <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
           <Text style={styles.addBtnText}>+ Add</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.summaryRow}>
+        <View style={[styles.summaryCard, { backgroundColor: '#f0fdf4' }]}><Text style={styles.summaryLabel}>Available</Text><Text style={[styles.summaryValue, { color: '#15803d' }]}>{availableCount}</Text></View>
+        <View style={[styles.summaryCard, { backgroundColor: '#fef2f2' }]}><Text style={styles.summaryLabel}>Occupied</Text><Text style={[styles.summaryValue, { color: '#b91c1c' }]}>{occupiedCount}</Text></View>
+        <View style={[styles.summaryCard, { backgroundColor: '#fefce8' }]}><Text style={styles.summaryLabel}>Reserved</Text><Text style={[styles.summaryValue, { color: '#a16207' }]}>{reservedCount}</Text></View>
       </View>
 
       <FlatList
@@ -167,6 +176,10 @@ const styles = StyleSheet.create({
   heading: { fontSize: 18, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 14 },
+  summaryRow: { flexDirection: 'row', gap: 8, padding: 12 },
+  summaryCard: { flex: 1, borderRadius: 10, padding: 10, alignItems: 'center' },
+  summaryLabel: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280' },
+  summaryValue: { fontSize: 18, fontFamily: 'Outfit-Bold', marginTop: 2 },
   tableCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 10, alignItems: 'center', position: 'relative' },
   tableNum: { fontSize: 16, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginBottom: 4 },
   tableCap: { fontSize: 13, fontFamily: 'Outfit-Regular', color: colors.secondary, marginBottom: 10 },

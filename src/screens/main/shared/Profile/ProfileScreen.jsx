@@ -28,7 +28,7 @@ const ProfileScreen = () => {
   const { mutateAsync: changePassword, isPending: changingPw } = useChangePassword();
 
   const [tab, setTab] = useState('profile');
-  const [form, setForm] = useState({ name: '', phoneNumber: '', address: '', bio: '' });
+  const [form, setForm] = useState({ name: '', phoneNumber: '', address: '', bio: '', emergencyContact: '' });
   const [requireOtp, setRequireOtp] = useState(false);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
@@ -39,6 +39,7 @@ const ProfileScreen = () => {
         phoneNumber: profile.phoneNumber ?? '',
         address: profile.address ?? '',
         bio: profile.bio ?? '',
+        emergencyContact: profile.emergencyContact ?? '',
       });
       setRequireOtp(profile.requireOtpOnLogin ?? false);
     }
@@ -118,6 +119,30 @@ const ProfileScreen = () => {
             <Field label="Address" value={form.address} onChangeText={set('address')} placeholder="Your address" />
             <Field label="Bio" value={form.bio} onChangeText={set('bio')} placeholder="Tell us about yourself" />
 
+            {/* Employment details — read-only, admin-managed via HRMS Profile */}
+            {(profile?.designation || profile?.department || profile?.employeeId || profile?.shiftStartTime || profile?.reportsTo) && (
+              <View style={styles.hrmsBlock}>
+                <Text style={styles.hrmsBlockTitle}>Employment Details</Text>
+                {profile?.designation && (
+                  <View style={styles.hrmsRow}><Text style={styles.hrmsRowLabel}>Designation</Text><Text style={styles.hrmsRowValue}>{profile.designation}</Text></View>
+                )}
+                {profile?.department?.name && (
+                  <View style={styles.hrmsRow}><Text style={styles.hrmsRowLabel}>Department</Text><Text style={styles.hrmsRowValue}>{profile.department.name}</Text></View>
+                )}
+                {profile?.employeeId && (
+                  <View style={styles.hrmsRow}><Text style={styles.hrmsRowLabel}>Employee ID</Text><Text style={styles.hrmsRowValue}>{profile.employeeId}</Text></View>
+                )}
+                {(profile?.shiftStartTime || profile?.shiftEndTime) && (
+                  <View style={styles.hrmsRow}><Text style={styles.hrmsRowLabel}>Shift Timing</Text><Text style={styles.hrmsRowValue}>{profile.shiftStartTime ?? '—'} – {profile.shiftEndTime ?? '—'}</Text></View>
+                )}
+                {profile?.reportsTo?.fullName && (
+                  <View style={styles.hrmsRow}><Text style={styles.hrmsRowLabel}>Reports To</Text><Text style={styles.hrmsRowValue}>{profile.reportsTo.fullName}</Text></View>
+                )}
+              </View>
+            )}
+
+            <Field label="Emergency Contact" value={form.emergencyContact} onChangeText={set('emergencyContact')} placeholder="Name, relation, phone number" />
+
             {/* OTP toggle */}
             <View style={styles.otpToggleRow}>
               <View style={styles.otpToggleInfo}>
@@ -185,6 +210,11 @@ const styles = StyleSheet.create({
   otpToggleInfo:    { flex: 1, marginRight: 12 },
   otpToggleLabel:   { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
   otpToggleDesc:    { fontSize: 12, fontFamily: 'Outfit-Regular', color: colors.secondary, marginTop: 2 },
+  hrmsBlock: { backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB' },
+  hrmsBlockTitle: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  hrmsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderTopWidth: 1, borderColor: '#F3F4F6' },
+  hrmsRowLabel: { fontSize: 13, fontFamily: 'Outfit-Regular', color: colors.secondary },
+  hrmsRowValue: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
 });
 
 export default ProfileScreen;

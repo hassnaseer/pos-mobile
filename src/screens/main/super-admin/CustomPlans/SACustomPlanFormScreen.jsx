@@ -1,23 +1,42 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import {
-  useCreateSACustomPlan, useSABusinesses, useSAPermissions,
+  useCreateSACustomPlan, useUpdateSACustomPlan, useSABusinesses, useSAPermissions,
 } from '../../../../services/api/posApi';
+import { useAuth } from '../../../../context/AuthContext';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+
+let fs;
+try { fs = require('@react-native-firebase/firestore'); } catch { fs = null; }
 
 const CYCLES = ['monthly', 'quarterly', 'yearly', 'custom'];
 
 const SACustomPlanFormScreen = ({ route, navigation }) => {
-  const { preBusinessId } = route.params ?? {};
+  const { preBusinessId, presetBusinessName, conversationId, editing } = route.params ?? {};
+  const { user } = useAuth();
+  const isEditing = !!editing;
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => editing ? {
+    businessId:      String(editing.businessId),
+    name:            editing.name ?? '',
+    price:           String(editing.price ?? ''),
+    billingCycle:    editing.billingCycle ?? 'monthly',
+    customEndDate:   editing.customEndDate ? editing.customEndDate.slice(0, 10) : '',
+    users:           String(editing.limits?.users ?? 0),
+    branches:        String(editing.limits?.branches ?? 1),
+    invoicesPerMonth:String(editing.limits?.invoicesPerMonth ?? 0),
+    notes:           editing.notes ?? '',
+    permissionIds:   (editing.permissions ?? []).map(String),
+  } : {
     businessId:      preBusinessId ? String(preBusinessId) : '',
     name:            '',
     price:           '',
     billingCycle:    'monthly',
+    customEndDate:   '',
     users:           '0',
     branches:        '1',
     invoicesPerMonth:'0',
@@ -25,16 +44,30 @@ const SACustomPlanFormScreen = ({ route, navigation }) => {
     permissionIds:   [],
   });
   const [bizSearch, setBizSearch]     = useState('');
-  const [bizSelected, setBizSelected] = useState(null);
+  const [bizSelected, setBizSelected] = useState(() => editing
+    ? { id: editing.businessId, name: editing.businessName ?? 'Business' }
+    : null);
   const [bizOpen, setBizOpen]         = useState(false);
   const [saving, setSaving]         = useState(false);
+  const autoMatchedRef = useRef(false);
 
   const { data: bizData } = useSABusinesses({ limit: 100 });
   const { data: rawPerms = [] } = useSAPermissions();
-  const businesses = bizData?.data ?? [];
+  const businesses = useMemo(() => bizData?.data ?? [], [bizData]);
   const perms = Array.isArray(rawPerms) ? rawPerms : (rawPerms?.data ?? []);
 
+  useEffect(() => {
+    if (isEditing || autoMatchedRef.current || !presetBusinessName || businesses.length === 0) return;
+    const match = businesses.find(b => (b.name ?? '').toLowerCase() === presetBusinessName.toLowerCase());
+    if (match) {
+      autoMatchedRef.current = true;
+      setBizSelected(match);
+      setForm(f => ({ ...f, businessId: String(match.id) }));
+    }
+  }, [businesses, presetBusinessName, isEditing]);
+
   const { mutateAsync: createPlan } = useCreateSACustomPlan();
+  const { mutateAsync: updatePlan } = useUpdateSACustomPlan();
 
   const set = patch => setForm(f => ({ ...f, ...patch }));
 
@@ -56,22 +89,43 @@ const SACustomPlanFormScreen = ({ route, navigation }) => {
     if (!form.price)        { Alert.alert('Error', 'Price is required'); return; }
     setSaving(true);
     try {
-      await createPlan({
+      const payload = {
         businessId:   String(form.businessId),
         name:         form.name.trim(),
         price:        parseFloat(form.price),
         billingCycle: form.billingCycle,
+        customEndDate: form.billingCycle === 'custom' ? (form.customEndDate || undefined) : undefined,
         limits: {
-          users:           parseInt(form.users) || 0,
-          branches:        parseInt(form.branches) || 1,
-          invoicesPerMonth:parseInt(form.invoicesPerMonth) || 0,
+          users:           parseInt(form.users, 10) || 0,
+          branches:        parseInt(form.branches, 10) || 1,
+          invoicesPerMonth:parseInt(form.invoicesPerMonth, 10) || 0,
         },
         permissions: form.permissionIds,
         modules:     [],
         notes:       form.notes || undefined,
-      });
+      };
+      if (isEditing) {
+        await updatePlan({ id: editing.id, ...payload });
+      } else {
+        await createPlan(payload);
+        if (conversationId && fs) {
+          try {
+            const db = fs.getFirestore();
+            const msg = `📦 A custom plan proposal **"${form.name.trim()}"** has been prepared for your business. Please visit your Billing page to review the details and activate it.`;
+            const convRef = fs.doc(db, 'support_conversations', conversationId);
+            await fs.addDoc(fs.collection(convRef, 'messages'), {
+              senderId: user?.id, senderName: user?.name, senderRole: 'super-admin',
+              content: msg, timestamp: fs.serverTimestamp(),
+            });
+            await fs.updateDoc(convRef, {
+              lastMessage: msg, lastMessageAt: fs.serverTimestamp(),
+              isReadByCustomer: false, isReadBySupport: true,
+            });
+          } catch { /* message post is best-effort — plan was already created */ }
+        }
+      }
       navigation.goBack();
-    } catch { Alert.alert('Error', 'Failed to create plan'); }
+    } catch { Alert.alert('Error', isEditing ? 'Failed to update plan' : 'Failed to create plan'); }
     finally { setSaving(false); }
   };
 
@@ -92,9 +146,11 @@ const SACustomPlanFormScreen = ({ route, navigation }) => {
           {bizSelected ? (
             <View style={styles.selectedBiz}>
               <Text style={styles.selectedBizText}>{bizSelected.name}</Text>
-              <TouchableOpacity onPress={() => { setBizSelected(null); set({ businessId: '' }); setBizSearch(''); setBizOpen(false); }}>
-                <Text style={styles.clearBiz}>✕</Text>
-              </TouchableOpacity>
+              {!isEditing && (
+                <TouchableOpacity onPress={() => { setBizSelected(null); set({ businessId: '' }); setBizSearch(''); setBizOpen(false); }}>
+                  <Text style={styles.clearBiz}>✕</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <TouchableOpacity style={styles.bizDropdownBtn} onPress={() => setBizOpen(v => !v)}>
@@ -154,6 +210,17 @@ const SACustomPlanFormScreen = ({ route, navigation }) => {
               );
             })}
           </View>
+          {form.billingCycle === 'custom' && (
+            <View style={{ marginTop: 10 }}>
+              <Text style={styles.limitLabel}>End Date</Text>
+              <DatePicker
+                value={form.customEndDate}
+                onDateChange={v => set({ customEndDate: v })}
+                placeholder="Select end date"
+                minimumDate={new Date()}
+              />
+            </View>
+          )}
         </View>
 
         {/* Limits */}
@@ -210,7 +277,7 @@ const SACustomPlanFormScreen = ({ route, navigation }) => {
           </TouchableOpacity>
           <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleCreate} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.saveText}>Create Plan</Text>}
+              : <Text style={styles.saveText}>{isEditing ? 'Update Plan' : 'Create Plan'}</Text>}
           </TouchableOpacity>
         </View>
 

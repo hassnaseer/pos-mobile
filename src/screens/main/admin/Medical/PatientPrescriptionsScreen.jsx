@@ -6,6 +6,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
@@ -170,11 +171,9 @@ const PatientPrescriptionsScreen = () => {
               <Text style={s.label}>Diagnosis *</Text>
               <TextInput style={s.input} value={form.diagnosis} onChangeText={setField('diagnosis')} placeholder="e.g. Upper respiratory infection" placeholderTextColor="#999" />
 
-              <Text style={s.label}>Prescribed Date</Text>
-              <TextInput style={s.input} value={form.prescribedDate} onChangeText={setField('prescribedDate')} placeholder="YYYY-MM-DD" placeholderTextColor="#999" />
+              <DatePicker label="Prescribed Date" value={form.prescribedDate} onDateChange={setField('prescribedDate')} placeholder="Select prescribed date" />
 
-              <Text style={s.label}>Next Visit Date</Text>
-              <TextInput style={s.input} value={form.nextVisitDate} onChangeText={setField('nextVisitDate')} placeholder="YYYY-MM-DD (optional)" placeholderTextColor="#999" />
+              <DatePicker label="Next Visit Date" value={form.nextVisitDate} onDateChange={setField('nextVisitDate')} placeholder="Optional" />
 
               <Text style={s.label}>Notes</Text>
               <TextInput style={[s.input, { height: 70, textAlignVertical: 'top' }]} value={form.notes} onChangeText={setField('notes')} placeholder="Additional notes..." placeholderTextColor="#999" multiline />

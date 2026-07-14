@@ -45,6 +45,9 @@ export const PERMISSIONS = {
   // ── Integrations ─────────────────────────────────────────────────────────────
   MANAGE_ECOMMERCE:       'manage_ecommerce_integrations',
 
+  // ── Invoices ─────────────────────────────────────────────────────────────────
+  MANAGE_INVOICES:        'manage_invoices',
+
   // ── HRMS ─────────────────────────────────────────────────────────────────────
   MANAGE_ATTENDANCE:      'manage_attendance',
   MANAGE_LEAVE:           'manage_leave',
@@ -57,6 +60,8 @@ export const PERMISSIONS = {
   MANAGE_INTERNAL_JOBS:   'manage_internal_jobs',
   MANAGE_DOCUMENTS:       'manage_documents',
   MANAGE_TRAININGS:       'manage_trainings',
+  INTERNAL_CHAT:          'internal_chat',
+  INTERNAL_CHAT_GROUPS:   'internal_chat_groups',
 
   // ── Social Media ─────────────────────────────────────────────────────────────
   // Each platform has its own permission code (matches web frontend exactly)
@@ -75,6 +80,10 @@ export const PERMISSIONS = {
   // ── Devices ──────────────────────────────────────────────────────────────────
   DEVICE_ATTENDANCE:      'device_attendance',
 
+  // ── Add-ons ──────────────────────────────────────────────────────────────────
+  ACCESS_ADVANCED_ANALYTICS: 'access_advanced_analytics',
+  ACCESS_MULTI_BRANCH_VIEW:  'access_multi_branch_view',
+
   // ── Medical extras ───────────────────────────────────────────────────────────
   MANAGE_PRESCRIPTIONS:   'manage_prescriptions',
 
@@ -83,7 +92,18 @@ export const PERMISSIONS = {
   MANAGE_SUPPLIER_BILLS:      'manage_supplier_bills',
   MANAGE_PAYMENT_ACCOUNTS:    'manage_payment_accounts',
   MANAGE_PROJECTS:            'manage_projects',
+  MANAGE_KANBAN:              'manage_kanban',
+  MANAGE_CLIENTS:             'manage_clients',
+  MANAGE_MARKETPLACES:        'manage_marketplaces',
   VIEW_FINANCE_REPORTS:       'view_finance_reports',
+
+  // ── Delivery ──────────────────────────────────────────────────────────────────
+  RIDER_ACCESS:               'rider_access',
+  HANDLE_DELIVERIES:          'handle_deliveries',
+
+  // ── HRMS extras ──────────────────────────────────────────────────────────────
+  MANAGE_KPI_TARGETS:         'manage_kpi_targets',
+  MANAGE_TRANSPORT:           'manage_transport',
 
   // ── Snooker ───────────────────────────────────────────────────────────────────
   MANAGE_SNOOKER_SESSIONS:    'manage_snooker_sessions',
@@ -93,7 +113,11 @@ export const PERMISSIONS = {
 export const isSuperAdmin    = role => role === ROLES.SUPER_ADMIN;
 export const isAdmin         = role => role === ROLES.ADMIN;
 export const isSupportStaff  = role => role === ROLES.SUPPORT_STAFF;
-export const isStaff         = role => role === ROLES.STAFF;
+// The backend `role` field is a free-form role id (staff/cashier/manager/technician/
+// rider/custom HRMS roles/etc, not just the literal "staff") — matches web's
+// sidebarItems.ts exclusion-based isStaff check, not an inclusion check against
+// a single hardcoded value.
+export const isStaff         = role => role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN && role !== ROLES.SUPPORT_STAFF;
 export const isDoctor        = role => role === ROLES.DOCTOR;
 
 export const isAdminOrSuperAdmin = role =>
@@ -148,4 +172,5 @@ export const HRMS_PERMISSIONS = [
   PERMISSIONS.MANAGE_INTERNAL_JOBS,
   PERMISSIONS.MANAGE_DOCUMENTS,
   PERMISSIONS.MANAGE_TRAININGS,
+  PERMISSIONS.MANAGE_TRANSPORT,
 ];

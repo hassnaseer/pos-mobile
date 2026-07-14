@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, TextInput, Modal, FlatList,
+  ActivityIndicator, Alert, Modal, RefreshControl,
 } from 'react-native';
 import {
   useSABusinessDetail, useSABusinessStats, useSABusinessStaff,
   useSABusinessSubscriptions, useExtendBusinessTrial,
-  useBlockBusiness, useSAResetBusinessPassword,
+  useBlockBusiness,
 } from '../../../../services/api/posApi';
 import { useNavigation } from '@react-navigation/native';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const STATUS_COLORS = { Active: '#22c55e', Trial: '#f59e0b', Expired: '#ef4444', Blocked: '#6b7280' };
@@ -28,14 +29,13 @@ const InfoRow = ({ label, value, valueColor }) => (
 const SABusinessDetailScreen = ({ route }) => {
   const { businessId } = route.params;
   const navigation = useNavigation();
-  const { data: biz, isLoading } = useSABusinessDetail(businessId);
+  const { data: biz, isLoading, isFetching, refetch } = useSABusinessDetail(businessId);
   const { data: stats } = useSABusinessStats(businessId);
   const { data: staffList = [] } = useSABusinessStaff(businessId);
   const { data: subsList = [] } = useSABusinessSubscriptions(businessId);
 
   const { mutate: extendTrial, isPending: extending } = useExtendBusinessTrial();
   const { mutate: blockBusiness, isPending: blocking } = useBlockBusiness();
-  const { mutate: resetPassword, isPending: resetting } = useSAResetBusinessPassword();
 
   const [activeTab, setActiveTab] = useState('Overview');
   const [showExtend, setShowExtend] = useState(false);
@@ -62,10 +62,10 @@ const SABusinessDetailScreen = ({ route }) => {
   ];
 
   const handleExtend = () => {
-    if (!expiryDate.trim()) { Alert.alert('Error', 'Enter a valid date (YYYY-MM-DD)'); return; }
+    if (!expiryDate.trim()) { Alert.alert('Error', 'Please select an expiry date'); return; }
     extendTrial({ id: businessId, expiryDate }, {
       onSuccess: () => { setShowExtend(false); setExpiryDate(''); },
-      onError: () => Alert.alert('Error', 'Failed to extend trial'),
+      onError: (e) => Alert.alert('Error', typeof e === 'string' ? e : 'Failed to extend trial'),
     });
   };
 
@@ -76,18 +76,7 @@ const SABusinessDetailScreen = ({ route }) => {
       {
         text: action, style: isBlocked ? 'default' : 'destructive',
         onPress: () => blockBusiness({ id: businessId, blocked: !isBlocked }, {
-          onError: () => Alert.alert('Error', `Failed to ${action.toLowerCase()} business`),
-        }),
-      },
-    ]);
-  };
-
-  const handleResetPassword = () => {
-    Alert.alert('Reset Password', `Send a password reset to the owner of "${biz.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Reset', onPress: () => resetPassword(businessId, {
-          onError: () => Alert.alert('Error', 'Failed to send reset email'),
+          onError: (e) => Alert.alert('Error', typeof e === 'string' ? e : `Failed to ${action.toLowerCase()} business`),
         }),
       },
     ]);
@@ -163,14 +152,6 @@ const SABusinessDetailScreen = ({ route }) => {
           {blocking ? <ActivityIndicator size="small" color="#fff" />
             : <Text style={styles.actionBtnText}>{isBlocked ? 'Unblock Business' : 'Block Business'}</Text>}
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionBtn, { marginTop: 8, backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.primary }]}
-          onPress={handleResetPassword}
-          disabled={resetting}
-        >
-          {resetting ? <ActivityIndicator size="small" color={colors.primary} />
-            : <Text style={[styles.actionBtnText, { color: colors.primary }]}>Reset Owner Password</Text>}
-        </TouchableOpacity>
       </View>
     </>
   );
@@ -225,7 +206,11 @@ const SABusinessDetailScreen = ({ route }) => {
 
   return (
     <>
-      <ScrollView style={styles.root} contentContainerStyle={styles.body}>
+      <ScrollView
+        style={styles.root}
+        contentContainerStyle={styles.body}
+        refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+      >
         {/* Business Header */}
         <View style={styles.headerCard}>
           <View style={styles.headerRow}>
@@ -295,13 +280,11 @@ const SABusinessDetailScreen = ({ route }) => {
                 <Text style={styles.closeX}>✕</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.modalNote}>Enter new expiry date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
+            <Text style={styles.modalNote}>Select the new expiry date</Text>
+            <DatePicker
               value={expiryDate}
-              onChangeText={setExpiryDate}
-              placeholder="2025-12-31"
-              placeholderTextColor="#999"
+              onDateChange={setExpiryDate}
+              placeholder="Select expiry date"
             />
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowExtend(false); setExpiryDate(''); }}>

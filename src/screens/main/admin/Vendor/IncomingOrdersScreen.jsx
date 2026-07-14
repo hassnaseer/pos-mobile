@@ -1,39 +1,49 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Alert } from 'react-native';
-import { useIncomingOrders, useUpdateIncomingOrder } from '../../../../services/api/posApi';
+import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Alert, Image } from 'react-native';
+import { useIncomingOrders, useUpdateIncomingOrder, useAssignRiderToOrder, useStaffList } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
+import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
+import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import colors from '../../../../theme/colors';
 
-const STATUS_COLOR = { pending: '#F59E0B', confirmed: '#3B82F6', shipped: '#8B5CF6', delivered: '#10B981', cancelled: '#EF4444' };
+const STATUS_COLOR = { pending: '#F59E0B', confirmed: '#3B82F6', shipped: '#8B5CF6', out_for_delivery: '#F97316', delivered: '#10B981', cancelled: '#EF4444' };
+const STATUS_LABEL = { pending: 'Pending', confirmed: 'Confirmed', shipped: 'Shipped', out_for_delivery: 'Out for Delivery', delivered: 'Delivered', cancelled: 'Cancelled' };
+const NEXT_STATUS = { pending: 'confirmed', confirmed: 'shipped', shipped: 'out_for_delivery', out_for_delivery: 'delivered' };
+const NEXT_LABEL = { pending: 'Confirm', confirmed: 'Mark Shipped', shipped: 'Out for Delivery', out_for_delivery: 'Mark Delivered' };
 
-const STEPS = ['pending', 'confirmed', 'shipped', 'delivered'];
+const STEPS = ['pending', 'confirmed', 'shipped', 'out_for_delivery', 'delivered'];
 
 const IncomingOrdersScreen = () => {
   const perms = usePermissions();
   const canAccess = perms.canAccessVendorSeller();
+  const canAssignRider = perms.can(PERMISSIONS.HANDLE_DELIVERIES);
   const { fmt } = useCurrency();
 
   const [expanded, setExpanded] = useState(null);
 
   const { data: raw = [], isLoading, refetch } = useIncomingOrders();
   const { mutateAsync: updateOrder, isPending: updating } = useUpdateIncomingOrder();
+  const { mutateAsync: assignRider, isPending: assigning } = useAssignRiderToOrder();
+  const { data: rawStaff = [] } = useStaffList();
 
   const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const staffList = Array.isArray(rawStaff) ? rawStaff : (rawStaff?.data ?? []);
+  const riders = staffList
+    .filter(s => (s.permissionCodes ?? []).includes(PERMISSIONS.RIDER_ACCESS))
+    .map(s => ({ id: s.id, name: s.fullName ?? s.name }));
 
-  const handleConfirm = async item => {
-    try { await updateOrder({ id: item.id, status: 'confirmed' }); }
-    catch (e) { Alert.alert('Error', e?.message ?? 'Failed'); }
+  const handleAssignRider = async (item, riderId) => {
+    if (!riderId) return;
+    try { await assignRider({ id: item.id, riderId }); }
+    catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed to assign rider'); }
   };
 
-  const handleShip = async item => {
-    try { await updateOrder({ id: item.id, status: 'shipped' }); }
-    catch (e) { Alert.alert('Error', e?.message ?? 'Failed'); }
-  };
-
-  const handleDeliver = async item => {
-    try { await updateOrder({ id: item.id, status: 'delivered' }); }
-    catch (e) { Alert.alert('Error', e?.message ?? 'Failed'); }
+  const handleAdvance = async item => {
+    const next = NEXT_STATUS[item.status];
+    if (!next) return;
+    try { await updateOrder({ id: item.id, status: next }); }
+    catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed'); }
   };
 
   const handleCancel = async item => {
@@ -41,7 +51,7 @@ const IncomingOrdersScreen = () => {
       { text: 'No', style: 'cancel' },
       { text: 'Yes', style: 'destructive', onPress: async () => {
         try { await updateOrder({ id: item.id, status: 'cancelled' }); }
-        catch (e) { Alert.alert('Error', e?.message ?? 'Failed'); }
+        catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed'); }
       }},
     ]);
   };
@@ -75,7 +85,7 @@ const IncomingOrdersScreen = () => {
                   {done && <Text style={styles.progressCheck}>✓</Text>}
                 </View>
                 <Text style={[styles.progressLabel, current && styles.progressLabelCurrent]}>
-                  {step.charAt(0).toUpperCase() + step.slice(1)}
+                  {STATUS_LABEL[step] ?? step}
                 </Text>
               </View>
               {idx < STEPS.length - 1 && (
@@ -115,7 +125,7 @@ const IncomingOrdersScreen = () => {
                 <View style={styles.cardRight}>
                   <Text style={styles.totalText}>{fmt(item.total ?? item.totalAmount ?? 0)}</Text>
                   <View style={[styles.badge, { backgroundColor: (STATUS_COLOR[item.status] ?? '#9CA3AF') + '20' }]}>
-                    <Text style={[styles.badgeText, { color: STATUS_COLOR[item.status] ?? '#9CA3AF' }]}>{item.status ?? 'pending'}</Text>
+                    <Text style={[styles.badgeText, { color: STATUS_COLOR[item.status] ?? '#9CA3AF' }]}>{STATUS_LABEL[item.status] ?? item.status ?? 'Pending'}</Text>
                   </View>
                 </View>
               </View>
@@ -148,21 +158,35 @@ const IncomingOrdersScreen = () => {
                   )}
                   {item.notes && <Text style={styles.notes}>Note: {item.notes}</Text>}
 
+                  {/* Rider assignment */}
+                  {canAssignRider && riders.length > 0 && (item.status === 'confirmed' || item.status === 'shipped') && (
+                    <View style={styles.riderSection}>
+                      <Text style={styles.riderLabel}>🏍 Assign Rider{assigning ? ' (saving…)' : ''}</Text>
+                      <InlinePicker
+                        options={riders}
+                        value={item.assignedUserId ?? ''}
+                        onSelect={riderId => handleAssignRider(item, riderId)}
+                        placeholder="Select a rider..."
+                      />
+                    </View>
+                  )}
+                  {item.assignedUser?.fullName && (
+                    <Text style={styles.riderAssigned}>🏍 Rider: {item.assignedUser.fullName}</Text>
+                  )}
+
+                  {/* Delivery proof */}
+                  {item.status === 'delivered' && item.proofImageUrl && (
+                    <View style={styles.proofSection}>
+                      <Text style={styles.riderLabel}>Delivery Proof</Text>
+                      <Image source={{ uri: item.proofImageUrl }} style={styles.proofImage} />
+                    </View>
+                  )}
+
                   {/* Action buttons */}
                   <View style={styles.actions}>
-                    {item.status === 'pending' && (
-                      <TouchableOpacity style={styles.confirmBtn} onPress={() => handleConfirm(item)} disabled={updating}>
-                        <Text style={styles.confirmText}>Confirm</Text>
-                      </TouchableOpacity>
-                    )}
-                    {item.status === 'confirmed' && (
-                      <TouchableOpacity style={styles.shipBtn} onPress={() => handleShip(item)} disabled={updating}>
-                        <Text style={styles.shipText}>Mark Shipped</Text>
-                      </TouchableOpacity>
-                    )}
-                    {item.status === 'shipped' && (
-                      <TouchableOpacity style={styles.deliverBtn} onPress={() => handleDeliver(item)} disabled={updating}>
-                        <Text style={styles.deliverText}>Mark Delivered</Text>
+                    {NEXT_STATUS[item.status] && (
+                      <TouchableOpacity style={styles.confirmBtn} onPress={() => handleAdvance(item)} disabled={updating}>
+                        <Text style={styles.confirmText}>{NEXT_LABEL[item.status]}</Text>
                       </TouchableOpacity>
                     )}
                     {(item.status === 'pending' || item.status === 'confirmed') && (
@@ -220,6 +244,11 @@ const styles = StyleSheet.create({
   contactSection:     { gap: 4, marginBottom: 8 },
   contactRow:         { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#374151' },
   notes:              { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#9CA3AF', fontStyle: 'italic', marginBottom: 8 },
+  riderSection:       { marginBottom: 10 },
+  riderLabel:         { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#6B7280', marginBottom: 6 },
+  riderAssigned:      { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#374151', marginBottom: 8 },
+  proofSection:       { marginBottom: 10 },
+  proofImage:         { width: 130, height: 130, borderRadius: 10, backgroundColor: '#F3F4F6' },
   actions:            { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 },
   confirmBtn:         { backgroundColor: '#DBEAFE', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 },
   confirmText:        { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#2563EB' },

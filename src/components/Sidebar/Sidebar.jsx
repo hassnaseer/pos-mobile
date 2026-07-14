@@ -34,10 +34,15 @@ import chatIcon      from '../../assets/icons/users-01.png';
 
 const ADMIN_MENU = [
   // ── Core ─────────────────────────────────────────────────────────────────────
-  { id: 'staff-dashboard', title: 'Dashboard', route: 'StaffDashboard', icon: dashIcon, staffOnly: true },
+  // Matches web's hrmsPersonalItem gating exactly (sidebarItems.ts: "/staff" Dashboard
+  // entry) — only shown when the business itself is HRMS-type (has manage_attendance).
+  // A non-HRMS staff member (e.g. this Finance-type business) still lands on
+  // StaffDashboard as their initial route after login; they just get no sidebar link
+  // back to it, same as web.
+  { id: 'staff-dashboard', title: 'Dashboard', route: 'StaffDashboard', icon: dashIcon, staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_ATTENDANCE },
   { id: 'dashboard',  title: 'Dashboard', route: 'Dashboard', icon: dashIcon, adminOnly: true,
     hideFor: [PERMISSIONS.ACCESS_MEDICAL, PERMISSIONS.ACCESS_RESTAURANT, PERMISSIONS.MANAGE_ATTENDANCE] },
-  { id: 'my-biz',     title: 'My Businesses',  route: 'MyBusinesses', icon: suppliersIcon, adminOnly: true, permission: PERMISSIONS.MANAGE_BUSINESSES },
+  { id: 'my-biz',     title: 'My Businesses',  route: 'MyBusinesses', icon: suppliersIcon, permission: PERMISSIONS.MANAGE_BUSINESSES },
   { id: 'pos',        title: 'POS',            route: 'POS',          icon: posIcon,       permission: PERMISSIONS.POS_SALES },
 
   // ── Inventory (expandable group) ──────────────────────────────────────────────
@@ -45,8 +50,8 @@ const ADMIN_MENU = [
     id: 'inventory', title: 'Inventory', icon: productsIcon, isGroup: true,
     subItems: [
       { id: 'products',     title: 'Products',     route: 'Products',    icon: productsIcon, permission: PERMISSIONS.MANAGE_PRODUCTS },
-      { id: 'misc-charges', title: 'Misc Charges', route: 'MiscCharges', icon: productsIcon, permission: PERMISSIONS.MANAGE_MISC,       adminOnly: true },
-      { id: 'categories',   title: 'Categories',   route: 'Categories',  icon: productsIcon, permission: PERMISSIONS.MANAGE_CATEGORIES, adminOnly: true },
+      { id: 'misc-charges', title: 'Misc Charges', route: 'MiscCharges', icon: productsIcon, permission: PERMISSIONS.MANAGE_MISC },
+      { id: 'categories',   title: 'Categories',   route: 'Categories',  icon: productsIcon, permission: PERMISSIONS.MANAGE_CATEGORIES },
     ],
   },
 
@@ -56,11 +61,13 @@ const ADMIN_MENU = [
   { id: 'tickets',   title: 'Tickets',   route: 'Tickets',   icon: ticketsIcon,   permission: PERMISSIONS.CREATE_TICKETS },
 
   // ── Config (admin-only) ───────────────────────────────────────────────────────
-  { id: 'staff', title: 'Staff', route: 'Staff', icon: staffIcon, permission: PERMISSIONS.MANAGE_STAFF, adminOnly: true },
+  { id: 'staff', title: 'Employee', route: 'Staff', icon: staffIcon, permission: PERMISSIONS.MANAGE_STAFF },
 
   // ── Reports & Logs ────────────────────────────────────────────────────────────
   { id: 'reports',       title: 'Reports',       route: 'Reports',      icon: reportsIcon, permission: PERMISSIONS.VIEW_REPORTS },
-  { id: 'activity-logs', title: 'Activity Logs', route: 'ActivityLogs', icon: reportsIcon, permission: PERMISSIONS.VIEW_ACTIVITY_LOGS, adminOnly: true },
+  { id: 'advanced-analytics', title: 'Advanced Analytics', route: 'AdvancedAnalytics', icon: reportsIcon, permission: PERMISSIONS.ACCESS_ADVANCED_ANALYTICS },
+  { id: 'multi-branch-view', title: 'Multi-Branch View', route: 'MultiBranchView', icon: reportsIcon, permission: PERMISSIONS.ACCESS_MULTI_BRANCH_VIEW },
+  { id: 'activity-logs', title: 'Activity Logs', route: 'ActivityLogs', icon: reportsIcon, permission: PERMISSIONS.VIEW_ACTIVITY_LOGS },
 
   // ── Integrations ─────────────────────────────────────────────────────────────
   { id: 'integrations', title: 'Integrations', route: 'Integrations', icon: rolesIcon, permission: PERMISSIONS.MANAGE_ECOMMERCE, adminOnly: true },
@@ -68,42 +75,52 @@ const ADMIN_MENU = [
   // ── Finance (expandable group) ────────────────────────────────────────────────
   {
     id: 'finance', title: 'Finance', icon: reportsIcon, isGroup: true,
-    canShow: p => p.hasAnyFinance(), adminOnly: true,
+    canShow: p => p.hasAnyFinance(),
     subItems: [
+      { id: 'finance-dashboard', title: 'Finance Dashboard', route: 'FinanceDashboard', icon: dashIcon,    permission: PERMISSIONS.MANAGE_BUDGETS },
       { id: 'budgets',          title: 'Budgets',          route: 'Budgets',         icon: reportsIcon,   permission: PERMISSIONS.MANAGE_BUDGETS },
       { id: 'expenses',         title: 'Expenses',         route: 'Expenses',        icon: ordersIcon,    permission: PERMISSIONS.MANAGE_EXPENSES },
+      { id: 'expense-categories', title: 'Expense Categories', route: 'ExpenseCategories', icon: reportsIcon, permission: PERMISSIONS.MANAGE_BUDGETS },
       { id: 'payment-accounts', title: 'Payment Accounts', route: 'PaymentAccounts', icon: suppliersIcon, permission: PERMISSIONS.MANAGE_PAYMENT_ACCOUNTS },
       { id: 'supplier-bills',   title: 'Supplier Bills',   route: 'SupplierBills',   icon: reportsIcon,   permission: PERMISSIONS.MANAGE_SUPPLIER_BILLS },
+      { id: 'finance-reports', title: 'Finance Reports', route: 'FinanceReports', icon: reportsIcon, permission: PERMISSIONS.MANAGE_PROJECTS },
     ],
   },
 
   // ── Projects (expandable group) ───────────────────────────────────────────────
   {
     id: 'projects-group', title: 'Projects', icon: productsIcon, isGroup: true,
-    canShow: p => p.can(PERMISSIONS.MANAGE_PROJECTS), adminOnly: true,
+    canShow: p => p.canAny(PERMISSIONS.MANAGE_PROJECTS, PERMISSIONS.MANAGE_KANBAN, PERMISSIONS.MANAGE_CLIENTS, PERMISSIONS.MANAGE_MARKETPLACES),
     subItems: [
-      { id: 'projects',        title: 'Projects',        route: 'Projects',       icon: productsIcon  },
-      { id: 'project-clients', title: 'Project Clients', route: 'ProjectClients', icon: customersIcon },
+      { id: 'projects',        title: 'Projects',        route: 'Projects',       icon: productsIcon,  permission: PERMISSIONS.MANAGE_PROJECTS },
+      { id: 'project-kanban',  title: 'Board',            route: 'ProjectKanban',  icon: productsIcon,  permission: PERMISSIONS.MANAGE_KANBAN },
+      { id: 'project-clients', title: 'Project Clients', route: 'ProjectClients', icon: customersIcon, permission: PERMISSIONS.MANAGE_CLIENTS },
+      { id: 'project-marketplaces', title: 'Marketplaces', route: 'ProjectMarketplaces', icon: productsIcon, permission: PERMISSIONS.MANAGE_MARKETPLACES },
     ],
   },
 
   // ── HRMS ──────────────────────────────────────────────────────────────────────
-  { id: 'hrms-dash',           title: 'HRMS Dashboard',      route: 'HRMSDashboard',      icon: dashIcon,    canShow: p => p.hasAnyHRMS() },
+  { id: 'hrms-dash',           title: 'HRMS Dashboard',      route: 'HRMSDashboard',      icon: dashIcon,    canShow: p => p.hasAnyHRMS(), adminOnly: true },
   { id: 'fingerprint-devices', title: 'Fingerprint Devices', route: 'FingerprintDevices', icon: staffIcon,   permission: PERMISSIONS.DEVICE_ATTENDANCE, adminOnly: true },
   { id: 'attendance',     title: 'Attendance',    route: 'HRMSAttendance',    icon: ordersIcon,  permission: PERMISSIONS.MANAGE_ATTENDANCE },
   { id: 'hrms-leave',     title: 'Leave',         route: 'HRMSLeave',         icon: ordersIcon,  permission: PERMISSIONS.MANAGE_LEAVE },
   { id: 'hrms-claims',    title: 'Claims',        route: 'HRMSClaims',        icon: reportsIcon, permission: PERMISSIONS.MANAGE_CLAIMS },
   { id: 'hrms-announce',  title: 'Announcements', route: 'HRMSAnnouncements', icon: chatIcon,    permission: PERMISSIONS.MANAGE_ANNOUNCEMENTS },
   { id: 'hrms-payroll',   title: 'Payroll',       route: 'HRMSPayroll',       icon: reportsIcon, permission: PERMISSIONS.MANAGE_PAYROLL },
+  { id: 'hrms-salary-advances', title: 'Salary Advances', route: 'HRMSSalaryAdvances', icon: reportsIcon, permission: PERMISSIONS.MANAGE_PAYROLL },
+  { id: 'hrms-fines',     title: 'Fines',         route: 'HRMSFines',         icon: reportsIcon, permission: PERMISSIONS.MANAGE_PAYROLL },
   { id: 'hrms-tasks',     title: 'Tasks',         route: 'HRMSTasks',         icon: ticketsIcon, permission: PERMISSIONS.MANAGE_TASKS },
   { id: 'hrms-reviews',   title: 'Annual Reviews',route: 'HRMSReviews',       icon: reportsIcon, permission: PERMISSIONS.MANAGE_REVIEWS },
   { id: 'hrms-jobs',      title: 'Job Board',     route: 'HRMSJobBoard',      icon: staffIcon,   permission: PERMISSIONS.MANAGE_INTERNAL_JOBS },
   { id: 'hrms-docs',      title: 'Documents',     route: 'HRMSDocuments',     icon: ordersIcon,  permission: PERMISSIONS.MANAGE_DOCUMENTS },
   { id: 'hrms-trainings', title: 'Trainings',     route: 'HRMSTrainings',     icon: productsIcon,permission: PERMISSIONS.MANAGE_TRAININGS },
+  { id: 'org-chart',      title: 'Org. Chart',    route: 'OrgChart',          icon: staffIcon,   permission: PERMISSIONS.MANAGE_STAFF },
+  { id: 'team-chat',      title: 'Team Chat',     route: 'TeamChat',         icon: chatIcon,    permission: PERMISSIONS.INTERNAL_CHAT },
 
   // ── Vendor / Marketplace ──────────────────────────────────────────────────────
   { id: 'marketplace',     title: 'Marketplace',     route: 'Marketplace',    icon: productsIcon,  permission: PERMISSIONS.ACCESS_VENDOR_BUYER },
   { id: 'vendor-orders',   title: 'My Orders',       route: 'VendorOrders',   icon: ordersIcon,    permission: PERMISSIONS.ACCESS_VENDOR_BUYER },
+  { id: 'vendor-dashboard', title: 'Vendor Dashboard', route: 'VendorDashboard', icon: dashIcon,     permission: PERMISSIONS.ACCESS_VENDOR_SELLER },
   { id: 'vendor-profile',  title: 'Vendor Profile',  route: 'VendorProfile',  icon: suppliersIcon, permission: PERMISSIONS.ACCESS_VENDOR_SELLER },
   { id: 'vendor-listings', title: 'My Listings',     route: 'VendorListings', icon: productsIcon,  permission: PERMISSIONS.ACCESS_VENDOR_SELLER },
   { id: 'incoming-orders', title: 'Incoming Orders', route: 'IncomingOrders', icon: ordersIcon,    permission: PERMISSIONS.ACCESS_VENDOR_SELLER },
@@ -114,7 +131,6 @@ const ADMIN_MENU = [
   { id: 'patients',        title: 'Patients',           route: 'Patients',            icon: customersIcon, permission: PERMISSIONS.ACCESS_MEDICAL },
   { id: 'doctors',         title: 'Doctors',            route: 'Doctors',             icon: staffIcon,     permission: PERMISSIONS.ACCESS_MEDICAL },
   { id: 'appt-types',      title: 'Appointment Types',  route: 'AppointmentTypes',    icon: rolesIcon,     permission: PERMISSIONS.ACCESS_MEDICAL },
-  { id: 'medical-checkin', title: 'Staff Check-in',     route: 'MedicalStaffCheckin', icon: ordersIcon,    permission: PERMISSIONS.MANAGE_ATTENDANCE, adminOnly: true },
   { id: 'medical-reminders', title: 'Reminders',        route: 'MedicalReminders',    icon: ticketsIcon,   permission: PERMISSIONS.ACCESS_MEDICAL },
   { id: 'medical-insurance', title: 'Insurance',        route: 'MedicalInsurance',    icon: reportsIcon,   permission: PERMISSIONS.ACCESS_MEDICAL },
   { id: 'patient-tracking',  title: 'Patient Tracking', route: 'PatientTracking',     icon: customersIcon, permission: PERMISSIONS.ACCESS_MEDICAL },
@@ -140,6 +156,8 @@ const ADMIN_MENU = [
     id: 'snooker', title: 'Snooker', icon: rolesIcon, isGroup: true,
     canShow: p => p.hasAnySnooker(), adminOnly: true,
     subItems: [
+      { id: 'snooker-dashboard', title: 'Snooker Dashboard', route: 'SnookerDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS },
+      { id: 'snooker-sessions',  title: 'Sessions',          route: 'SnookerSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS },
       { id: 'snooker-tables', title: 'Tables',        route: 'SnookerTables',       icon: rolesIcon,    permission: PERMISSIONS.MANAGE_SNOOKER_TABLES },
       { id: 'snooker-types',  title: 'Session Types', route: 'SnookerSessionTypes', icon: productsIcon, permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS },
     ],
@@ -168,6 +186,13 @@ const ADMIN_MENU = [
   { id: 'staff-jobs',     title: 'Job Board',      route: 'StaffJobBoard', icon: staffIcon,    staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_INTERNAL_JOBS },
   { id: 'my-documents',   title: 'My Documents',   route: 'MyDocuments',  icon: ordersIcon,    staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_DOCUMENTS },
   { id: 'my-trainings',   title: 'My Trainings',   route: 'MyTrainings',  icon: productsIcon,  staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_TRAININGS },
+
+  // ── Help ──────────────────────────────────────────────────────────────────────
+  { id: 'learn-hub', title: 'Learn & Guides', route: 'LearnHub', icon: chatIcon, adminOnly: true },
+
+  // ── Rider (Delivery) ──────────────────────────────────────────────────────────
+  { id: 'rider-dashboard',  title: 'My Dashboard',   route: 'RiderDashboard',  icon: dashIcon,   staffOnly: true, permission: PERMISSIONS.RIDER_ACCESS },
+  { id: 'rider-deliveries', title: 'My Deliveries',  route: 'RiderDeliveries', icon: ordersIcon, staffOnly: true, permission: PERMISSIONS.RIDER_ACCESS },
 ];
 
 const SUPER_ADMIN_MENU = [
@@ -219,7 +244,7 @@ const Sidebar = ({ onClose }) => {
     if (userRole === ROLES.SUPER_ADMIN)   return SUPER_ADMIN_MENU;
     if (userRole === ROLES.SUPPORT_STAFF) return SUPPORT_STAFF_MENU;
 
-    const isStaff      = userRole === ROLES.STAFF;
+    const isStaff      = perms.isStaff;
     const isAdmin      = !isStaff;
     const permCodes    = user?.permissionCodes ?? [];
     const bizPermCodes = user?.businessPermissionCodes;

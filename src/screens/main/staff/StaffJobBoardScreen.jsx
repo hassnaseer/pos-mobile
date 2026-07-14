@@ -9,13 +9,16 @@ import colors from '../../../theme/colors';
 const StaffJobBoardScreen = () => {
   const [selected, setSelected]   = useState(null); // job for detail modal
   const [coverLetter, setCoverLetter] = useState('');
+  const [appliedIds, setAppliedIds] = useState(new Set());
 
   const { data: raw = [], isLoading, refetch } = useStaffJobBoard();
   const { mutateAsync: applyJob, isPending: applying } = useApplyToJob();
 
-  const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const allItems = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const items = allItems.filter(j => j.status === 'open');
 
   const openJob = job => {
+    if (appliedIds.has(job.id)) return;
     setSelected(job);
     setCoverLetter('');
   };
@@ -24,18 +27,14 @@ const StaffJobBoardScreen = () => {
     if (!selected) return;
     try {
       await applyJob({ jobId: selected.id, coverLetter });
+      setAppliedIds(prev => new Set(prev).add(selected.id));
       Alert.alert('Applied!', 'Your application has been submitted.');
       setSelected(null);
     } catch (e) {
-      Alert.alert('Error', e?.message ?? 'Application failed');
+      const msg = typeof e === 'string' ? e : 'Application failed';
+      if (/already applied/i.test(msg)) setAppliedIds(prev => new Set(prev).add(selected.id));
+      Alert.alert('Error', msg);
     }
-  };
-
-  const typeColor = t => {
-    if (t === 'full_time') return '#3B82F6';
-    if (t === 'part_time') return '#8B5CF6';
-    if (t === 'contract')  return '#F59E0B';
-    return '#9CA3AF';
   };
 
   return (
@@ -44,36 +43,36 @@ const StaffJobBoardScreen = () => {
         data={items}
         keyExtractor={i => String(i.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row} onPress={() => openJob(item)} activeOpacity={0.75}>
-            <View style={styles.rowInfo}>
-              <Text style={styles.rowTitle}>{item.title}</Text>
-              {item.department && (
-                <Text style={styles.rowDept}>{item.department}</Text>
-              )}
-              {item.description ? (
-                <Text style={styles.rowDesc} numberOfLines={2}>{item.description}</Text>
-              ) : null}
-              <View style={styles.metaRow}>
-                {item.jobType && (
-                  <View style={[styles.typeBadge, { backgroundColor: typeColor(item.jobType) + '20' }]}>
-                    <Text style={[styles.typeText, { color: typeColor(item.jobType) }]}>
-                      {item.jobType.replace('_', ' ')}
-                    </Text>
-                  </View>
+        renderItem={({ item }) => {
+          const applied = appliedIds.has(item.id);
+          return (
+            <TouchableOpacity style={styles.row} onPress={() => openJob(item)} activeOpacity={applied ? 1 : 0.75} disabled={applied}>
+              <View style={styles.rowInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={styles.rowTitle}>{item.title}</Text>
+                  {applied && (
+                    <View style={styles.appliedBadge}>
+                      <Text style={styles.appliedBadgeText}>Applied</Text>
+                    </View>
+                  )}
+                </View>
+                {item.department && (
+                  <Text style={styles.rowDept}>{item.department}</Text>
                 )}
-                {item.salary && (
-                  <Text style={styles.rowMeta}>Rs {Number(item.salary).toLocaleString()}</Text>
-                )}
-                {item.deadline && (
-                  <Text style={styles.rowMeta}>Deadline: {new Date(item.deadline).toLocaleDateString()}</Text>
-                )}
+                {item.description ? (
+                  <Text style={styles.rowDesc} numberOfLines={2}>{item.description}</Text>
+                ) : null}
+                <View style={styles.metaRow}>
+                  {item.deadline && (
+                    <Text style={styles.rowMeta}>Deadline: {new Date(item.deadline).toLocaleDateString()}</Text>
+                  )}
+                </View>
               </View>
-            </View>
-            <Text style={styles.applyArrow}>›</Text>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={!isLoading && <Text style={styles.empty}>No open positions right now.</Text>}
+              {!applied && <Text style={styles.applyArrow}>›</Text>}
+            </TouchableOpacity>
+          );
+        }}
+        ListEmptyComponent={!isLoading && <Text style={styles.empty}>{allItems.length > 0 ? 'No open positions right now.' : 'No positions posted yet.'}</Text>}
         contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
       />
 
@@ -86,11 +85,8 @@ const StaffJobBoardScreen = () => {
               {selected?.department && (
                 <Text style={styles.modalSub}>Department: {selected.department}</Text>
               )}
-              {selected?.jobType && (
-                <Text style={styles.modalSub}>Type: {selected.jobType.replace('_', ' ')}</Text>
-              )}
-              {selected?.salary && (
-                <Text style={styles.modalSub}>Salary: Rs {Number(selected.salary).toLocaleString()}</Text>
+              {selected?.deadline && (
+                <Text style={styles.modalSub}>Deadline: {new Date(selected.deadline).toLocaleDateString()}</Text>
               )}
               {selected?.description ? (
                 <Text style={styles.modalDesc}>{selected.description}</Text>
@@ -136,6 +132,8 @@ const styles = StyleSheet.create({
   row:         { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   rowInfo:     { flex: 1 },
   rowTitle:    { fontSize: 16, fontFamily: 'Outfit-SemiBold', color: '#111', marginBottom: 2 },
+  appliedBadge: { backgroundColor: '#dcfce7', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 2 },
+  appliedBadgeText: { fontSize: 10, fontFamily: 'Outfit-SemiBold', color: '#16a34a' },
   rowDept:     { fontSize: 13, fontFamily: 'Outfit-Medium', color: colors.primary, marginBottom: 4 },
   rowDesc:     { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6B7280', marginBottom: 8 },
   metaRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },

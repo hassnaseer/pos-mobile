@@ -6,6 +6,7 @@ import {
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const EMPTY_FORM = { title: '', description: '', assignedTo: '', dueDate: '', priority: 'medium' };
@@ -111,7 +112,6 @@ const TasksScreen = () => {
               { key: 'title',       label: 'Title *' },
               { key: 'description', label: 'Description' },
               { key: 'assignedTo',  label: 'Assigned To' },
-              { key: 'dueDate',     label: 'Due Date (YYYY-MM-DD)' },
               { key: 'priority',    label: 'Priority (high / medium / low)' },
             ].map(f => (
               <View key={f.key} style={styles.field}>
@@ -119,6 +119,12 @@ const TasksScreen = () => {
                 <TextInput style={styles.input} value={form[f.key]} onChangeText={set(f.key)} placeholder={f.label.replace(' *', '')} placeholderTextColor="#999" />
               </View>
             ))}
+            <DatePicker
+              label="Due Date"
+              value={form.dueDate}
+              onDateChange={set('dueDate')}
+              placeholder="Select due date"
+            />
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>

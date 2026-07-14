@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Switch, ActivityIndicator, Alert, Modal,
+  TextInput, Switch, ActivityIndicator, Alert, Modal, RefreshControl,
 } from 'react-native';
 import { useTaxes, useCreateTax, useUpdateTax, useDeleteTax } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
@@ -12,15 +12,7 @@ const EMPTY_FORM = { name: '', percentage: '', isActive: true };
 
 export default function TaxesScreen() {
   const perms = usePermissions();
-  if (!perms.can(PERMISSIONS.MANAGE_TAXES)) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.noAccess}>You don't have permission to manage taxes.</Text>
-      </View>
-    );
-  }
-
-  const { data: taxes = [], isLoading } = useTaxes();
+  const { data: taxes = [], isLoading, isFetching, refetch } = useTaxes();
   const { mutateAsync: createTax, isPending: creating } = useCreateTax();
   const { mutateAsync: updateTax, isPending: updating } = useUpdateTax();
   const { mutateAsync: deleteTax, isPending: deleting } = useDeleteTax();
@@ -28,6 +20,14 @@ export default function TaxesScreen() {
   const [modal, setModal]   = useState(null); // null | 'add' | 'edit'
   const [form, setForm]     = useState(EMPTY_FORM);
   const [editId, setEditId] = useState(null);
+
+  if (!perms.can(PERMISSIONS.MANAGE_TAXES)) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.noAccess}>You don't have permission to manage taxes.</Text>
+      </View>
+    );
+  }
 
   const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setModal('add'); };
   const openEdit = tax => {
@@ -55,7 +55,7 @@ export default function TaxesScreen() {
       }
       setModal(null);
     } catch (e) {
-      Alert.alert('Error', e?.message ?? 'Failed to save tax');
+      Alert.alert('Error', typeof e === 'string' ? e : 'Failed to save tax');
     }
   };
 
@@ -69,7 +69,7 @@ export default function TaxesScreen() {
           text: 'Delete', style: 'destructive',
           onPress: async () => {
             try { await deleteTax(tax.id); }
-            catch (e) { Alert.alert('Error', e?.message ?? 'Failed to delete tax'); }
+            catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed to delete tax'); }
           },
         },
       ],
@@ -80,7 +80,7 @@ export default function TaxesScreen() {
     try {
       await updateTax({ id: tax.id, isActive: !tax.isActive });
     } catch (e) {
-      Alert.alert('Error', e?.message ?? 'Failed to update tax');
+      Alert.alert('Error', typeof e === 'string' ? e : 'Failed to update tax');
     }
   };
 
@@ -143,6 +143,7 @@ export default function TaxesScreen() {
           keyExtractor={item => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }}
+          refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>No taxes configured yet</Text>
           }

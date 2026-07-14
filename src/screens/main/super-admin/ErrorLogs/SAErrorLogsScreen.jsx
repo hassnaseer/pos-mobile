@@ -98,6 +98,9 @@ const SAErrorLogsScreen = () => {
               {item.endpoint && (
                 <Text style={styles.endpoint} numberOfLines={1}>{item.endpoint}</Text>
               )}
+              {item.businessName && (
+                <Text style={styles.context} numberOfLines={1}>Business: {item.businessName}{item.businessStoreId ? ` (${item.businessStoreId})` : ''}</Text>
+              )}
               <Text style={styles.message} numberOfLines={3}>{item.errorMessage ?? '—'}</Text>
               {item.userId && <Text style={styles.context} numberOfLines={1}>User: {item.userId}</Text>}
               {item.ipAddress && <Text style={styles.context} numberOfLines={1}>IP: {item.ipAddress}</Text>}

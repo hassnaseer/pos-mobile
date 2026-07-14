@@ -46,6 +46,7 @@ const SADashboardScreen = () => {
     { label: 'Blocked', count: summary?.blockedBusinesses ?? 0,   color: '#9ca3af' },
   ];
   const subTotal = subStatuses.reduce((s, x) => s + x.count, 0) || 1;
+  const recentFiltered = (summary?.recentBusinesses ?? []).filter(b => !statusFilter || b.status === statusFilter);
 
   const statCards = [
     {
@@ -222,10 +223,10 @@ const SADashboardScreen = () => {
       {/* ── Recently Added Businesses ── */}
       <View style={[styles.section, { marginBottom: 24 }]}>
         <Text style={styles.sectionTitle}>Recently Added Businesses</Text>
-        {(summary?.recentBusinesses ?? []).length === 0 && !isLoading && (
+        {recentFiltered.length === 0 && !isLoading && (
           <Text style={styles.empty}>No recent businesses.</Text>
         )}
-        {(summary?.recentBusinesses ?? []).map(biz => {
+        {recentFiltered.map(biz => {
           const dateStr = biz.createdAt ?? biz.signupDate;
           const label = biz.status === 'Trial' ? 'Trial started'
             : biz.status === 'Active' ? 'Active'

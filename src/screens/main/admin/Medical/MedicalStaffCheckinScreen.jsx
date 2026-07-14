@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal,
+  TextInput, ActivityIndicator, Alert, Modal, RefreshControl,
 } from 'react-native';
 import {
   useMedicalStaffCheckins, useCreateMedicalCheckin,
@@ -28,7 +28,7 @@ export default function MedicalStaffCheckinScreen() {
   const [form, setForm]     = useState(EMPTY_FORM);
   const [editId, setEditId] = useState(null);
 
-  const { data: checkins = [], isLoading } = useMedicalStaffCheckins(selectedDate);
+  const { data: checkins = [], isLoading, isFetching, refetch } = useMedicalStaffCheckins(selectedDate);
   const { data: staffList = [] }           = useStaffList();
   const { mutateAsync: createCheckin, isPending: creating } = useCreateMedicalCheckin();
   const { mutateAsync: updateCheckin, isPending: updating } = useUpdateMedicalCheckin();
@@ -70,7 +70,7 @@ export default function MedicalStaffCheckinScreen() {
       }
       setModal(null);
     } catch (e) {
-      Alert.alert('Error', e?.message ?? 'Failed to save');
+      Alert.alert('Error', typeof e === 'string' ? e : 'Failed to save');
     }
   };
 
@@ -84,7 +84,7 @@ export default function MedicalStaffCheckinScreen() {
           text: 'Delete', style: 'destructive',
           onPress: async () => {
             try { await deleteCheckin(record.id); }
-            catch (e) { Alert.alert('Error', e?.message ?? 'Failed to delete'); }
+            catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed to delete'); }
           },
         },
       ],
@@ -120,7 +120,11 @@ export default function MedicalStaffCheckinScreen() {
       </View>
 
       {/* Records list */}
-      <ScrollView style={styles.list} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
         ) : checkins.length === 0 ? (

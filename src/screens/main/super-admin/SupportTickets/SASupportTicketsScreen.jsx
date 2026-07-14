@@ -3,7 +3,12 @@ import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   TextInput, RefreshControl, ActivityIndicator, Alert, ScrollView, Modal,
 } from 'react-native';
-import { useSASupportTickets, useUpdateSASupportTicket, flattenPages } from '../../../../services/api/posApi';
+import {
+  useSASupportTickets, useUpdateSASupportTicket, useDeleteSASupportTicket,
+  useSAPlatformTeam, flattenPages,
+} from '../../../../services/api/posApi';
+import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
+import ConfirmModal from '../../../../components/Modal/ConfirmModal';
 import colors from '../../../../theme/colors';
 
 const STATUS_STYLE = {
@@ -17,7 +22,6 @@ const PRIORITY_STYLE = {
   low:    { bg: '#f3f4f6', text: '#6b7280' },
   medium: { bg: '#fef9c3', text: '#b45309' },
   high:   { bg: '#fee2e2', text: '#dc2626' },
-  urgent: { bg: '#fce7f3', text: '#be185d' },
 };
 
 const STATUSES = ['', 'open', 'in_progress', 'resolved', 'closed'];
@@ -30,11 +34,16 @@ const SASupportTicketsScreen = () => {
   } = useSASupportTickets();
   const tickets = flattenPages(ticketData);
   const { mutateAsync: updateTicket } = useUpdateSASupportTicket();
+  const { mutateAsync: deleteTicket, isPending: deleting } = useDeleteSASupportTicket();
+  const { data: rawStaff = [] } = useSAPlatformTeam();
+  const staffList = Array.isArray(rawStaff) ? rawStaff : (rawStaff?.data ?? []);
+  const staffOptions = staffList.map(s => ({ id: s.id, name: s.name }));
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selected, setSelected] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const filtered = useMemo(() => tickets.filter(t => {
     if (statusFilter && t.status !== statusFilter) return false;
@@ -59,6 +68,38 @@ const SASupportTicketsScreen = () => {
     } catch {
       Alert.alert('Error', 'Failed to update status');
     } finally { setUpdating(false); }
+  };
+
+  const changePriority = async (ticket, newPriority) => {
+    setUpdating(true);
+    try {
+      await updateTicket({ id: ticket.id, priority: newPriority });
+      setSelected(prev => prev?.id === ticket.id ? { ...prev, priority: newPriority } : prev);
+    } catch {
+      Alert.alert('Error', 'Failed to update priority');
+    } finally { setUpdating(false); }
+  };
+
+  const reassign = async (ticket, staffId) => {
+    const staff = staffOptions.find(s => s.id === staffId);
+    setUpdating(true);
+    try {
+      await updateTicket({ id: ticket.id, assignedToId: staffId || null, assignedToName: staff?.name || null });
+      setSelected(prev => prev?.id === ticket.id ? { ...prev, assignedToId: staffId, assignedToName: staff?.name ?? null } : prev);
+    } catch {
+      Alert.alert('Error', 'Failed to reassign ticket');
+    } finally { setUpdating(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!selected) return;
+    try {
+      await deleteTicket(selected.id);
+      setConfirmDelete(false);
+      setSelected(null);
+    } catch {
+      Alert.alert('Error', 'Failed to delete ticket');
+    }
   };
 
   return (
@@ -145,9 +186,14 @@ const SASupportTicketsScreen = () => {
                 <>
                   <View style={styles.modalHeader}>
                     <Text style={styles.modalRef}>{selected.ticketRef ?? `#${selected.id}`}</Text>
-                    <TouchableOpacity onPress={() => setSelected(null)}>
-                      <Text style={styles.closeBtn}>✕</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                      <TouchableOpacity onPress={() => setConfirmDelete(true)}>
+                        <Text style={styles.deleteBtn}>Delete</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setSelected(null)}>
+                        <Text style={styles.closeBtn}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   <Text style={styles.modalTitle}>{selected.title}</Text>
@@ -204,6 +250,28 @@ const SASupportTicketsScreen = () => {
                     ))}
                   </View>
 
+                  <Text style={styles.changeStatusLabel}>Change Priority</Text>
+                  <View style={styles.statusActions}>
+                    {Object.entries(PRIORITY_STYLE).map(([key, s]) => (
+                      <TouchableOpacity
+                        key={key}
+                        style={[styles.statusBtn, { backgroundColor: s.bg }, (selected.priority ?? 'low') === key && styles.statusBtnActive]}
+                        onPress={() => changePriority(selected, key)}
+                        disabled={updating || (selected.priority ?? 'low') === key}
+                      >
+                        <Text style={[styles.statusBtnText, { color: s.text }]}>{key.toUpperCase()}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.changeStatusLabel}>Reassign</Text>
+                  <InlinePicker
+                    options={staffOptions}
+                    value={selected.assignedToId ?? ''}
+                    onSelect={id => reassign(selected, id)}
+                    placeholder="Unassigned"
+                  />
+
                   {updating && <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />}
                 </>
               );
@@ -211,6 +279,17 @@ const SASupportTicketsScreen = () => {
           </View>
         </View>
       </Modal>
+
+      <ConfirmModal
+        visible={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={handleDelete}
+        title="Delete Ticket"
+        message="This will permanently remove the ticket. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleting}
+      />
     </View>
   );
 };
@@ -243,6 +322,7 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   modalRef: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: colors.primary },
   closeBtn: { fontSize: 18, color: '#9ca3af', padding: 4 },
+  deleteBtn: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#dc2626' },
   modalTitle: { fontSize: 16, fontFamily: 'Outfit-Bold', color: '#111827', marginBottom: 10 },
   desc: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#374151', lineHeight: 20, marginTop: 8, marginBottom: 8 },
   infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 12, backgroundColor: '#f9fafb', borderRadius: 10, padding: 12 },

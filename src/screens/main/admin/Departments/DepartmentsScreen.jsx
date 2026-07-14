@@ -51,7 +51,7 @@ const DepartmentsScreen = () => {
       setForm(EMPTY_FORM);
       setEditing(null);
     } catch (e) {
-      Alert.alert('Error', e?.message ?? 'Save failed');
+      Alert.alert('Error', typeof e === 'string' ? e : 'Save failed');
     }
   };
 
@@ -63,7 +63,7 @@ const DepartmentsScreen = () => {
       {
         text: 'Delete', style: 'destructive', onPress: () =>
           remove(item.id, {
-            onError: e => Alert.alert('Error', e?.message ?? 'Delete failed'),
+            onError: e => Alert.alert('Error', typeof e === 'string' ? e : 'Delete failed'),
           }),
       },
     ]

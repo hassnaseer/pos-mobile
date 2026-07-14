@@ -10,6 +10,8 @@ import {
 } from '../../../../services/api/posApi';
 import { useAuth } from '../../../../context/AuthContext';
 import { useCurrency } from '../../../../context/CurrencyContext';
+import { usePermissions } from '../../../../hooks/usePermissions';
+import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -70,16 +72,21 @@ const DashboardScreen = () => {
   const { user } = useAuth();
   const { fmt }  = useCurrency();
   const navigation = useNavigation();
+  const perms = usePermissions();
   const [period, setPeriod] = useState('7d');
 
-  const hasPOS     = !!user?.permissionCodes?.includes('pos_sales');
-  const hasTickets = !!user?.permissionCodes?.includes('create_tickets');
+  const hasPOS     = perms.can(PERMISSIONS.POS_SALES);
+  const hasTickets = perms.can(PERMISSIONS.CREATE_TICKETS);
+  const hasReports = perms.can(PERMISSIONS.VIEW_REPORTS);
+  const hasOrders  = perms.can(PERMISSIONS.VIEW_ORDERS);
+  const hasProducts = perms.can(PERMISSIONS.MANAGE_PRODUCTS);
+  const hasStaffList = perms.can(PERMISSIONS.MANAGE_STAFF);
 
-  const { data: report = {}, isLoading: reportLoading, refetch: refetchReport } = useDashboardReport(period);
-  const { data: rawOrders = [], isLoading: ordersLoading, refetch: refetchOrders } = useOrders({ page: 1, limit: 4 });
-  const { data: rawProducts = [] } = useProducts({ limit: 100 });
-  const { data: rawTickets = [] }  = useTickets({ limit: 1, status: 'New' });
-  const { data: rawStaff = [] }    = useStaff();
+  const { data: report = {}, isLoading: reportLoading, refetch: refetchReport } = useDashboardReport(period, { enabled: hasReports });
+  const { data: rawOrders = [], isLoading: ordersLoading, refetch: refetchOrders } = useOrders({ page: 1, limit: 4 }, { enabled: hasOrders });
+  const { data: rawProducts = [] } = useProducts({ limit: 100 }, { enabled: hasProducts });
+  const { data: rawTickets = [] }  = useTickets({ limit: 1, status: 'New' }, { enabled: hasTickets });
+  const { data: rawStaff = [] }    = useStaff({ enabled: hasStaffList });
 
   const orders      = Array.isArray(rawOrders)   ? rawOrders   : (rawOrders?.data   ?? []);
   const products    = Array.isArray(rawProducts) ? rawProducts : (rawProducts?.data ?? []);
@@ -145,6 +152,7 @@ const DashboardScreen = () => {
       ) : (
         <>
           {/* ── Stat cards row 1 ── */}
+          {hasReports && (
           <View style={styles.cardRow}>
             <View style={[styles.card, styles.cardPrimary]}>
               <Text style={styles.cardLabelLight}>Total Sales</Text>
@@ -178,6 +186,7 @@ const DashboardScreen = () => {
               </View>
             </View>
           </View>
+          )}
 
           {/* ── Secondary stat row ── */}
           <View style={styles.statRowContainer}>
@@ -187,18 +196,22 @@ const DashboardScreen = () => {
                 <Text style={styles.statCardValue}>{ticketTotal}</Text>
               </View>
             )}
+            {hasProducts && (
             <View style={styles.statCard}>
               <Text style={styles.statCardLabel}>Low Stock</Text>
               <Text style={[styles.statCardValue, lowStockCount > 0 && { color: '#ef4444' }]}>{lowStockCount}</Text>
             </View>
+            )}
+            {hasProducts && (
             <View style={styles.statCard}>
               <Text style={styles.statCardLabel}>Products</Text>
               <Text style={styles.statCardValue}>{products.length}</Text>
             </View>
+            )}
           </View>
 
           {/* ── Sales Overview chart ── */}
-          {salesChartData.length > 1 && (
+          {hasReports && salesChartData.length > 1 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Sales Overview</Text>

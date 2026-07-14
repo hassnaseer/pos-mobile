@@ -4,6 +4,7 @@ import {
   TextInput, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import apiClient from '../../../services/api/globalApi';
+import DatePicker from '../../../components/Ui/DatePicker';
 import colors from '../../../theme/colors';
 
 const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '—';
@@ -46,7 +47,7 @@ const DoctorAppointmentsScreen = () => {
     <View style={s.root}>
       <View style={s.topBar}>
         <TextInput style={s.search} placeholder="Search patient..." placeholderTextColor="#999" value={search} onChangeText={setSearch} />
-        <TextInput style={s.dateInput} placeholder="YYYY-MM-DD" placeholderTextColor="#999" value={date} onChangeText={setDate} />
+        <DatePicker value={date} onDateChange={setDate} placeholder="Filter by date" style={{ flex: 1, marginBottom: 0 }} />
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipRow} contentContainerStyle={s.chipContent}>

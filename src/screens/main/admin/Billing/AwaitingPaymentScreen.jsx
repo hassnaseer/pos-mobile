@@ -1,11 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, TextInput,
+  ActivityIndicator, Alert, TextInput, Image, RefreshControl,
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../../../services/api/globalApi';
+import apiClient, { BASE_URL } from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
+
+const uploadProof = async (asset) => {
+  const token = await AsyncStorage.getItem('authToken');
+  const body = new FormData();
+  body.append('file', { uri: asset.uri, type: asset.type ?? 'image/jpeg', name: asset.fileName ?? 'proof.jpg' });
+  const res = await fetch(`${BASE_URL}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message ?? 'Upload failed');
+  return json.data?.key ?? json.data?.url ?? '';
+};
 
 const useBankAccounts = () =>
   useQuery({
@@ -36,15 +52,34 @@ const useSubmitPaymentRequest = () => {
 };
 
 const AwaitingPaymentScreen = () => {
-  const { data: accounts = [], isLoading: loadingAccounts } = useBankAccounts();
-  const { data: billing } = useBilling();
+  const { data: accounts = [], isLoading: loadingAccounts, refetch: refetchAccounts, isFetching: fetchingAccounts } = useBankAccounts();
+  const { data: billing, refetch: refetchBilling, isFetching: fetchingBilling } = useBilling();
   const { mutate: submitRequest, isPending: submitting } = useSubmitPaymentRequest();
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [notes, setNotes] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [proofUrls, setProofUrls] = useState([]);
+  const [uploadingProof, setUploadingProof] = useState(false);
 
   const isAwaitingPayment = billing?.status === 'AWAITING_PAYMENT';
   const availablePlans = billing?.availablePlans ?? [];
+
+  const handlePickProof = () => {
+    launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 }, async (res) => {
+      if (res.didCancel || !res.assets?.length) return;
+      setUploadingProof(true);
+      try {
+        const key = await uploadProof(res.assets[0]);
+        setProofUrls(p => [...p, key]);
+      } catch (e) {
+        Alert.alert('Upload failed', typeof e === 'string' ? e : 'Try again');
+      } finally {
+        setUploadingProof(false);
+      }
+    });
+  };
+
+  const removeProof = idx => setProofUrls(p => p.filter((_, i) => i !== idx));
 
   const handleSubmit = () => {
     if (!selectedPlanId) {
@@ -52,19 +87,29 @@ const AwaitingPaymentScreen = () => {
       return;
     }
     submitRequest(
-      { planId: selectedPlanId, notes: notes.trim() || undefined, source: 'DIRECT_REQUEST' },
+      { planId: selectedPlanId, notes: notes.trim() || undefined, source: 'DIRECT_REQUEST', proofUrls },
       {
         onSuccess: () => {
           Alert.alert('Submitted', 'Your payment request has been submitted. Our team will verify and activate your account shortly.');
           setShowForm(false);
         },
-        onError: (err) => Alert.alert('Error', err?.message ?? 'Failed to submit'),
+        onError: (err) => Alert.alert('Error', typeof err === 'string' ? err : 'Failed to submit'),
       },
     );
   };
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={fetchingAccounts || fetchingBilling}
+          onRefresh={() => { refetchAccounts(); refetchBilling(); }}
+          tintColor={colors.primary}
+        />
+      }
+    >
       {/* Status Banner */}
       <View style={[styles.statusBanner, isAwaitingPayment ? styles.bannerAmber : styles.bannerBlue]}>
         <Text style={[styles.statusTitle, isAwaitingPayment ? styles.amberText : styles.blueText]}>
@@ -120,6 +165,21 @@ const AwaitingPaymentScreen = () => {
                   <Text style={styles.planLabel}>{plan.name} — {plan.price}/{plan.period}</Text>
                 </TouchableOpacity>
               ))}
+
+              <Text style={[styles.formLabel, { marginTop: 14 }]}>Proof of Payment</Text>
+              <View style={styles.proofRow}>
+                {proofUrls.map((url, i) => (
+                  <View key={i} style={styles.proofThumbWrap}>
+                    <Image source={{ uri: url }} style={styles.proofThumb} resizeMode="cover" />
+                    <TouchableOpacity style={styles.proofRemove} onPress={() => removeProof(i)}>
+                      <Text style={styles.proofRemoveText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.proofAdd} onPress={handlePickProof} disabled={uploadingProof}>
+                  {uploadingProof ? <ActivityIndicator color={colors.primary} size="small" /> : <Text style={styles.proofAddText}>📎 Add</Text>}
+                </TouchableOpacity>
+              </View>
 
               <Text style={[styles.formLabel, { marginTop: 14 }]}>Notes (optional)</Text>
               <TextInput
@@ -193,6 +253,14 @@ const styles = StyleSheet.create({
   planLabel:    { fontSize: 13, color: '#111827', flex: 1 },
 
   textarea:     { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, fontSize: 13, color: '#111827', textAlignVertical: 'top', minHeight: 70 },
+
+  proofRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  proofThumbWrap: { width: 64, height: 64, borderRadius: 8, overflow: 'hidden' },
+  proofThumb:     { width: '100%', height: '100%' },
+  proofRemove:    { position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  proofRemoveText:{ color: '#fff', fontSize: 10, fontWeight: '700' },
+  proofAdd:       { width: 64, height: 64, borderRadius: 8, borderWidth: 1.5, borderColor: '#d1d5db', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  proofAddText:   { fontSize: 11, color: '#6b7280', fontWeight: '600' },
 
   formActions:    { gap: 8, marginTop: 12 },
   confirmBtn:     { backgroundColor: colors.primary, borderRadius: 12, padding: 13, alignItems: 'center' },

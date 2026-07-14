@@ -64,10 +64,10 @@ const SAPackagePlanFormScreen = ({ route, navigation }) => {
       maxCustomers: parseInt(form.maxCustomers) || 0,
       ctaLabel:     form.ctaLabel,
       sortOrder:    parseInt(form.sortOrder) || 0,
-      featuresText: form.featuresText,
+      features:     form.featuresText.split('\n').map(f => f.trim()).filter(Boolean),
       isPopular:    form.isPopular,
       isActive:     form.isActive,
-      businessTypeId: form.businessTypeId ? parseInt(form.businessTypeId) : undefined,
+      businessTypeId: form.businessTypeId || undefined,
       permissionIds: form.permissionIds.length ? form.permissionIds : undefined,
     };
     setSaving(true);

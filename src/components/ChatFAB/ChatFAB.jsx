@@ -6,16 +6,21 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { ROLES } from '../../utils/permissions';
+import { useActiveRouteStore } from '../../store/activeRouteStore';
 import colors from '../../theme/colors';
 import chatIcon from '../../assets/icons/users-01.png';
 
-// ── Firestore lazy-load ───────────────────────────────────────────────────────
+// Screens that are themselves a chat/support experience — showing the
+// floating "Contact Us" widget on top of them would just duplicate it.
+const HIDDEN_ON_ROUTES = ['SupportChat', 'TeamChat', 'TeamChatThread'];
+
+// ── Firestore lazy-load (modular API) ─────────────────────────────────────────
 let _firestore = null;
 let _firestoreLoaded = false;
-const getFirestore = () => {
+const getFirestoreModule = () => {
   if (_firestoreLoaded) return _firestore;
   try {
-    _firestore = require('@react-native-firebase/firestore').default;
+    _firestore = require('@react-native-firebase/firestore');
   } catch {
     _firestore = null;
   }
@@ -23,13 +28,7 @@ const getFirestore = () => {
   return _firestore;
 };
 
-// serverTimestamp helper that works with @react-native-firebase v9–v24
-const serverTs = () => {
-  const fs = getFirestore();
-  if (!fs) return null;
-  // v9+ static property
-  return fs.FieldValue?.serverTimestamp?.() ?? null;
-};
+const serverTs = () => getFirestoreModule()?.serverTimestamp?.() ?? null;
 
 // ── Chat hook (mirrors web's useAdminSupportChat) ─────────────────────────────
 const useSupportChat = (userId, userName, businessName) => {
@@ -40,72 +39,74 @@ const useSupportChat = (userId, userName, businessName) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fs = getFirestore();
+    const fs = getFirestoreModule();
     if (!fs || !userId) { setLoading(false); return; }
-    const db = fs();
-    const unsub = db.collection('support_conversations')
-      .where('customerId', '==', userId)
-      .limit(1)
-      .onSnapshot(
-        snap => {
-          if (!snap.empty) {
-            const doc = snap.docs[0];
-            setConversationId(doc.id);
-            const data = doc.data();
-            if (data.isReadByCustomer === false) setUnreadCount(1);
-            else setUnreadCount(0);
-          }
-          setLoading(false);
-        },
-        err => { setError(err.message); setLoading(false); },
-      );
+    const db = fs.getFirestore();
+    const q = fs.query(
+      fs.collection(db, 'support_conversations'),
+      fs.where('customerId', '==', userId),
+      fs.limit(1),
+    );
+    const unsub = fs.onSnapshot(
+      q,
+      snap => {
+        if (!snap.empty) {
+          const docSnap = snap.docs[0];
+          setConversationId(docSnap.id);
+          const data = docSnap.data();
+          if (data.isReadByCustomer === false) setUnreadCount(1);
+          else setUnreadCount(0);
+        }
+        setLoading(false);
+      },
+      err => { setError(err.message); setLoading(false); },
+    );
     return unsub;
   }, [userId]);
 
   useEffect(() => {
-    const fs = getFirestore();
+    const fs = getFirestoreModule();
     if (!fs || !conversationId) return;
-    const db = fs();
-    const unsub = db.collection('support_conversations')
-      .doc(conversationId)
-      .collection('messages')
-      .orderBy('timestamp', 'asc')
-      .onSnapshot(
-        snap => {
-          setMessages(snap.docs.map(d => {
-            const data = d.data();
-            return {
-              id: d.id,
-              senderId: data.senderId,
-              senderName: data.senderName,
-              content: data.content,
-              timestamp: data.timestamp?.toDate?.() ?? new Date(),
-            };
-          }));
-        },
-        err => setError(err.message),
-      );
+    const db = fs.getFirestore();
+    const convRef = fs.doc(db, 'support_conversations', conversationId);
+    const q = fs.query(fs.collection(convRef, 'messages'), fs.orderBy('timestamp', 'asc'));
+    const unsub = fs.onSnapshot(
+      q,
+      snap => {
+        setMessages(snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            senderId: data.senderId,
+            senderName: data.senderName,
+            content: data.content,
+            timestamp: data.timestamp?.toDate?.() ?? new Date(),
+          };
+        }));
+      },
+      err => setError(err.message),
+    );
     return unsub;
   }, [conversationId]);
 
   const markRead = async () => {
-    const fs = getFirestore();
+    const fs = getFirestoreModule();
     if (!fs || !conversationId) return;
-    const db = fs();
-    await db.collection('support_conversations').doc(conversationId).update({ isReadByCustomer: true });
+    const db = fs.getFirestore();
+    await fs.updateDoc(fs.doc(db, 'support_conversations', conversationId), { isReadByCustomer: true });
     setUnreadCount(0);
   };
 
   const sendMessage = async content => {
-    const fs = getFirestore();
+    const fs = getFirestoreModule();
     if (!fs || !content.trim()) return;
-    const db = fs();
+    const db = fs.getFirestore();
     const ts = serverTs();
     let convId = conversationId;
 
     try {
       if (!convId) {
-        const ref = await db.collection('support_conversations').add({
+        const ref = await fs.addDoc(fs.collection(db, 'support_conversations'), {
           customerId: userId,
           customerName: userName,
           businessName: businessName ?? '',
@@ -120,14 +121,14 @@ const useSupportChat = (userId, userName, businessName) => {
         convId = ref.id;
         setConversationId(ref.id);
       } else {
-        await db.collection('support_conversations').doc(convId).update({
+        await fs.updateDoc(fs.doc(db, 'support_conversations', convId), {
           lastMessage: content,
           lastMessageAt: ts,
           isReadBySupport: false,
         });
       }
 
-      await db.collection('support_conversations').doc(convId).collection('messages').add({
+      await fs.addDoc(fs.collection(fs.doc(db, 'support_conversations', convId), 'messages'), {
         senderId: userId,
         senderName: userName,
         senderRole: 'admin',
@@ -145,10 +146,11 @@ const useSupportChat = (userId, userName, businessName) => {
 // ── FAB component ─────────────────────────────────────────────────────────────
 const ChatFAB = () => {
   const { user, userRole } = useAuth();
+  const activeRoute = useActiveRouteStore(s => s.activeRoute);
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const flatRef = useRef(null);
-  const fs = getFirestore();
+  const fs = getFirestoreModule();
 
   const { messages, unreadCount, loading, error, sendMessage, markRead } = useSupportChat(
     user?.id,
@@ -158,6 +160,8 @@ const ChatFAB = () => {
 
   // Only show for admin role
   if (userRole !== ROLES.ADMIN && userRole !== 'admin') return null;
+  // Don't show while a chat screen is already open — it would just duplicate itself
+  if (HIDDEN_ON_ROUTES.includes(activeRoute)) return null;
 
   const handleOpen = () => {
     setOpen(true);
@@ -178,6 +182,7 @@ const ChatFAB = () => {
       {/* Floating button */}
       <TouchableOpacity style={styles.fab} onPress={handleOpen} activeOpacity={0.85}>
         <Image source={chatIcon} style={styles.fabIcon} />
+        <Text style={styles.fabLabel}>Chat</Text>
         {unreadCount > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -273,12 +278,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 20,
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -286,11 +293,12 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 100,
   },
-  fabIcon: { width: 24, height: 24, tintColor: '#fff', resizeMode: 'contain' },
+  fabIcon: { width: 20, height: 20, tintColor: '#fff', resizeMode: 'contain' },
+  fabLabel: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: '#fff' },
   badge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
+    top: -6,
+    right: -6,
     width: 18,
     height: 18,
     borderRadius: 9,

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput,
-  Alert, ActivityIndicator, Modal, Image, ScrollView, SafeAreaView,
+  Alert, ActivityIndicator, Modal, Image, ScrollView, SafeAreaView, RefreshControl,
 } from 'react-native';
 import productsIcon from '../../../../assets/icons/layers.png';
 import { useProducts, useCustomers, useCreateCustomer, useCheckout, useTaxes, useMiscCharges } from '../../../../services/api/posApi';
@@ -68,7 +68,7 @@ const POSScreen = () => {
   const barcodeRef = useRef(null);
 
   const { fmt } = useCurrency();
-  const { data: productsRaw = [], isLoading: loadingProducts } = useProducts();
+  const { data: productsRaw = [], isLoading: loadingProducts, isFetching: fetchingProducts, refetch: refetchProducts } = useProducts();
   const { data: customersRaw = [] } = useCustomers();
   const { mutateAsync: createCustomer, isPending: addingCustomer } = useCreateCustomer();
   const { data: globalTaxes = [] } = useTaxes();
@@ -257,6 +257,7 @@ const POSScreen = () => {
               numColumns={2}
               columnWrapperStyle={styles.prodRow}
               contentContainerStyle={styles.prodGrid}
+              refreshControl={<RefreshControl refreshing={fetchingProducts} onRefresh={refetchProducts} tintColor={colors.primary} />}
               renderItem={({ item }) => {
                 const inCart = cart.find(c => c.id === item.id);
                 const outOfStock = !item.stock || item.stock <= 0;

@@ -1,15 +1,32 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal, Linking,
+  TextInput, ActivityIndicator, Alert, Modal, Linking, RefreshControl,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { pick, types, isCancel } from '@react-native-documents/picker';
 import {
   useSADocuments, useCreateSADocument,
   useUpdateSADocument, useDeleteSADocument,
 } from '../../../../services/api/posApi';
+import { BASE_URL } from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
 
 const EMPTY_FORM = { name: '', url: '' };
+
+const uploadFile = async file => {
+  const token = await AsyncStorage.getItem('authToken');
+  const body = new FormData();
+  body.append('file', { uri: file.uri, type: file.type ?? 'application/pdf', name: file.name ?? 'document.pdf' });
+  const res = await fetch(`${BASE_URL}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const json = await res.json();
+  return json.data?.url ?? json.url ?? '';
+};
 
 const getFileIcon = url => {
   if (!url) return '📄';
@@ -21,7 +38,7 @@ const getFileIcon = url => {
 };
 
 export default function SADocumentsScreen() {
-  const { data: documents = [], isLoading } = useSADocuments();
+  const { data: documents = [], isLoading, isFetching, refetch } = useSADocuments();
   const { mutateAsync: createDoc, isPending: creating }  = useCreateSADocument();
   const { mutateAsync: updateDoc, isPending: updating }  = useUpdateSADocument();
   const { mutateAsync: deleteDoc, isPending: deleting }  = useDeleteSADocument();
@@ -30,16 +47,31 @@ export default function SADocumentsScreen() {
   const [modal, setModal]     = useState(null); // null | 'add' | 'edit'
   const [form, setForm]       = useState(EMPTY_FORM);
   const [editId, setEditId]   = useState(null);
+  const [pickedFile, setPickedFile] = useState(null);
+  const [uploading, setUploading]   = useState(false);
 
   const filtered = documents.filter(d =>
     d.name?.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setModal('add'); };
+  const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setPickedFile(null); setModal('add'); };
   const openEdit = doc => {
     setForm({ name: doc.name, url: doc.url ?? '' });
     setEditId(doc.id);
+    setPickedFile(null);
     setModal('edit');
+  };
+
+  const handlePickFile = async () => {
+    try {
+      const [picked] = await pick({ type: [types.pdf] });
+      setPickedFile(picked);
+      if (!form.name.trim()) {
+        setForm(f => ({ ...f, name: (picked.name ?? '').replace(/\.pdf$/i, '') }));
+      }
+    } catch (e) {
+      if (!isCancel(e)) Alert.alert('Error', 'Failed to pick file');
+    }
   };
 
   const handleSave = async () => {
@@ -47,15 +79,24 @@ export default function SADocumentsScreen() {
       Alert.alert('Validation', 'Document name is required.');
       return;
     }
+    if (modal === 'add' && !pickedFile) {
+      Alert.alert('Validation', 'Please select a PDF file.');
+      return;
+    }
+    setUploading(true);
     try {
+      const url = pickedFile ? await uploadFile(pickedFile) : undefined;
       if (modal === 'add') {
-        await createDoc(form);
+        await createDoc({ name: form.name, url });
       } else {
-        await updateDoc({ id: editId, ...form });
+        await updateDoc({ id: editId, name: form.name, url });
       }
       setModal(null);
+      setPickedFile(null);
     } catch (e) {
-      Alert.alert('Error', e?.message ?? 'Failed to save');
+      Alert.alert('Error', typeof e === 'string' ? e : 'Failed to save');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -69,7 +110,7 @@ export default function SADocumentsScreen() {
           text: 'Delete', style: 'destructive',
           onPress: async () => {
             try { await deleteDoc(doc.id); }
-            catch (e) { Alert.alert('Error', e?.message ?? 'Failed to delete'); }
+            catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed to delete'); }
           },
         },
       ],
@@ -116,7 +157,11 @@ export default function SADocumentsScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+        >
           {filtered.map(doc => (
             <View key={doc.id} style={styles.card}>
               <View style={styles.cardRow}>
@@ -171,17 +216,16 @@ export default function SADocumentsScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>URL</Text>
-              <TextInput
-                style={styles.input}
-                value={form.url}
-                onChangeText={v => setForm(f => ({ ...f, url: v }))}
-                placeholder="https://…"
-                placeholderTextColor="#9ca3af"
-                keyboardType="url"
-                autoCapitalize="none"
-              />
-              <Text style={styles.hint}>Paste a direct link to a PDF, image, or document.</Text>
+              <Text style={styles.label}>{modal === 'edit' ? 'Update PDF (Optional)' : 'Upload PDF *'}</Text>
+              <TouchableOpacity style={styles.pickBtn} onPress={handlePickFile} activeOpacity={0.8}>
+                <Text style={styles.pickBtnText}>{pickedFile ? 'Select New File' : 'Select File'}</Text>
+              </TouchableOpacity>
+              {pickedFile && (
+                <Text style={styles.pickedName} numberOfLines={1}>📎 {pickedFile.name}</Text>
+              )}
+              {!pickedFile && modal === 'edit' && form.url && (
+                <Text style={styles.hint}>Leave unselected to keep the current file.</Text>
+              )}
             </View>
 
             <View style={styles.modalActions}>
@@ -191,10 +235,10 @@ export default function SADocumentsScreen() {
               <TouchableOpacity
                 style={styles.saveBtn}
                 onPress={handleSave}
-                disabled={creating || updating}
+                disabled={creating || updating || uploading}
                 activeOpacity={0.8}
               >
-                {(creating || updating)
+                {(creating || updating || uploading)
                   ? <ActivityIndicator color="#fff" size="small" />
                   : <Text style={styles.saveText}>Save</Text>
                 }
@@ -237,6 +281,9 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#374151', marginBottom: 6 },
   input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
   hint: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 4 },
+  pickBtn: { borderWidth: 1.5, borderColor: colors.primary, borderRadius: 8, paddingVertical: 11, alignItems: 'center', backgroundColor: '#fff' },
+  pickBtnText: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: colors.primary },
+  pickedName: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#374151', marginTop: 6 },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
   cancelBtn: { flex: 1, borderRadius: 8, paddingVertical: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },
   cancelText: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: '#374151' },

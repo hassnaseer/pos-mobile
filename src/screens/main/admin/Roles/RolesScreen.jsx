@@ -6,16 +6,105 @@ import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 
 const ALL_PERMS = [
-  { code: 'pos_sales',          label: 'POS / Sales',         category: 'Sales' },
-  { code: 'view_orders',        label: 'View Orders',         category: 'Sales' },
-  { code: 'process_refunds',    label: 'Process Refunds',     category: 'Sales' },
-  { code: 'manage_products',    label: 'Manage Products',     category: 'Inventory' },
-  { code: 'view_products',      label: 'View Products',       category: 'Inventory' },
-  { code: 'manage_categories',  label: 'Manage Categories',   category: 'Inventory' },
-  { code: 'create_tickets',     label: 'Create Tickets',      category: 'Tickets' },
-  { code: 'update_tickets',     label: 'Update Tickets',      category: 'Tickets' },
-  { code: 'manage_customers',   label: 'Manage Customers',    category: 'Customers' },
-  { code: 'view_reports',       label: 'Reports & Analytics', category: 'Reporting' },
+  // Sales
+  { code: 'pos_sales',                     label: 'POS / Sales',              category: 'Sales' },
+  { code: 'view_orders',                   label: 'View Orders',              category: 'Sales' },
+  { code: 'process_refunds',               label: 'Process Refunds',          category: 'Sales' },
+  { code: 'access_referral',               label: 'Referral Access',          category: 'Sales' },
+  // Inventory
+  { code: 'manage_products',               label: 'Manage Products',          category: 'Inventory' },
+  { code: 'view_products',                 label: 'View Products',            category: 'Inventory' },
+  { code: 'manage_categories',             label: 'Manage Categories',        category: 'Inventory' },
+  { code: 'manage_suppliers',              label: 'Manage Suppliers',         category: 'Inventory' },
+  { code: 'manage_manufacturers',          label: 'Manage Manufacturers',     category: 'Inventory' },
+  { code: 'manage_conditions',             label: 'Device Conditions',        category: 'Inventory' },
+  { code: 'manage_misc',                   label: 'Misc Charges',             category: 'Inventory' },
+  // Tickets & Customers
+  { code: 'create_tickets',                label: 'Create Tickets',           category: 'Tickets & Customers' },
+  { code: 'update_tickets',                label: 'Update Tickets',           category: 'Tickets & Customers' },
+  { code: 'manage_customers',              label: 'Manage Customers',         category: 'Tickets & Customers' },
+  // HRMS
+  { code: 'manage_staff',                  label: 'Manage Staff',             category: 'HRMS' },
+  { code: 'manage_departments',            label: 'Departments',              category: 'HRMS' },
+  { code: 'manage_attendance',             label: 'Attendance & Check-In',    category: 'HRMS' },
+  { code: 'manage_leave',                  label: 'Leave Management',         category: 'HRMS' },
+  { code: 'manage_claims',                 label: 'Claims Management',        category: 'HRMS' },
+  { code: 'manage_payroll',                label: 'Payroll',                  category: 'HRMS' },
+  { code: 'manage_announcements',          label: 'Announcements',            category: 'HRMS' },
+  { code: 'manage_tasks',                  label: 'Tasks',                    category: 'HRMS' },
+  { code: 'manage_reviews',                label: 'Annual Reviews',           category: 'HRMS' },
+  { code: 'manage_internal_jobs',          label: 'Internal Job Postings',    category: 'HRMS' },
+  { code: 'manage_documents',              label: 'Document Library',         category: 'HRMS' },
+  { code: 'manage_trainings',              label: 'Upcoming Trainings',       category: 'HRMS' },
+  { code: 'manage_transport',              label: 'Company Transport',        category: 'HRMS' },
+  // Finance & Projects
+  { code: 'manage_budgets',                label: 'Budgets & Earnings',       category: 'Finance & Projects' },
+  { code: 'manage_projects',               label: 'Manage Projects',          category: 'Finance & Projects' },
+  { code: 'manage_kanban',                 label: 'Kanban Board',             category: 'Finance & Projects' },
+  { code: 'manage_project_sales',          label: 'Project Sales Entries',    category: 'Finance & Projects' },
+  { code: 'manage_milestones',             label: 'Project Milestones',       category: 'Finance & Projects' },
+  { code: 'manage_clients',                label: 'Manage Clients',           category: 'Finance & Projects' },
+  { code: 'manage_marketplaces',           label: 'Manage Marketplaces',      category: 'Finance & Projects' },
+  { code: 'manage_supplier_bills',         label: 'Supplier Bills',           category: 'Finance & Projects' },
+  { code: 'manage_payment_accounts',       label: 'Payment Accounts',         category: 'Finance & Projects' },
+  // Reporting & Logs
+  { code: 'view_reports',                  label: 'Reports & Analytics',      category: 'Reporting' },
+  { code: 'view_finance_reports',          label: 'Finance / Profit & Loss',  category: 'Reporting' },
+  { code: 'view_team_overview',            label: 'Finance Team Overview',    category: 'Reporting' },
+  { code: 'view_ar_aging',                 label: 'AR Aging Report',          category: 'Reporting' },
+  { code: 'view_tax_summary',              label: 'Tax Summary Report',       category: 'Reporting' },
+  { code: 'view_activity_logs',            label: 'Activity Logs',            category: 'Reporting' },
+  // Settings & Admin
+  { code: 'system_settings',               label: 'System Settings',          category: 'Settings' },
+  { code: 'manage_invoices',               label: 'Invoice Print Template',   category: 'Settings' },
+  { code: 'manage_taxes',                  label: 'Manage Taxes',             category: 'Settings' },
+  { code: 'manage_businesses',             label: 'Manage Businesses',        category: 'Settings' },
+  // Integrations
+  { code: 'ecommerce_shopify',             label: 'Shopify Integration',            category: 'Integrations' },
+  { code: 'ecommerce_bigcommerce',         label: 'BigCommerce Integration',        category: 'Integrations' },
+  { code: 'ecommerce_wix',                 label: 'Wix Integration',                category: 'Integrations' },
+  { code: 'ecommerce_woocommerce',         label: 'WooCommerce Integration',        category: 'Integrations' },
+  { code: 'ecommerce_squarespace',         label: 'Squarespace Integration',        category: 'Integrations' },
+  { code: 'ecommerce_magento',             label: 'Magento Integration',            category: 'Integrations' },
+  { code: 'ecommerce_opencart',            label: 'OpenCart Integration',           category: 'Integrations' },
+  { code: 'ecommerce_prestashop',          label: 'PrestaShop Integration',         category: 'Integrations' },
+  { code: 'ecommerce_amazon',              label: 'Amazon Integration',             category: 'Integrations' },
+  { code: 'ecommerce_ebay',                label: 'eBay Integration',               category: 'Integrations' },
+  { code: 'ecommerce_tiktokshop',          label: 'TikTok Shop Integration',        category: 'Integrations' },
+  { code: 'ecommerce_etsy',                label: 'Etsy Integration',               category: 'Integrations' },
+  { code: 'ecommerce_walmart',             label: 'Walmart Marketplace Integration', category: 'Integrations' },
+  { code: 'ecommerce_metashops',           label: 'Facebook & Instagram Shops Integration', category: 'Integrations' },
+  { code: 'ecommerce_googleshopping',      label: 'Google Shopping Integration',    category: 'Integrations' },
+  { code: 'ecommerce_daraz',               label: 'Daraz Integration',              category: 'Integrations' },
+  { code: 'ecommerce_lazada',              label: 'Lazada Integration',             category: 'Integrations' },
+  { code: 'ecommerce_shopee',              label: 'Shopee Integration',             category: 'Integrations' },
+  // Vendor / Marketplace
+  { code: 'access_vendor_buyer',           label: 'Vendor Buyer Access',      category: 'Vendor' },
+  { code: 'access_vendor_seller',          label: 'Vendor Seller Access',     category: 'Vendor' },
+  // Advanced Features
+  { code: 'access_advanced_analytics',     label: 'Advanced Analytics',       category: 'Advanced' },
+  { code: 'access_bulk_operations',        label: 'Bulk Operations',          category: 'Advanced' },
+  // Medical
+  { code: 'access_medical',                label: 'Medical Module',           category: 'Medical' },
+  { code: 'manage_patients',               label: 'Manage Patients',          category: 'Medical' },
+  { code: 'manage_doctors',                label: 'Manage Doctors',           category: 'Medical' },
+  { code: 'manage_appointments',           label: 'Manage Appointments',      category: 'Medical' },
+  { code: 'manage_prescriptions',          label: 'Manage Prescriptions',     category: 'Medical' },
+  { code: 'access_medical_reminders',      label: 'Medical Reminders',        category: 'Medical' },
+  { code: 'access_medical_patient_tracking', label: 'Patient Tracking',       category: 'Medical' },
+  { code: 'access_medical_insurance',      label: 'Insurance Management',     category: 'Medical' },
+  // Delivery
+  { code: 'rider_access',                  label: 'Rider Access',             category: 'Delivery' },
+  { code: 'handle_deliveries',             label: 'Delivery Management',      category: 'Delivery' },
+  // Modules
+  { code: 'access_restaurant',             label: 'Restaurant Module',        category: 'Modules' },
+  { code: 'access_facebook',               label: 'Facebook Platform',        category: 'Modules' },
+  { code: 'access_instagram',              label: 'Instagram Platform',       category: 'Modules' },
+  { code: 'access_whatsapp',               label: 'WhatsApp Platform',        category: 'Modules' },
+  { code: 'access_factory',                label: 'Factory Module',           category: 'Modules' },
+  { code: 'access_pharmacy',               label: 'Pharmacy Module',          category: 'Modules' },
+  { code: 'internal_chat',                 label: 'Internal Chat',            category: 'Modules' },
+  { code: 'internal_chat_groups',          label: 'Internal Chat — Group Chat', category: 'Modules' },
 ];
 
 const RolesScreen = () => {
@@ -30,6 +119,13 @@ const RolesScreen = () => {
   const { mutateAsync: create, isPending: creating } = useCreateCustomRole();
   const { mutateAsync: update, isPending: updating } = useUpdateCustomRole();
   const { mutate: remove } = useDeleteCustomRole();
+
+  // Only offer permissions the business is actually currently granted — an admin's own
+  // permissionCodes already equal the business's full grant (see toPosUser on the backend).
+  // Without this, the toggle list showed every permission that exists in the whole system,
+  // including ones this business's plan/type doesn't have at all.
+  const bizCodes = perms.permissionCodes ?? [];
+  const grantablePerms = ALL_PERMS.filter(p => bizCodes.length === 0 || bizCodes.includes(p.code));
 
   const togglePerm = code => setSelected(p => ({ ...p, [code]: !p[code] }));
 
@@ -50,7 +146,10 @@ const RolesScreen = () => {
 
   const handleSave = async () => {
     if (!roleName.trim()) { Alert.alert('Error', 'Role name is required'); return; }
-    const codes = Object.keys(selected).filter(k => selected[k]);
+    // The backend re-clamps this against the business's current permissions on save
+    // anyway — filtering here just keeps the UI honest before the round-trip.
+    const grantableCodes = new Set(grantablePerms.map(p => p.code));
+    const codes = Object.keys(selected).filter(k => selected[k] && grantableCodes.has(k));
     try {
       if (editing) {
         await update({ id: editing.id, name: roleName.trim(), permissionCodes: codes });
@@ -72,7 +171,7 @@ const RolesScreen = () => {
   const allRoles = Array.isArray(roles) ? roles : (roles?.data ?? []);
   const isSaving = creating || updating;
 
-  const byCategory = ALL_PERMS.reduce((acc, p) => {
+  const byCategory = grantablePerms.reduce((acc, p) => {
     if (!acc[p.category]) acc[p.category] = [];
     acc[p.category].push(p);
     return acc;

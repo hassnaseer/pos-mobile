@@ -3,12 +3,34 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   Modal, ActivityIndicator, Alert, RefreshControl, TextInput,
 } from 'react-native';
-import { useHRDocuments, useCreateHRDocument, useDeleteHRDocument } from '../../../../services/api/posApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { pick, types, isCancel } from '@react-native-documents/picker'
+import {
+  useHRDocuments, useCreateHRDocument, useDeleteHRDocument,
+  useDocumentCategories, useCreateDocumentCategory,
+} from '../../../../services/api/posApi';
+import { BASE_URL } from '../../../../services/api/globalApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
+import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
+import QuickCreateModal from '../../../../components/QuickCreateModal/QuickCreateModal';
 import colors from '../../../../theme/colors';
 
 const EMPTY_FORM = { title: '', category: '', description: '' };
+
+const uploadFile = async (file) => {
+  const token = await AsyncStorage.getItem('authToken');
+  const body = new FormData();
+  body.append('file', { uri: file.uri, type: file.type ?? 'application/octet-stream', name: file.name ?? 'document' });
+  const res = await fetch(`${BASE_URL}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const json = await res.json();
+  return json.data?.url ?? json.url ?? '';
+};
 
 const HRDocumentsScreen = () => {
   const perms = usePermissions();
@@ -16,21 +38,53 @@ const HRDocumentsScreen = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [catQuickCreateOpen, setCatQuickCreateOpen] = useState(false);
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
 
   const { data: raw = [], isLoading, refetch } = useHRDocuments();
+  const { data: rawCats = [] } = useDocumentCategories();
   const { mutateAsync: create, isPending: creating } = useCreateHRDocument();
   const { mutate: remove } = useDeleteHRDocument();
+  const { mutateAsync: createCategory } = useCreateDocumentCategory();
 
   const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const categories = Array.isArray(rawCats) ? rawCats : (rawCats?.data ?? []);
+  const categoryOptions = categories.map(c => ({ id: c.name ?? c, name: c.name ?? c }));
+
+  const openAdd = () => { setForm(EMPTY_FORM); setFile(null); setShowModal(true); };
+
+const handlePickFile = async () => {
+  try {
+    const [picked] = await pick({
+      type: [types.allFiles],
+    });
+
+    setFile(picked);
+
+  } catch (e) {
+    if (!isCancel(e)) {
+      Alert.alert('Error', 'Failed to pick file');
+    }
+  }
+};
 
   const handleSave = async () => {
     if (!form.title.trim()) { Alert.alert('Error', 'Title is required'); return; }
+    if (!file) { Alert.alert('Error', 'Please select a file'); return; }
+    setUploading(true);
     try {
-      await create(form);
+      const fileUrl = await uploadFile(file);
+      await create({ ...form, fileUrl });
       setShowModal(false);
       setForm(EMPTY_FORM);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Save failed'); }
+      setFile(null);
+    } catch (e) {
+      Alert.alert('Error', typeof e === 'string' ? e : 'Save failed');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDelete = d => Alert.alert('Delete Document', `Delete "${d.title}"?`, [
@@ -38,12 +92,19 @@ const HRDocumentsScreen = () => {
     { text: 'Delete', style: 'destructive', onPress: () => remove(d.id) },
   ]);
 
+  const handleAddCategory = async values => {
+    const created = await createCategory({ name: values.name });
+    const cat = created?.data ?? created;
+    setForm(p => ({ ...p, category: cat?.name ?? values.name }));
+    return cat;
+  };
+
   return (
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>HR Documents</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => { setForm(EMPTY_FORM); setShowModal(true); }}>
+          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
             <Text style={styles.addBtnText}>+ Upload</Text>
           </TouchableOpacity>
         )}
@@ -75,31 +136,59 @@ const HRDocumentsScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
       />
 
-      <Modal visible={showModal} animationType="slide" transparent>
+      <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalBg}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Upload Document</Text>
-            {[
-              { key: 'title',       label: 'Title *' },
-              { key: 'category',    label: 'Category (e.g. Policy, Contract)' },
-              { key: 'description', label: 'Description' },
-            ].map(f => (
-              <View key={f.key} style={styles.field}>
-                <Text style={styles.label}>{f.label}</Text>
-                <TextInput style={styles.input} value={form[f.key]} onChangeText={set(f.key)} placeholder={f.label.replace(' *', '')} placeholderTextColor="#999" />
-              </View>
-            ))}
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Title *</Text>
+              <TextInput style={styles.input} value={form.title} onChangeText={set('title')} placeholder="Document title" placeholderTextColor="#999" />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>File *</Text>
+              <TouchableOpacity style={styles.filePickBtn} onPress={handlePickFile}>
+                <Text style={file ? styles.filePickedText : styles.filePickPlaceholder} numberOfLines={1}>
+                  {file ? file.name : 'Tap to select a file'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <InlinePicker
+              label="Category"
+              value={form.category}
+              options={categoryOptions}
+              keyField="id"
+              labelField="name"
+              onSelect={set('category')}
+              onAddNew={() => setCatQuickCreateOpen(true)}
+            />
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Description</Text>
+              <TextInput style={styles.input} value={form.description} onChangeText={set('description')} placeholder="Brief description…" placeholderTextColor="#999" />
+            </View>
+
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={creating}>
-                {creating ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveText}>Save</Text>}
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={creating || uploading}>
+                {(creating || uploading) ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveText}>Upload</Text>}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      <QuickCreateModal
+        visible={catQuickCreateOpen}
+        title="Add New Category"
+        fields={[{ key: 'name', label: 'Category Name *', placeholder: 'e.g. Onboarding' }]}
+        onClose={() => setCatQuickCreateOpen(false)}
+        onCreate={handleAddCategory}
+      />
     </View>
   );
 };
@@ -126,6 +215,9 @@ const styles = StyleSheet.create({
   field:        { marginBottom: 12 },
   label:        { fontSize: 13, fontFamily: 'Outfit-Medium', color: '#444', marginBottom: 4 },
   input:        { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111' },
+  filePickBtn:  { borderWidth: 1.5, borderColor: '#D0D5DD', borderStyle: 'dashed', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 14, alignItems: 'center' },
+  filePickPlaceholder: { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#999' },
+  filePickedText: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: colors.primary },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelBtn:    { flex: 1, borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   cancelText:   { fontFamily: 'Outfit-Medium', color: '#6B7280' },

@@ -4,22 +4,24 @@ import {
   Modal, ActivityIndicator, Alert, RefreshControl, TextInput, ScrollView,
 } from 'react-native';
 import {
-  useLeaveRequests, useCreateLeaveRequest, useUpdateLeaveRequest, useDeleteLeaveRequest,
+  useLeaveRequests, useCreateLeaveRequest, useApproveLeaveRequest, useRejectLeaveRequest,
+  useStaffList, useLeaveQuotas, useCreateLeaveQuota, useCreateStaff,
 } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
+import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
+import QuickCreateModal from '../../../../components/QuickCreateModal/QuickCreateModal';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
-const STATUSES = ['', 'pending', 'approved', 'rejected', 'cancelled'];
+const STATUSES = ['', 'pending', 'approved', 'rejected'];
 const STATUS_STYLE = {
   pending:   { bg: '#fef9c3', text: '#b45309', label: 'Pending' },
   approved:  { bg: '#dcfce7', text: '#16a34a', label: 'Approved' },
   rejected:  { bg: '#fee2e2', text: '#dc2626', label: 'Rejected' },
-  cancelled: { bg: '#f3f4f6', text: '#6b7280', label: 'Cancelled' },
 };
-const LEAVE_TYPES = ['annual', 'sick', 'casual', 'maternity', 'paternity', 'unpaid'];
 
-const EMPTY_FORM = { employeeName: '', leaveType: 'annual', startDate: '', endDate: '', reason: '' };
+const EMPTY_FORM = { staffId: '', quotaId: '', leaveType: '', startDate: '', endDate: '', reason: '' };
 
 const LeaveScreen = () => {
   const perms = usePermissions();
@@ -27,56 +29,78 @@ const LeaveScreen = () => {
 
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [staffQuickCreateOpen, setStaffQuickCreateOpen] = useState(false);
+  const [quotaQuickCreateOpen, setQuotaQuickCreateOpen] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const [adminNotes, setAdminNotes] = useState('');
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
 
   const { data: raw = [], isLoading, refetch } = useLeaveRequests({ status: statusFilter || undefined });
-  const { mutateAsync: create, isPending: creating } = useCreateLeaveRequest();
-  const { mutateAsync: update, isPending: updating } = useUpdateLeaveRequest();
-  const { mutate: remove } = useDeleteLeaveRequest();
+  const { data: rawStaff = [] }   = useStaffList();
+  const { data: rawQuotas = [] }  = useLeaveQuotas();
+  const { mutateAsync: create, isPending: creating }   = useCreateLeaveRequest();
+  const { mutateAsync: approve, isPending: approving } = useApproveLeaveRequest();
+  const { mutateAsync: reject, isPending: rejecting }  = useRejectLeaveRequest();
+  const { mutateAsync: createStaff }  = useCreateStaff();
+  const { mutateAsync: createQuota }  = useCreateLeaveQuota();
 
-  const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
-  const isSaving = creating || updating;
+  const items       = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const staffList   = Array.isArray(rawStaff) ? rawStaff : (rawStaff?.data ?? []);
+  const quotas      = Array.isArray(rawQuotas) ? rawQuotas : (rawQuotas?.data ?? []);
+  const quotaOptions = quotas.map(q => ({ id: q.id, name: q.title }));
+  const staffOptions = staffList.map(s => ({ id: s.id, name: s.fullName ?? s.name }));
 
-  const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); };
-  const openEdit = r => {
-    setEditing(r);
-    setForm({
-      employeeName: r.employeeName ?? '',
-      leaveType: r.leaveType ?? 'annual',
-      startDate: r.startDate ?? '',
-      endDate: r.endDate ?? '',
-      reason: r.reason ?? '',
-    });
-    setShowModal(true);
-  };
+  const openAdd = () => { setForm(EMPTY_FORM); setShowModal(true); };
 
   const handleSave = async () => {
-    if (!form.employeeName.trim()) { Alert.alert('Error', 'Employee name is required'); return; }
+    if (!form.staffId) { Alert.alert('Error', 'Staff member is required'); return; }
+    if (!form.quotaId) { Alert.alert('Error', 'Leave type is required'); return; }
     if (!form.startDate || !form.endDate) { Alert.alert('Error', 'Start and end dates are required'); return; }
+    if (new Date(form.endDate) < new Date(form.startDate)) { Alert.alert('Error', 'End date cannot be before start date'); return; }
+    const quota = quotas.find(q => q.id === form.quotaId);
     try {
-      editing ? await update({ id: editing.id, ...form }) : await create(form);
+      await create({
+        staffId: form.staffId,
+        quotaId: form.quotaId,
+        leaveType: quota?.title ?? form.leaveType,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        reason: form.reason || undefined,
+      });
       setShowModal(false);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Save failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Save failed'); }
   };
 
-  const handleApprove = async r => {
-    try { await update({ id: r.id, status: 'approved' }); }
-    catch (e) { Alert.alert('Error', e?.message ?? 'Failed'); }
+  const openReview = r => { setReviewTarget(r); setAdminNotes(''); };
+  const closeReview = () => { setReviewTarget(null); setAdminNotes(''); };
+
+  const handleApprove = async () => {
+    try { await approve({ id: reviewTarget.id, adminNotes }); closeReview(); }
+    catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed to approve leave'); }
   };
 
-  const handleReject = async r => {
-    try { await update({ id: r.id, status: 'rejected' }); }
-    catch (e) { Alert.alert('Error', e?.message ?? 'Failed'); }
+  const handleReject = async () => {
+    try { await reject({ id: reviewTarget.id, adminNotes }); closeReview(); }
+    catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed to reject leave'); }
   };
 
-  const handleDelete = r => Alert.alert('Delete', 'Delete this leave request?', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: () => remove(r.id) },
-  ]);
+  const handleAddStaff = async values => {
+    const created = await createStaff({ fullName: values.fullName, email: values.email, phoneNumber: values.phoneNumber, password: values.password });
+    const staff = created?.data ?? created;
+    setForm(p => ({ ...p, staffId: staff?.id ?? '' }));
+    return staff;
+  };
+
+  const handleAddQuota = async values => {
+    const created = await createQuota({ title: values.title, totalDays: values.totalDays });
+    const quota = created?.data ?? created;
+    setForm(p => ({ ...p, quotaId: quota?.id ?? '' }));
+    return quota;
+  };
 
   const fmtDate = d => d ? new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  const daysBetween = (start, end) => Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1);
 
   return (
     <View style={styles.root}>
@@ -119,32 +143,19 @@ const LeaveScreen = () => {
           return (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.empName} numberOfLines={1}>{item.employeeName ?? '—'}</Text>
+                <Text style={styles.empName} numberOfLines={1}>{item.user?.name ?? '—'}</Text>
                 <View style={[styles.badge, { backgroundColor: st.bg }]}>
                   <Text style={[styles.badgeText, { color: st.text }]}>{st.label}</Text>
                 </View>
               </View>
               <View style={styles.cardRow}>
-                <Text style={styles.leaveType}>{item.leaveType ?? '—'}</Text>
+                <Text style={styles.leaveType}>{item.quota?.title ?? item.leaveType ?? '—'}</Text>
                 <Text style={styles.dates}>{fmtDate(item.startDate)} – {fmtDate(item.endDate)}</Text>
               </View>
               {item.reason ? <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text> : null}
               {(item.status ?? '').toLowerCase() === 'pending' && canManage && (
-                <View style={styles.btnRow}>
-                  <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item)}>
-                    <Text style={styles.approveBtnText}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(item)}>
-                    <Text style={styles.rejectBtnText}>Reject</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
-                    <Text style={styles.editBtnText}>Edit</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              {canManage && (item.status ?? '').toLowerCase() !== 'pending' && (
-                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
-                  <Text style={styles.deleteBtnText}>Delete</Text>
+                <TouchableOpacity style={styles.reviewBtn} onPress={() => openReview(item)}>
+                  <Text style={styles.reviewBtnText}>Review</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -154,37 +165,44 @@ const LeaveScreen = () => {
 
       <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
         <View style={styles.overlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>{editing ? 'Edit Leave Request' : 'New Leave Request'}</Text>
+          <ScrollView style={styles.modalBox} contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+            <Text style={styles.modalTitle}>Add Leave for Staff</Text>
 
-            <Text style={styles.fieldLabel}>Employee Name</Text>
-            <TextInput style={styles.input} value={form.employeeName} onChangeText={set('employeeName')} placeholder="Employee name" placeholderTextColor="#999" />
+            <InlinePicker
+              label="Staff Member"
+              value={form.staffId}
+              options={staffOptions}
+              onSelect={set('staffId')}
+              allowNone={false}
+              onAddNew={() => setStaffQuickCreateOpen(true)}
+            />
 
-            <Text style={styles.fieldLabel}>Leave Type</Text>
-            <View style={styles.typeRow}>
-              {LEAVE_TYPES.map(t => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.typeChip, form.leaveType === t && styles.typeChipActive]}
-                  onPress={() => set('leaveType')(t)}
-                >
-                  <Text style={[styles.typeChipText, form.leaveType === t && { color: '#fff' }]}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <InlinePicker
+              label="Leave Type"
+              value={form.quotaId}
+              options={quotaOptions}
+              onSelect={set('quotaId')}
+              allowNone={false}
+              onAddNew={() => setQuotaQuickCreateOpen(true)}
+            />
 
             <View style={styles.dateRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>Start Date</Text>
-                <TextInput style={styles.input} value={form.startDate} onChangeText={set('startDate')} placeholder="YYYY-MM-DD" placeholderTextColor="#999" />
-              </View>
+              <DatePicker
+                label="Start Date"
+                value={form.startDate}
+                onDateChange={set('startDate')}
+                placeholder="Select start date"
+                style={{ flex: 1, marginBottom: 0 }}
+              />
               <View style={{ width: 12 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>End Date</Text>
-                <TextInput style={styles.input} value={form.endDate} onChangeText={set('endDate')} placeholder="YYYY-MM-DD" placeholderTextColor="#999" />
-              </View>
+              <DatePicker
+                label="End Date"
+                value={form.endDate}
+                onDateChange={set('endDate')}
+                placeholder="Select end date"
+                minimumDate={form.startDate || undefined}
+                style={{ flex: 1, marginBottom: 0 }}
+              />
             </View>
 
             <Text style={styles.fieldLabel}>Reason</Text>
@@ -201,10 +219,83 @@ const LeaveScreen = () => {
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isSaving}>
-                {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save</Text>}
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={creating}>
+                {creating ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save</Text>}
               </TouchableOpacity>
             </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <QuickCreateModal
+        visible={staffQuickCreateOpen}
+        title="Add New Staff Member"
+        fields={[
+          { key: 'fullName', label: 'Full Name *', placeholder: 'Jane Smith' },
+          { key: 'email', label: 'Email *', placeholder: 'jane@example.com' },
+          { key: 'phoneNumber', label: 'Phone', placeholder: '+1 234 567 890', required: false },
+          { key: 'password', label: 'Password *', placeholder: 'Min 6 characters' },
+        ]}
+        onClose={() => setStaffQuickCreateOpen(false)}
+        onCreate={handleAddStaff}
+      />
+
+      <QuickCreateModal
+        visible={quotaQuickCreateOpen}
+        title="Add New Leave Type"
+        fields={[
+          { key: 'title', label: 'Leave Type Name *', placeholder: 'e.g. Annual' },
+          { key: 'totalDays', label: 'Total Days *', placeholder: 'e.g. 14', keyboardType: 'numeric' },
+        ]}
+        onClose={() => setQuotaQuickCreateOpen(false)}
+        onCreate={handleAddQuota}
+      />
+
+      <Modal visible={!!reviewTarget} animationType="fade" transparent onRequestClose={closeReview}>
+        <View style={styles.overlay}>
+          <View style={styles.reviewCard}>
+            <Text style={styles.modalTitle}>Review Leave Request</Text>
+            {reviewTarget && (
+              <>
+                <View style={styles.reviewInfoBox}>
+                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Staff</Text><Text style={styles.reviewInfoValue}>{reviewTarget.user?.name ?? '—'}</Text></View>
+                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Type</Text><Text style={styles.reviewInfoValue}>{reviewTarget.quota?.title ?? reviewTarget.leaveType ?? '—'}</Text></View>
+                  <View style={styles.reviewInfoRow}>
+                    <Text style={styles.reviewInfoLabel}>Dates</Text>
+                    <Text style={styles.reviewInfoValue}>{fmtDate(reviewTarget.startDate)} → {fmtDate(reviewTarget.endDate)}</Text>
+                  </View>
+                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Days</Text><Text style={styles.reviewInfoValueBold}>{daysBetween(reviewTarget.startDate, reviewTarget.endDate)}</Text></View>
+                  {reviewTarget.reason ? (
+                    <View style={styles.reviewReasonBox}>
+                      <Text style={styles.reviewInfoLabel}>Reason</Text>
+                      <Text style={styles.reviewReasonText}>{reviewTarget.reason}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <Text style={styles.fieldLabel}>Notes (optional)</Text>
+                <TextInput
+                  style={[styles.input, { height: 60 }]}
+                  value={adminNotes}
+                  onChangeText={setAdminNotes}
+                  placeholder="Add a note for the staff member…"
+                  placeholderTextColor="#999"
+                  multiline
+                />
+
+                <View style={styles.reviewActions}>
+                  <TouchableOpacity style={styles.reviewCancelBtn} onPress={closeReview}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reviewRejectBtn} onPress={handleReject} disabled={rejecting || approving}>
+                    {rejecting ? <ActivityIndicator size="small" color="#dc2626" /> : <Text style={styles.rejectBtnText}>Reject</Text>}
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reviewApproveBtn} onPress={handleApprove} disabled={approving || rejecting}>
+                    {approving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Approve</Text>}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -233,25 +324,27 @@ const styles = StyleSheet.create({
   leaveType: { fontSize: 12, fontFamily: 'Outfit-Medium', color: colors.primary, textTransform: 'capitalize' },
   dates: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#666' },
   reason: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#888', marginTop: 4 },
-  btnRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  approveBtn: { flex: 1, backgroundColor: '#dcfce7', borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
-  approveBtnText: { color: '#16a34a', fontFamily: 'Outfit-SemiBold', fontSize: 12 },
-  rejectBtn: { flex: 1, backgroundColor: '#fee2e2', borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
-  rejectBtnText: { color: '#dc2626', fontFamily: 'Outfit-SemiBold', fontSize: 12 },
-  editBtn: { flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
-  editBtnText: { color: '#374151', fontFamily: 'Outfit-SemiBold', fontSize: 12 },
-  deleteBtn: { marginTop: 8, borderWidth: 1, borderColor: '#fee2e2', borderRadius: 8, paddingVertical: 7, alignItems: 'center' },
-  deleteBtnText: { color: '#dc2626', fontFamily: 'Outfit-Medium', fontSize: 12 },
+  reviewBtn: { backgroundColor: colors.primary + '15', borderRadius: 8, paddingVertical: 8, alignItems: 'center', marginTop: 10 },
+  reviewBtnText: { color: colors.primary, fontFamily: 'Outfit-SemiBold', fontSize: 12 },
+  rejectBtnText: { color: '#dc2626', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
+  reviewCard: { backgroundColor: '#fff', borderRadius: 16, margin: 20, padding: 20 },
+  reviewInfoBox: { backgroundColor: '#f9fafb', borderRadius: 10, padding: 14, gap: 8, marginBottom: 14 },
+  reviewInfoRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  reviewInfoLabel: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280' },
+  reviewInfoValue: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#111' },
+  reviewInfoValueBold: { fontSize: 13, fontFamily: 'Outfit-Bold', color: '#111' },
+  reviewReasonBox: { borderTopWidth: 1, borderColor: '#e5e7eb', paddingTop: 8, marginTop: 2 },
+  reviewReasonText: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#374151', marginTop: 2 },
+  reviewActions: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  reviewCancelBtn: { flex: 1, borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
+  reviewRejectBtn: { flex: 1, borderWidth: 1, borderColor: '#fecaca', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
+  reviewApproveBtn: { flex: 1, backgroundColor: '#16a34a', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   empty: { textAlign: 'center', color: '#999', fontFamily: 'Outfit-Regular', marginTop: 40 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalBox: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
+  modalBox: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
   modalTitle: { fontSize: 18, fontFamily: 'Outfit-Bold', color: '#1a1a1a', marginBottom: 14 },
   fieldLabel: { fontSize: 13, fontFamily: 'Outfit-Medium', color: '#374151', marginBottom: 5, marginTop: 10 },
   input: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#1a1a1a' },
-  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  typeChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: '#f4f6f9' },
-  typeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  typeChipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666' },
   dateRow: { flexDirection: 'row' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
   cancelBtn: { flex: 1, borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },

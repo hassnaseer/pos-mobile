@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl,
@@ -10,12 +10,19 @@ import colors from '../../../../theme/colors';
 
 const TABS = [
   { key: 'summary',   label: 'Sales' },
-  { key: 'invoices',  label: 'Invoices' },
+  { key: 'sales',     label: 'Invoices' },
+  { key: 'taxes',     label: 'Taxes' },
   { key: 'inventory', label: 'Inventory' },
   { key: 'customers', label: 'Customers' },
   { key: 'tickets',   label: 'Tickets' },
-  { key: 'finance',   label: 'Finance' },
+  { key: 'finance',   label: 'Profit & Loss' },
+  { key: 'projects',  label: 'Project Sales' },
 ];
+
+const TAB_ENDPOINT = {
+  summary: 'summary', sales: 'sales', taxes: 'tax-summary', inventory: 'inventory',
+  customers: 'customers', tickets: 'tickets', finance: 'finance', projects: 'project-sales',
+};
 
 const StatCard = ({ label, value, sub, color }) => (
   <View style={[styles.card, color && { borderLeftWidth: 3, borderLeftColor: color }]}>
@@ -66,18 +73,58 @@ const SummaryTab = ({ data, fmt }) => (
   </>
 );
 
-const InvoicesTab = ({ data, fmt }) => (
+const SalesTab = ({ data, fmt }) => (
   <>
     <View style={styles.grid}>
-      <StatCard label="Total Invoices"  value={data.total ?? 0}          color={colors.primary} />
-      <StatCard label="Revenue"         value={fmt(data.totalRevenue)}    color="#22c55e" />
-      <StatCard label="Paid"            value={fmt(data.totalPaid)}       color="#06b6d4" />
+      <StatCard label="Total Invoices"  value={data.totalInvoices ?? 0}   color={colors.primary} />
+      <StatCard label="Gross Revenue"   value={fmt(data.grossRevenue)}    color="#22c55e" />
+      <StatCard label="Net Revenue"     value={fmt(data.netRevenue)}      color="#06b6d4" />
+      <StatCard label="Collected"       value={fmt(data.totalPaid)}       color="#8b5cf6" />
       <StatCard label="Outstanding"     value={fmt(data.outstanding)}     color={colors.warning} />
     </View>
+    {data.typeBreakdown?.length > 0 && (
+      <Section title="By Type">
+        {data.typeBreakdown.map((t, i) => (
+          <Row key={i} label={t.label} value={`${t.count} · ${fmt(t.amount)}`} />
+        ))}
+      </Section>
+    )}
+    {data.paymentBreakdown?.length > 0 && (
+      <Section title="By Payment Method">
+        {data.paymentBreakdown.map((p, i) => (
+          <Row key={i} label={p.method} value={fmt(p.amount)} />
+        ))}
+      </Section>
+    )}
     {data.statusBreakdown?.length > 0 && (
       <Section title="By Status">
         {data.statusBreakdown.map((s, i) => (
           <Row key={i} label={s.status} value={`${s.count} invoices`} />
+        ))}
+      </Section>
+    )}
+  </>
+);
+
+const TaxesTab = ({ data, fmt }) => (
+  <>
+    <View style={styles.grid}>
+      <StatCard label="Tax Collected"   value={fmt(data.totalTaxCollected)}                    color="#f59e0b" />
+      <StatCard label="Total Revenue"   value={fmt(data.totalRevenue)}                          color="#22c55e" />
+      <StatCard label="Effective Rate"  value={`${data.effectiveRate ?? 0}%`}                    color="#8b5cf6" />
+      <StatCard label="Taxable Orders"  value={`${data.taxableOrdersCount ?? 0}/${data.totalOrdersCount ?? 0}`} color={colors.primary} />
+    </View>
+    {data.byTaxName?.length > 0 && (
+      <Section title="By Tax Type">
+        {data.byTaxName.map((t, i) => (
+          <Row key={i} label={t.name} value={fmt(t.amount)} />
+        ))}
+      </Section>
+    )}
+    {data.byMonth?.length > 0 && (
+      <Section title="By Month">
+        {data.byMonth.map((m, i) => (
+          <Row key={i} label={m.month} value={fmt(m.amount)} />
         ))}
       </Section>
     )}
@@ -147,15 +194,56 @@ const TicketsTab = ({ data, fmt }) => (
 const FinanceTab = ({ data, fmt }) => (
   <>
     <View style={styles.grid}>
-      <StatCard label="Gross Revenue" value={fmt(data.totalRevenue)}  color="#22c55e" />
-      <StatCard label="Total COGS"    value={fmt(data.totalCost)}      color="#ef4444" />
-      <StatCard label="Gross Profit"  value={fmt(data.grossProfit)}    color="#8b5cf6" />
-      <StatCard label="Profit Margin" value={data.profitMargin != null ? `${Number(data.profitMargin).toFixed(1)}%` : '—'} color="#f59e0b" />
+      <StatCard label="Gross Revenue"  value={fmt(data.grossRevenue)}  color="#3b82f6" />
+      <StatCard label="Taxes Collected" value={fmt(data.totalTaxes)}   color="#f59e0b" />
+      <StatCard label="Net Revenue"    value={fmt(data.netRevenue)}    color="#10b981" />
+      <StatCard label="Gross Profit"   value={fmt(data.grossProfit)}   color={data.grossProfit >= 0 ? '#22c55e' : '#ef4444'} />
+      <StatCard label="Profit Margin"  value={data.profitMargin != null ? `${Number(data.profitMargin).toFixed(1)}%` : '—'} color="#8b5cf6" />
     </View>
-    {data.byCategory?.length > 0 && (
-      <Section title="Revenue by Category">
-        {data.byCategory.map((c, i) => (
-          <Row key={i} label={c.name} value={`${fmt(c.revenue)} · ${fmt(c.profit)} profit`} />
+    <Section title="P&L Breakdown">
+      <Row label="Gross Revenue (incl. tax)" value={fmt(data.grossRevenue)} />
+      <Row label="− Taxes Collected" value={fmt(data.totalTaxes)} warn />
+      <Row label="Net Revenue" value={fmt(data.netRevenue)} />
+      <Row label="− COGS" value={fmt(data.totalCOGS)} warn />
+      <Row label="Gross Profit" value={fmt(data.grossProfit)} />
+    </Section>
+    {data.topProductsByProfit?.length > 0 && (
+      <Section title="Top Products by Profit">
+        {data.topProductsByProfit.slice(0, 10).map((p, i) => (
+          <Row key={i} label={p.name} value={`${p.unitsSold} sold · ${fmt(p.profit)} profit`} />
+        ))}
+      </Section>
+    )}
+    {data.revenueByDay?.length > 0 && (
+      <Section title="Revenue Trend">
+        {data.revenueByDay.slice(-7).map((d, i) => (
+          <Row key={i} label={d.date} value={fmt(d.revenue)} />
+        ))}
+      </Section>
+    )}
+  </>
+);
+
+const ProjectsTab = ({ data, fmt }) => (
+  <>
+    <View style={styles.grid}>
+      <StatCard label="Total Entries"     value={data.totalEntries ?? 0}         color={colors.primary} />
+      <StatCard label="Total Sales"       value={fmt(data.totalSales)}           color="#22c55e" />
+      <StatCard label="Received"          value={fmt(data.totalReceived)}        color="#06b6d4" />
+      <StatCard label="Outstanding"       value={fmt(data.totalOutstanding)}      color={colors.warning} />
+      <StatCard label="Profit"            value={fmt(data.totalProfit)}           color="#8b5cf6" sub={data.profitMargin != null ? `${data.profitMargin}% margin` : undefined} />
+    </View>
+    {data.byProject?.length > 0 && (
+      <Section title="By Project">
+        {data.byProject.map((p, i) => (
+          <Row key={i} label={p.projectName} value={`${fmt(p.sales)} · ${fmt(p.profit)} profit${p.roi != null ? ` · ${p.roi}% ROI` : ''}`} />
+        ))}
+      </Section>
+    )}
+    {data.byStatus?.length > 0 && (
+      <Section title="By Status">
+        {data.byStatus.map((s, i) => (
+          <Row key={i} label={s.status} value={`${s.count} · ${fmt(s.amount)}`} />
         ))}
       </Section>
     )}
@@ -175,7 +263,7 @@ const ReportsScreen = () => {
     queryKey: ['reports', tab, period],
     queryFn: async () => {
       const qs = tab === 'inventory' ? '' : `?period=${period}`;
-      const res = await apiClient.get(`/admin/reports/${tab}${qs}`);
+      const res = await apiClient.get(`/admin/reports/${TAB_ENDPOINT[tab]}${qs}`);
       return res?.data ?? res ?? {};
     },
     staleTime: 60_000,
@@ -211,11 +299,13 @@ const ReportsScreen = () => {
           contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
         >
           {tab === 'summary'   && data && <SummaryTab   data={data} fmt={fmt} />}
-          {tab === 'invoices'  && data && <InvoicesTab  data={data} fmt={fmt} />}
+          {tab === 'sales'     && data && <SalesTab     data={data} fmt={fmt} />}
+          {tab === 'taxes'     && data && <TaxesTab     data={data} fmt={fmt} />}
           {tab === 'inventory' && data && <InventoryTab data={data} fmt={fmt} />}
           {tab === 'customers' && data && <CustomersTab data={data} fmt={fmt} />}
           {tab === 'tickets'   && data && <TicketsTab   data={data} fmt={fmt} />}
           {tab === 'finance'   && data && <FinanceTab   data={data} fmt={fmt} />}
+          {tab === 'projects'  && data && <ProjectsTab  data={data} fmt={fmt} />}
           {!data && <Text style={styles.empty}>No data available for this period.</Text>}
         </ScrollView>
       )}

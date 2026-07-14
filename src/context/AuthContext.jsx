@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const appState = useRef(AppState.currentState);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { checkAuthStatus(); }, []);
 
   useEffect(() => {
@@ -60,6 +61,15 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
         setUserRole(parsed.role ?? null);
         setUser(parsed);
+        // Session restore only reads whatever was cached at last login —
+        // permissionCodes/businessPermissionCodes/primaryDashboard (which pick the
+        // initial dashboard screen and drive the whole sidebar) can go stale between
+        // app launches, since this previously only refreshed on an app foreground
+        // transition, never on cold start. React Navigation's initialRouteName is only
+        // honored on first mount, so this must resolve BEFORE the main navigator ever
+        // renders — otherwise a staff member could land on the wrong dashboard variant
+        // for the rest of the session even after the data catches up in the background.
+        await refreshPermissions();
       }
     } catch (e) {
       console.error('checkAuthStatus error:', e);
@@ -83,6 +93,7 @@ export const AuthProvider = ({ children }) => {
         ...stored,
         permissionCodes: profile.permissionCodes ?? stored.permissionCodes,
         businessPermissionCodes: profile.businessPermissionCodes ?? stored.businessPermissionCodes,
+        primaryDashboard: profile.primaryDashboard ?? stored.primaryDashboard,
       };
       setUser(merged);
       await AsyncStorage.setItem('userData', JSON.stringify(merged));

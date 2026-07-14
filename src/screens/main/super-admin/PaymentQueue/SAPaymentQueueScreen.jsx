@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity, Modal,
-  TextInput, ActivityIndicator, Alert, RefreshControl, ScrollView,
+  TextInput, ActivityIndicator, Alert, RefreshControl, ScrollView, Image, Linking,
 } from 'react-native';
-import { useSAPaymentQueue, useApproveSAPayment, useRejectSAPayment, flattenPages } from '../../../../services/api/posApi';
+import { useSAPaymentQueue, useApproveSAPayment, useRejectSAPayment, useReviewSAPayment, flattenPages } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
 import ConfirmModal from '../../../../components/Modal/ConfirmModal';
 
 const STATUS_STYLE = {
-  pending:  { bg: '#fef9c3', text: '#b45309' },
-  approved: { bg: '#dcfce7', text: '#16a34a' },
-  rejected: { bg: '#fee2e2', text: '#dc2626' },
+  PENDING:      { bg: '#fef9c3', text: '#b45309', label: 'Pending' },
+  UNDER_REVIEW: { bg: '#dbeafe', text: '#1d4ed8', label: 'Under Review' },
+  APPROVED:     { bg: '#dcfce7', text: '#16a34a', label: 'Approved' },
+  REJECTED:     { bg: '#fee2e2', text: '#dc2626', label: 'Rejected' },
 };
 
 const SAPaymentQueueScreen = () => {
@@ -21,6 +22,7 @@ const SAPaymentQueueScreen = () => {
 
   const { mutateAsync: approve, isPending: approving } = useApproveSAPayment();
   const { mutateAsync: reject, isPending: rejecting } = useRejectSAPayment();
+  const { mutate: review, isPending: reviewing } = useReviewSAPayment();
 
   const [rejectModal, setRejectModal] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -29,12 +31,12 @@ const SAPaymentQueueScreen = () => {
 
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSource, setFilterSource] = useState('');
-  const STATUSES = ['pending', 'approved', 'rejected'];
-  const SOURCES  = ['direct', 'signup', 'upgrade'];
+  const STATUSES = ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'];
+  const SOURCES  = ['SIGNUP', 'DIRECT_REQUEST', 'CHAT', 'EMAIL'];
 
   const filtered = requests.filter(r => {
-    if (filterStatus && (r.status ?? '').toLowerCase() !== filterStatus) return false;
-    if (filterSource && (r.source ?? '').toLowerCase() !== filterSource) return false;
+    if (filterStatus && (r.status ?? '') !== filterStatus) return false;
+    if (filterSource && (r.source ?? '') !== filterSource) return false;
     return true;
   });
 
@@ -42,7 +44,7 @@ const SAPaymentQueueScreen = () => {
 
   const doApprove = async () => {
     try { await approve({ id: approveTarget.id }); }
-    catch { Alert.alert('Error', 'Approve failed'); }
+    catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Approve failed'); }
     finally { setApproveTarget(null); }
   };
 
@@ -50,9 +52,13 @@ const SAPaymentQueueScreen = () => {
 
   const handleReject = async () => {
     try {
-      await reject({ id: selected.id, reason });
+      await reject({ id: selected.id, note: reason });
       setRejectModal(false);
-    } catch { Alert.alert('Error', 'Reject failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Reject failed'); }
+  };
+
+  const handleReview = item => {
+    review(item.id, { onError: (e) => Alert.alert('Error', typeof e === 'string' ? e : 'Failed to mark under review') });
   };
 
   return (
@@ -60,13 +66,13 @@ const SAPaymentQueueScreen = () => {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterWrap} contentContainerStyle={styles.filterRow}>
         {['', ...STATUSES].map(s => (
           <TouchableOpacity key={s || 'all'} style={[styles.chip, filterStatus === s && styles.chipActive]} onPress={() => setFilterStatus(s)}>
-            <Text style={[styles.chipText, filterStatus === s && styles.chipTextActive]}>{s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All Status'}</Text>
+            <Text style={[styles.chipText, filterStatus === s && styles.chipTextActive]}>{s ? (STATUS_STYLE[s]?.label ?? s) : 'All Status'}</Text>
           </TouchableOpacity>
         ))}
         <View style={styles.chipDivider} />
         {['', ...SOURCES].map(s => (
           <TouchableOpacity key={s || 'all-src'} style={[styles.chip, { borderColor: '#8b5cf6' }, filterSource === s && { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }]} onPress={() => setFilterSource(s)}>
-            <Text style={[styles.chipText, { color: '#8b5cf6' }, filterSource === s && { color: '#fff' }]}>{s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All Sources'}</Text>
+            <Text style={[styles.chipText, { color: '#8b5cf6' }, filterSource === s && { color: '#fff' }]}>{s ? s.replace('_', ' ') : 'All Sources'}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -81,24 +87,40 @@ const SAPaymentQueueScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={!isLoading && <Text style={styles.empty}>No payment requests.</Text>}
         renderItem={({ item }) => {
-          const st = STATUS_STYLE[item.status] ?? STATUS_STYLE.pending;
+          const st = STATUS_STYLE[item.status] ?? STATUS_STYLE.PENDING;
+          const canAct = item.status === 'PENDING' || item.status === 'UNDER_REVIEW';
           return (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.bizName} numberOfLines={1}>{item.businessName ?? item.business?.name ?? '—'}</Text>
                 <View style={[styles.badge, { backgroundColor: st.bg }]}>
-                  <Text style={[styles.badgeText, { color: st.text }]}>{item.status ?? 'pending'}</Text>
+                  <Text style={[styles.badgeText, { color: st.text }]}>{st.label}</Text>
                 </View>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Amount</Text>
-                <Text style={styles.amount}>PKR {item.amount ?? '—'}</Text>
+                <Text style={styles.amount}>{item.currency ?? 'USD'} {item.amount ?? '—'}</Text>
               </View>
               {item.plan && <View style={styles.row}><Text style={styles.label}>Plan</Text><Text style={styles.value}>{typeof item.plan === 'string' ? item.plan : (item.plan?.name ?? '')}</Text></View>}
-              {item.screenshotUrl ? <Text style={styles.sub}>Receipt attached</Text> : null}
-              {item.submittedAt && <Text style={styles.sub}>{new Date(item.submittedAt).toLocaleString()}</Text>}
-              {(item.status ?? '').toLowerCase() === 'pending' && (
+              {item.source && <View style={styles.row}><Text style={styles.label}>Source</Text><Text style={styles.value}>{item.source.replace('_', ' ')}</Text></View>}
+              {(item.proofUrls ?? []).length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
+                  {item.proofUrls.map((url, i) => (
+                    <TouchableOpacity key={i} onPress={() => Linking.openURL(url)}>
+                      <Image source={{ uri: url }} style={styles.proofThumb} resizeMode="cover" />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+              {item.adminNotes ? <Text style={styles.sub}>Note: {item.adminNotes}</Text> : null}
+              {item.createdAt && <Text style={styles.sub}>{new Date(item.createdAt).toLocaleString()}</Text>}
+              {canAct && (
                 <View style={styles.btnRow}>
+                  {item.status === 'PENDING' && (
+                    <TouchableOpacity style={styles.reviewBtn} onPress={() => handleReview(item)} disabled={reviewing}>
+                      {reviewing ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={styles.reviewBtnText}>Under Review</Text>}
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item)} disabled={approving}>
                     {approving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.approveBtnText}>Approve</Text>}
                   </TouchableOpacity>
@@ -137,7 +159,7 @@ const SAPaymentQueueScreen = () => {
         onClose={() => setApproveTarget(null)}
         onConfirm={doApprove}
         title="Approve Payment"
-        message={`Approve PKR ${approveTarget?.amount} from ${approveTarget?.businessName ?? approveTarget?.business?.name ?? ''}?`}
+        message={`Approve ${approveTarget?.currency ?? 'USD'} ${approveTarget?.amount} from ${approveTarget?.businessName ?? approveTarget?.business?.name ?? ''}?`}
         confirmLabel="Approve"
         variant="success"
         loading={approving}
@@ -170,6 +192,9 @@ const styles = StyleSheet.create({
   approveBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
   rejectBtn: { flex: 1, backgroundColor: '#fee2e2', borderRadius: 8, paddingVertical: 9, alignItems: 'center' },
   rejectBtnText: { color: '#dc2626', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
+  reviewBtn: { flex: 1, backgroundColor: '#dbeafe', borderRadius: 8, paddingVertical: 9, alignItems: 'center' },
+  reviewBtnText: { color: '#1d4ed8', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
+  proofThumb: { width: 56, height: 56, borderRadius: 8, marginRight: 8 },
   empty: { textAlign: 'center', color: '#999', fontFamily: 'Outfit-Regular', marginTop: 40 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },

@@ -7,6 +7,7 @@ import {
   useMedicalInsurance, useCreateMedicalInsurance,
   useUpdateMedicalInsurance, useDeleteMedicalInsurance,
 } from '../../../../services/api/posApi';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const EMPTY = { providerName: '', policyNumber: '', patientName: '', coverageAmount: '', expiryDate: '', notes: '' };
@@ -99,7 +100,7 @@ const InsuranceScreen = () => {
               <View style={styles.field}><Text style={styles.label}>Policy Number</Text><TextInput style={styles.input} value={form.policyNumber} onChangeText={set('policyNumber')} placeholder="Policy #" placeholderTextColor="#999" /></View>
               <View style={styles.field}><Text style={styles.label}>Patient Name</Text><TextInput style={styles.input} value={form.patientName} onChangeText={set('patientName')} placeholder="Patient name" placeholderTextColor="#999" /></View>
               <View style={styles.field}><Text style={styles.label}>Coverage Amount (PKR)</Text><TextInput style={styles.input} value={form.coverageAmount} onChangeText={set('coverageAmount')} placeholder="0" placeholderTextColor="#999" keyboardType="numeric" /></View>
-              <View style={styles.field}><Text style={styles.label}>Expiry Date</Text><TextInput style={styles.input} value={form.expiryDate} onChangeText={set('expiryDate')} placeholder="YYYY-MM-DD" placeholderTextColor="#999" /></View>
+              <DatePicker label="Expiry Date" value={form.expiryDate} onDateChange={set('expiryDate')} placeholder="Select expiry date" />
               <View style={styles.field}><Text style={styles.label}>Notes</Text><TextInput style={[styles.input, { height: 70 }]} value={form.notes} onChangeText={set('notes')} placeholder="Notes" placeholderTextColor="#999" multiline /></View>
             </ScrollView>
             <View style={styles.modalActions}>

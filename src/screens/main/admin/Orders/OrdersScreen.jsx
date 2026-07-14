@@ -65,19 +65,19 @@ const OrdersScreen = ({ navigation }) => {
               activeOpacity={0.85}
             >
               <View style={styles.cardRow}>
-                <Text style={styles.invoiceNo}>#{item.invoiceNo ?? item.id}</Text>
+                <Text style={styles.invoiceNo}>#{item.orderNumber ?? item.id}</Text>
                 <View style={[styles.badge, { backgroundColor: st.bg }]}>
                   <Text style={[styles.badgeText, { color: st.text }]}>{st.label}</Text>
                 </View>
               </View>
-              {item.customerName && (
-                <Text style={styles.customer} numberOfLines={1}>{item.customerName}</Text>
+              {item.customer?.name && (
+                <Text style={styles.customer} numberOfLines={1}>{item.customer.name}</Text>
               )}
               <View style={styles.cardRow}>
                 <Text style={styles.date}>
-                  {item.createdAt ? new Date(item.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  {item.placedAt ? new Date(item.placedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                 </Text>
-                <Text style={styles.amount}>{fmt(item.total ?? item.grandTotal ?? 0)}</Text>
+                <Text style={styles.amount}>{fmt(item.totalAmount ?? 0)}</Text>
               </View>
               {item.paymentMethod && (
                 <Text style={styles.meta}>{item.paymentMethod}</Text>

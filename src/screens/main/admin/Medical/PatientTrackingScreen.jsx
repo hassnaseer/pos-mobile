@@ -7,6 +7,7 @@ import {
   usePatientVisits, useCreatePatientVisit,
   useUpdatePatientVisit, usePatientsList,
 } from '../../../../services/api/posApi';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const VISIT_TYPES = ['consultation', 'follow-up', 'emergency', 'checkup', 'procedure'];
@@ -129,7 +130,7 @@ const PatientTrackingScreen = () => {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>{editingVisit ? 'Edit Visit' : 'New Visit'}</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.field}><Text style={styles.label}>Visit Date</Text><TextInput style={styles.input} value={visitForm.visitDate} onChangeText={setV('visitDate')} placeholder="YYYY-MM-DD" placeholderTextColor="#999" /></View>
+              <DatePicker label="Visit Date" value={visitForm.visitDate} onDateChange={setV('visitDate')} placeholder="Select visit date" />
               <View style={styles.field}>
                 <Text style={styles.label}>Visit Type</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={{ flexDirection: 'row', gap: 6 }}>{VISIT_TYPES.map(t => (<TouchableOpacity key={t} style={[styles.typeChip, visitForm.visitType === t && styles.typeChipActive]} onPress={() => setVisitForm(f => ({ ...f, visitType: t }))}><Text style={[styles.typeText, visitForm.visitType === t && styles.typeTextActive]}>{t}</Text></TouchableOpacity>))}</View></ScrollView>

@@ -3,9 +3,12 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   Modal, ActivityIndicator, Alert, RefreshControl, TextInput,
 } from 'react-native';
-import { useJobListings, useCreateJobListing, useUpdateJobListing, useDeleteJobListing } from '../../../../services/api/posApi';
+import { useJobListings, useCreateJobListing, useDeleteJobListing, useDepartments, useCreateDepartment } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
+import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
+import QuickCreateModal from '../../../../components/QuickCreateModal/QuickCreateModal';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const EMPTY_FORM = { title: '', department: '', description: '', deadline: '' };
@@ -16,37 +19,43 @@ const JobBoardScreen = () => {
   const canManage = perms.can(PERMISSIONS.MANAGE_INTERNAL_JOBS);
 
   const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [deptQuickCreateOpen, setDeptQuickCreateOpen] = useState(false);
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
 
   const { data: raw = [], isLoading, refetch } = useJobListings();
+  const { data: rawDepts = [] } = useDepartments();
   const { mutateAsync: create, isPending: creating } = useCreateJobListing();
-  const { mutateAsync: update, isPending: updating } = useUpdateJobListing();
   const { mutate: remove } = useDeleteJobListing();
+  const { mutateAsync: createDepartment } = useCreateDepartment();
 
   const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
-  const isSaving = creating || updating;
+  const departments = Array.isArray(rawDepts) ? rawDepts : (rawDepts?.data ?? []);
+  // Job listings store department as a plain name string, not a relation — the picker
+  // selects/creates a real Department entity but only submits its name.
+  const deptOptions = departments.map(d => ({ id: d.name, name: d.name }));
 
-  const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); };
-  const openEdit = j => {
-    setEditing(j);
-    setForm({ title: j.title ?? '', department: j.department ?? '', description: j.description ?? '', deadline: j.deadline ?? '' });
-    setShowModal(true);
-  };
+  const openAdd = () => { setForm(EMPTY_FORM); setShowModal(true); };
 
   const handleSave = async () => {
     if (!form.title.trim()) { Alert.alert('Error', 'Job title is required'); return; }
     try {
-      editing ? await update({ id: editing.id, ...form }) : await create(form);
+      await create(form);
       setShowModal(false);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Save failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Save failed'); }
   };
 
   const handleDelete = j => Alert.alert('Delete Job', `Delete "${j.title}"?`, [
     { text: 'Cancel', style: 'cancel' },
     { text: 'Delete', style: 'destructive', onPress: () => remove(j.id) },
   ]);
+
+  const handleAddDepartment = async name => {
+    const created = await createDepartment({ name });
+    const dept = created?.data ?? created;
+    setForm(p => ({ ...p, department: dept?.name ?? name }));
+    return dept;
+  };
 
   return (
     <View style={styles.root}>
@@ -75,14 +84,9 @@ const JobBoardScreen = () => {
                 <Text style={[styles.badgeText, { color: STATUS_COLOR[item.status] ?? '#9CA3AF' }]}>{item.status ?? 'open'}</Text>
               </View>
               {canManage && (
-                <View style={styles.actions}>
-                  <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
-                    <Text style={styles.editText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.delBtn} onPress={() => handleDelete(item)}>
-                    <Text style={styles.delText}>Del</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity style={styles.delBtn} onPress={() => handleDelete(item)}>
+                  <Text style={styles.delText}>Delete</Text>
+                </TouchableOpacity>
               )}
             </View>
           </View>
@@ -91,33 +95,57 @@ const JobBoardScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
       />
 
-      <Modal visible={showModal} animationType="slide" transparent>
+      <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalBg}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{editing ? 'Edit Job' : 'Post New Job'}</Text>
-            {[
-              { key: 'title',       label: 'Job Title *' },
-              { key: 'department',  label: 'Department' },
-              { key: 'description', label: 'Description' },
-              { key: 'deadline',    label: 'Application Deadline (YYYY-MM-DD)' },
-            ].map(f => (
-              <View key={f.key} style={styles.field}>
-                <Text style={styles.label}>{f.label}</Text>
-                <TextInput style={[styles.input, f.key === 'description' && { height: 70, textAlignVertical: 'top' }]}
-                  value={form[f.key]} onChangeText={set(f.key)} placeholder={f.label.replace(' *', '')} placeholderTextColor="#999" multiline={f.key === 'description'} />
-              </View>
-            ))}
+            <Text style={styles.modalTitle}>Post Internal Job</Text>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Job Title *</Text>
+              <TextInput style={styles.input} value={form.title} onChangeText={set('title')} placeholder="Job Title" placeholderTextColor="#999" />
+            </View>
+
+            <InlinePicker
+              label="Department"
+              value={form.department}
+              options={deptOptions}
+              keyField="id"
+              labelField="name"
+              onSelect={set('department')}
+              onAddNew={() => setDeptQuickCreateOpen(true)}
+            />
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Description</Text>
+              <TextInput style={[styles.input, { height: 70, textAlignVertical: 'top' }]} value={form.description} onChangeText={set('description')} placeholder="Description" placeholderTextColor="#999" multiline />
+            </View>
+
+            <DatePicker
+              label="Application Deadline"
+              value={form.deadline}
+              onDateChange={set('deadline')}
+              placeholder="Select deadline"
+            />
+
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isSaving}>
-                {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveText}>{editing ? 'Update' : 'Post'}</Text>}
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={creating}>
+                {creating ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveText}>Post</Text>}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      <QuickCreateModal
+        visible={deptQuickCreateOpen}
+        title="Add New Department"
+        fields={[{ key: 'name', label: 'Department Name *', placeholder: 'e.g. Sales' }]}
+        onClose={() => setDeptQuickCreateOpen(false)}
+        onCreate={values => handleAddDepartment(values.name)}
+      />
     </View>
   );
 };
@@ -135,9 +163,6 @@ const styles = StyleSheet.create({
   rowRight:     { alignItems: 'flex-end', gap: 6 },
   badge:        { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   badgeText:    { fontSize: 11, fontFamily: 'Outfit-SemiBold' },
-  actions:      { flexDirection: 'row', gap: 6 },
-  editBtn:      { backgroundColor: '#EBF0F5', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
-  editText:     { fontSize: 11, fontFamily: 'Outfit-SemiBold', color: colors.primary },
   delBtn:       { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   delText:      { fontSize: 11, fontFamily: 'Outfit-SemiBold', color: '#DC2626' },
   empty:        { textAlign: 'center', color: '#999', fontFamily: 'Outfit-Regular', marginTop: 40 },

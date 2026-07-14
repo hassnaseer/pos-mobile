@@ -6,32 +6,35 @@ import {
 import { useAuth } from '../../../../context/AuthContext';
 import colors from '../../../../theme/colors';
 
-let firestore = null;
-try { firestore = require('@react-native-firebase/firestore').default; } catch { firestore = null; }
+let fs = null;
+try { fs = require('@react-native-firebase/firestore'); } catch { fs = null; }
 
-const serverTs = () => firestore?.FieldValue?.serverTimestamp?.() ?? null;
+const serverTs = () => fs?.serverTimestamp?.() ?? null;
 
-const SupportChatScreen = () => {
+const SupportChatScreen = ({ route, navigation }) => {
   const { user } = useAuth();
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const flatRef = useRef(null);
+  const prefillSent = useRef(false);
 
   useEffect(() => {
-    if (!firestore || !user?.id) { setLoading(false); return; }
-    const db = firestore();
-    const q = db.collection('support_conversations')
-      .where('customerId', '==', user.id)
-      .limit(1);
+    if (!fs || !user?.id) { setLoading(false); return; }
+    const db = fs.getFirestore();
+    const q = fs.query(
+      fs.collection(db, 'support_conversations'),
+      fs.where('customerId', '==', user.id),
+      fs.limit(1),
+    );
 
-    const unsub = q.onSnapshot(snap => {
+    const unsub = fs.onSnapshot(q, snap => {
       if (!snap.empty) {
         setConversationId(snap.docs[0].id);
         const d = snap.docs[0].data();
         if (d.isReadByCustomer === false) {
-          snap.docs[0].ref.update({ isReadByCustomer: true });
+          fs.updateDoc(snap.docs[0].ref, { isReadByCustomer: true });
         }
       }
       setLoading(false);
@@ -40,14 +43,14 @@ const SupportChatScreen = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!firestore || !conversationId) return;
-    const db = firestore();
-    const q = db.collection('support_conversations')
-      .doc(conversationId)
-      .collection('messages')
-      .orderBy('timestamp', 'asc');
+    if (!fs || !conversationId) return;
+    const db = fs.getFirestore();
+    const q = fs.query(
+      fs.collection(fs.doc(db, 'support_conversations', conversationId), 'messages'),
+      fs.orderBy('timestamp', 'asc'),
+    );
 
-    const unsub = q.onSnapshot(snap => {
+    const unsub = fs.onSnapshot(q, snap => {
       setMessages(snap.docs.map(d => {
         const data = d.data();
         return {
@@ -64,15 +67,26 @@ const SupportChatScreen = () => {
     return unsub;
   }, [conversationId]);
 
-  const send = async () => {
-    if (!text.trim() || !firestore) return;
-    const content = text.trim();
+  // Auto-send a pre-filled message once (e.g. from the Billing screen's "Request Custom Plan"
+  // banner), after the initial conversation lookup has settled.
+  useEffect(() => {
+    const prefill = route?.params?.prefillMessage;
+    if (!prefill || loading || prefillSent.current) return;
+    prefillSent.current = true;
+    navigation?.setParams?.({ prefillMessage: undefined });
+    send(prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route?.params?.prefillMessage, loading]);
+
+  const send = async (overrideContent) => {
+    const content = (overrideContent ?? text).trim();
+    if (!content || !fs) return;
     setText('');
-    const db = firestore();
+    const db = fs.getFirestore();
     let convId = conversationId;
 
     if (!convId) {
-      const ref = await db.collection('support_conversations').add({
+      const ref = await fs.addDoc(fs.collection(db, 'support_conversations'), {
         customerId: user.id,
         customerName: user.name,
         businessName: user.businessName ?? '',
@@ -87,14 +101,14 @@ const SupportChatScreen = () => {
       convId = ref.id;
       setConversationId(ref.id);
     } else {
-      await db.collection('support_conversations').doc(convId).update({
+      await fs.updateDoc(fs.doc(db, 'support_conversations', convId), {
         lastMessage: content,
         lastMessageAt: serverTs(),
         isReadBySupport: false,
       });
     }
 
-    await db.collection('support_conversations').doc(convId).collection('messages').add({
+    await fs.addDoc(fs.collection(fs.doc(db, 'support_conversations', convId), 'messages'), {
       senderId: user.id,
       senderName: user.name,
       senderRole: 'admin',
@@ -103,7 +117,7 @@ const SupportChatScreen = () => {
     });
   };
 
-  if (!firestore) {
+  if (!fs) {
     return (
       <View style={styles.center}>
         <Text style={styles.infoText}>Support chat requires Firestore.</Text>
@@ -148,7 +162,7 @@ const SupportChatScreen = () => {
           placeholderTextColor="#999"
           multiline
         />
-        <TouchableOpacity style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]} onPress={send} disabled={!text.trim()}>
+        <TouchableOpacity style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]} onPress={() => send()} disabled={!text.trim()}>
           <Text style={styles.sendBtnText}>Send</Text>
         </TouchableOpacity>
       </View>

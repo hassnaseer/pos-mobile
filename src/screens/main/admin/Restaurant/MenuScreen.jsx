@@ -19,15 +19,7 @@ const useMenuItems = (category = '') =>
     staleTime: 30_000,
   });
 
-const useMenuCategories = () =>
-  useQuery({
-    queryKey: ['restaurant-menu-categories'],
-    queryFn: async () => {
-      const res = await apiClient.get('/admin/restaurant/menu/categories');
-      return res?.data ?? res ?? [];
-    },
-    staleTime: 60_000,
-  });
+const MENU_CATEGORIES = ['Appetizer', 'Main Course', 'Dessert', 'Beverage'];
 
 const useCreateMenuItem = () => {
   const qc = useQueryClient();
@@ -64,13 +56,11 @@ const MenuScreen = () => {
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
 
   const { data: raw = [], isLoading, refetch } = useMenuItems(catFilter);
-  const { data: catRaw = [] } = useMenuCategories();
   const { mutateAsync: create, isPending: creating } = useCreateMenuItem();
   const { mutateAsync: update, isPending: updating } = useUpdateMenuItem();
   const { mutate: remove } = useDeleteMenuItem();
 
   const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
-  const cats = Array.isArray(catRaw) ? catRaw : (catRaw?.data ?? []);
   const isSaving = creating || updating;
 
   const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); };
@@ -93,7 +83,7 @@ const MenuScreen = () => {
       const payload = { ...form, price: parseFloat(form.price) };
       editing ? await update({ id: editing.id, ...payload }) : await create(payload);
       setShowModal(false);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Save failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Save failed'); }
   };
 
   const handleDelete = r => Alert.alert('Delete', `Delete "${r.name}"?`, [
@@ -110,33 +100,28 @@ const MenuScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {cats.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterWrap}
-          contentContainerStyle={styles.filterRow}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterWrap}
+        contentContainerStyle={styles.filterRow}
+      >
+        <TouchableOpacity
+          style={[styles.chip, catFilter === '' && styles.chipActive]}
+          onPress={() => setCatFilter('')}
         >
+          <Text style={[styles.chipText, catFilter === '' && styles.chipTextActive]}>All Categories</Text>
+        </TouchableOpacity>
+        {MENU_CATEGORIES.map(name => (
           <TouchableOpacity
-            style={[styles.chip, catFilter === '' && styles.chipActive]}
-            onPress={() => setCatFilter('')}
+            key={name}
+            style={[styles.chip, catFilter === name && styles.chipActive]}
+            onPress={() => setCatFilter(name)}
           >
-            <Text style={[styles.chipText, catFilter === '' && styles.chipTextActive]}>All</Text>
+            <Text style={[styles.chipText, catFilter === name && styles.chipTextActive]}>{name}</Text>
           </TouchableOpacity>
-          {cats.map(c => {
-            const name = typeof c === 'string' ? c : (c.name ?? String(c));
-            return (
-              <TouchableOpacity
-                key={name}
-                style={[styles.chip, catFilter === name && styles.chipActive]}
-                onPress={() => setCatFilter(name)}
-              >
-                <Text style={[styles.chipText, catFilter === name && styles.chipTextActive]}>{name}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      )}
+        ))}
+      </ScrollView>
 
       <FlatList
         data={items}
@@ -183,7 +168,13 @@ const MenuScreen = () => {
             <TextInput style={styles.input} value={form.price} onChangeText={set('price')} placeholder="0.00" placeholderTextColor="#999" keyboardType="decimal-pad" />
 
             <Text style={styles.fieldLabel}>Category</Text>
-            <TextInput style={styles.input} value={form.category} onChangeText={set('category')} placeholder="Category" placeholderTextColor="#999" />
+            <View style={styles.chips}>
+              {MENU_CATEGORIES.map(name => (
+                <TouchableOpacity key={name} style={[styles.chip, form.category === name && styles.chipActive]} onPress={() => set('category')(name)}>
+                  <Text style={[styles.chipText, form.category === name && styles.chipTextActive]}>{name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <Text style={styles.fieldLabel}>Description</Text>
             <TextInput style={[styles.input, { height: 70 }]} value={form.description} onChangeText={set('description')} placeholder="Description" placeholderTextColor="#999" multiline />
@@ -220,6 +211,7 @@ const styles = StyleSheet.create({
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
   filterWrap: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee', flexGrow: 0 },
   filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', gap: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
   chip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#666', lineHeight: 18 },

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Modal, Alert, RefreshControl,
+  ActivityIndicator, Modal, Alert, RefreshControl, Linking,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
@@ -58,8 +58,24 @@ const BillingScreen = ({ navigation }) => {
 
   const handleUpgrade = planId => {
     upgrade(planId, {
-      onSuccess: () => { setPlanModal(false); Alert.alert('Success', 'Plan updated successfully'); },
-      onError: () => Alert.alert('Error', 'Failed to update plan. Please try again.'),
+      onSuccess: (res) => {
+        const result = res?.data ?? res ?? {};
+        if (result.mode === 'redirect' && result.paymentUrl) {
+          setPlanModal(false);
+          Linking.openURL(result.paymentUrl).catch(() => Alert.alert('Error', 'Could not open the payment page.'));
+          Alert.alert(
+            'Complete Your Payment',
+            "We've opened the payment page in your browser. Once you've completed payment, come back and pull to refresh.",
+          );
+        } else if (result.mode === 'free_month') {
+          setPlanModal(false);
+          Alert.alert('Success', `You have ${result.rewardMonthsRemaining} free reward month(s) remaining — no charge was made.`);
+        } else {
+          setPlanModal(false);
+          Alert.alert('Success', 'Plan updated successfully');
+        }
+      },
+      onError: (e) => Alert.alert('Error', typeof e === 'string' ? e : 'Failed to update plan. Please try again.'),
     });
   };
 
@@ -142,8 +158,30 @@ const BillingScreen = ({ navigation }) => {
         )}
       </View>
 
+      {/* Payment Method */}
+      {info.enabledPaymentMethods?.swich && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Payment Method</Text>
+          {info.hasPaymentMethod ? (
+            <View style={styles.pmRow}>
+              <Text style={styles.pmIcon}>💳</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pmTitle}>Card on file via Swich</Text>
+                {info.ownerMsisdn ? <Text style={styles.pmSub}>{info.ownerMsisdn}</Text> : null}
+                <Text style={styles.pmSub}>Auto-renewals will be charged to this card.</Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.pmEmpty}>No saved payment method yet. One will be added the first time you upgrade via Swich.</Text>
+          )}
+          {info.rewardMonthsRemaining > 0 && (
+            <Text style={styles.pmReward}>🎁 {info.rewardMonthsRemaining} free reward month{info.rewardMonthsRemaining !== 1 ? 's' : ''} remaining</Text>
+          )}
+        </View>
+      )}
+
       {/* Bank Transfer */}
-      {info.status !== 'Active' && (
+      {info.status !== 'Active' && info.enabledPaymentMethods?.bankTransfer !== false && (
         <TouchableOpacity
           style={styles.bankTransferBtn}
           onPress={() => navigation.navigate('AwaitingPayment')}
@@ -221,6 +259,22 @@ const BillingScreen = ({ navigation }) => {
                   </View>
                 );
               })}
+
+              <TouchableOpacity
+                style={styles.customPlanBanner}
+                onPress={() => {
+                  setPlanModal(false);
+                  navigation.navigate('SupportChat', {
+                    prefillMessage: "Hi, I'm interested in a custom plan for my business. Can you help me set one up?",
+                  });
+                }}
+              >
+                <Text style={styles.customPlanTitle}>Need something custom?</Text>
+                <Text style={styles.customPlanDesc}>
+                  Larger team, multiple branches, or specific requirements? Chat with us and we'll build a plan around your business.
+                </Text>
+                <Text style={styles.customPlanCta}>Request Custom Plan →</Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -230,6 +284,10 @@ const BillingScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  customPlanBanner: { borderWidth: 1.5, borderColor: '#D0D5DD', borderStyle: 'dashed', borderRadius: 12, padding: 16, marginTop: 4, marginBottom: 16 },
+  customPlanTitle: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack ?? '#111' },
+  customPlanDesc: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 4, lineHeight: 17 },
+  customPlanCta: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: colors.primary, marginTop: 8 },
   root: { flex: 1, backgroundColor: '#f4f6f9' },
   content: { padding: 14, paddingBottom: 32 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
@@ -256,6 +314,13 @@ const styles = StyleSheet.create({
   trialNote: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 4 },
   bankTransferBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 14, padding: 14, alignItems: 'center', marginBottom: 4 },
   bankTransferText: { fontSize: 14, fontWeight: '600', color: '#374151' },
+
+  pmRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  pmIcon: { fontSize: 22 },
+  pmTitle: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
+  pmSub: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 2 },
+  pmEmpty: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6b7280' },
+  pmReward: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#b45309', marginTop: 10 },
 
   featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
   featureDot: { color: '#22c55e', fontFamily: 'Outfit-Bold', fontSize: 13, marginTop: 1 },

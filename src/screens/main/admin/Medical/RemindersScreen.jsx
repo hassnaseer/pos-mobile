@@ -6,6 +6,7 @@ import {
 import {
   useMedicalReminders, useCreateMedicalReminder, useUpdateMedicalReminder, useDeleteMedicalReminder,
 } from '../../../../services/api/posApi';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const STATUSES = ['', 'pending', 'sent', 'acknowledged', 'cancelled'];
@@ -25,6 +26,9 @@ const RemindersScreen = () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
+  const [datePart, timePart] = (form.scheduledAt ?? '').split('T');
+  const setScheduledDate = d => setForm(p => ({ ...p, scheduledAt: `${d}T${timePart || '09:00'}` }));
+  const setScheduledTime = t => setForm(p => ({ ...p, scheduledAt: `${datePart || new Date().toISOString().slice(0, 10)}T${t}` }));
 
   const { data: raw = [], isLoading, refetch } = useMedicalReminders('', statusFilter);
   const { mutateAsync: create, isPending: creating } = useCreateMedicalReminder();
@@ -52,7 +56,7 @@ const RemindersScreen = () => {
     try {
       editing ? await update({ id: editing.id, ...form }) : await create(form);
       setShowModal(false);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Save failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Save failed'); }
   };
 
   const handleDelete = r => Alert.alert('Delete', 'Delete this reminder?', [
@@ -151,8 +155,19 @@ const RemindersScreen = () => {
               ))}
             </View>
 
-            <Text style={styles.fieldLabel}>Scheduled At</Text>
-            <TextInput style={styles.input} value={form.scheduledAt} onChangeText={set('scheduledAt')} placeholder="YYYY-MM-DDTHH:MM" placeholderTextColor="#999" />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <DatePicker
+                label="Scheduled Date"
+                value={datePart}
+                onDateChange={setScheduledDate}
+                placeholder="Select date"
+                style={{ flex: 1, marginBottom: 0 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Time (24h)</Text>
+                <TextInput style={styles.input} value={timePart} onChangeText={setScheduledTime} placeholder="HH:MM" placeholderTextColor="#999" />
+              </View>
+            </View>
 
             <Text style={styles.fieldLabel}>Message</Text>
             <TextInput

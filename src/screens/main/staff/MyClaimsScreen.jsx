@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, RefreshControl,
-  TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator,
+  TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import { useMyClaims, useSubmitClaim } from '../../../services/api/posApi';
 import colors from '../../../theme/colors';
 
-const EMPTY_FORM = { claimType: '', amount: '', description: '' };
-const STATUS_COLOR = { pending: '#F59E0B', approved: '#10B981', rejected: '#EF4444' };
+const EMPTY_FORM = { title: '', amount: '', description: '', receiptUrl: '' };
+const STATUS_COLOR = { Pending: '#F59E0B', Approved: '#10B981', Rejected: '#EF4444' };
 
 const MyClaimsScreen = () => {
   const [showModal, setShowModal] = useState(false);
@@ -20,13 +20,13 @@ const MyClaimsScreen = () => {
   const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
 
   const handleSubmit = async () => {
-    if (!form.claimType.trim()) { Alert.alert('Error', 'Claim type is required'); return; }
+    if (!form.title.trim()) { Alert.alert('Error', 'Title is required'); return; }
     if (!form.amount || isNaN(parseFloat(form.amount))) { Alert.alert('Error', 'Enter a valid amount'); return; }
     try {
       await submit({ ...form, amount: parseFloat(form.amount) });
       setShowModal(false);
       setForm(EMPTY_FORM);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Submission failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Submission failed'); }
   };
 
   return (
@@ -45,13 +45,19 @@ const MyClaimsScreen = () => {
         renderItem={({ item }) => (
           <View style={styles.row}>
             <View style={styles.rowInfo}>
-              <Text style={styles.rowName}>{item.claimType ?? 'General'}</Text>
+              <Text style={styles.rowName}>{item.title ?? 'Claim'}</Text>
               <Text style={styles.rowSub}>Rs {Number(item.amount ?? 0).toFixed(2)}</Text>
               {item.description ? <Text style={styles.rowSub} numberOfLines={1}>{item.description}</Text> : null}
+              {item.adminNotes ? <Text style={styles.rowSub} numberOfLines={1}>Notes: {item.adminNotes}</Text> : null}
+              {item.receiptUrl ? (
+                <TouchableOpacity onPress={() => Linking.openURL(item.receiptUrl)}>
+                  <Text style={styles.receiptLink}>View Receipt</Text>
+                </TouchableOpacity>
+              ) : null}
               {item.createdAt && <Text style={styles.rowMeta}>{new Date(item.createdAt).toLocaleDateString()}</Text>}
             </View>
             <View style={[styles.badge, { backgroundColor: (STATUS_COLOR[item.status] ?? '#9CA3AF') + '20' }]}>
-              <Text style={[styles.badgeText, { color: STATUS_COLOR[item.status] ?? '#9CA3AF' }]}>{item.status ?? 'pending'}</Text>
+              <Text style={[styles.badgeText, { color: STATUS_COLOR[item.status] ?? '#9CA3AF' }]}>{item.status ?? 'Pending'}</Text>
             </View>
           </View>
         )}
@@ -64,9 +70,10 @@ const MyClaimsScreen = () => {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Submit Claim</Text>
             {[
-              { key: 'claimType',   label: 'Claim Type * (e.g. Medical, Travel)' },
+              { key: 'title',       label: 'Title * (e.g. Travel to client site)' },
               { key: 'amount',      label: 'Amount *', keyboard: 'decimal-pad' },
               { key: 'description', label: 'Description' },
+              { key: 'receiptUrl',  label: 'Receipt URL (optional)' },
             ].map(f => (
               <View key={f.key} style={styles.field}>
                 <Text style={styles.label}>{f.label}</Text>
@@ -99,6 +106,7 @@ const styles = StyleSheet.create({
   rowName:     { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: '#111' },
   rowSub:      { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6B7280', marginTop: 2 },
   rowMeta:     { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9CA3AF', marginTop: 2 },
+  receiptLink: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary, marginTop: 4 },
   badge:       { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   badgeText:   { fontSize: 11, fontFamily: 'Outfit-SemiBold' },
   empty:       { textAlign: 'center', color: '#999', fontFamily: 'Outfit-Regular', marginTop: 40 },

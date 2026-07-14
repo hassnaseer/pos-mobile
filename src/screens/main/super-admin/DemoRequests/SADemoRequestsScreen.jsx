@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Modal,
+  ActivityIndicator, Modal, RefreshControl,
 } from 'react-native';
 import { useSADemoRequests, useUpdateSADemoStatus } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
 
-const STATUS_OPTIONS = ['pending', 'contacted', 'demo-scheduled', 'completed', 'rejected'];
+const STATUS_OPTIONS = ['Pending', 'Contacted', 'Closed'];
 
 const STATUS_COLORS = {
-  pending:          { bg: '#fef3c7', text: '#92400e' },
-  contacted:        { bg: '#dbeafe', text: '#1e40af' },
-  'demo-scheduled': { bg: '#e0e7ff', text: '#3730a3' },
-  completed:        { bg: '#d1fae5', text: '#065f46' },
-  rejected:         { bg: '#fee2e2', text: '#991b1b' },
+  Pending:   { bg: '#fef3c7', text: '#92400e' },
+  Contacted: { bg: '#dbeafe', text: '#1e40af' },
+  Closed:    { bg: '#d1fae5', text: '#065f46' },
 };
 
 const fmtDate = d => {
@@ -23,7 +21,7 @@ const fmtDate = d => {
 
 export default function SADemoRequestsScreen() {
   const [filterStatus, setFilterStatus] = useState('');
-  const { data: requests = [], isLoading, refetch } = useSADemoRequests(filterStatus);
+  const { data: requests = [], isLoading, isFetching, refetch } = useSADemoRequests(filterStatus);
   const { mutateAsync: updateStatus, isPending: updating } = useUpdateSADemoStatus();
 
   const [selected, setSelected] = useState(null);
@@ -32,7 +30,7 @@ export default function SADemoRequestsScreen() {
 
   const openStatusModal = req => {
     setSelected(req);
-    setNewStatus(req.status ?? 'pending');
+    setNewStatus(req.status ?? 'Pending');
     setStatusModal(true);
   };
 
@@ -74,9 +72,7 @@ export default function SADemoRequestsScreen() {
               onPress={() => setFilterStatus(s)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.filterTabText, filterStatus === s && styles.filterTabTextActive]}>
-                {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
-              </Text>
+              <Text style={[styles.filterTabText, filterStatus === s && styles.filterTabTextActive]}>{s}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -90,21 +86,31 @@ export default function SADemoRequestsScreen() {
           <Text style={styles.emptyText}>No demo requests{filterStatus ? ` with status "${filterStatus}"` : ''}</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+        >
           {requests.map(req => {
             const sc = statusColors(req.status);
             return (
               <View key={req.id} style={styles.card}>
                 <View style={styles.cardHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.reqName}>{req.name ?? req.contactName ?? 'Unknown'}</Text>
-                    <Text style={styles.reqEmail}>{req.email}</Text>
-                    {req.company && <Text style={styles.reqCompany}>{req.company}</Text>}
+                    <Text style={styles.reqName}>{req.name ?? 'Unknown'}</Text>
+                    <Text style={styles.reqEmail}>{req.email}{req.phone ? ` · ${req.phone}` : ''}</Text>
+                    {req.companyName && <Text style={styles.reqCompany}>{req.companyName}{req.country ? `, ${req.country}` : ''}</Text>}
+                    {(req.companySize || (req.businessTypes ?? []).length > 0) && (
+                      <Text style={styles.reqCompany}>
+                        {req.companySize ? `${req.companySize} employees` : ''}
+                        {req.companySize && (req.businessTypes ?? []).length > 0 ? ' · ' : ''}
+                        {(req.businessTypes ?? []).join(', ')}
+                      </Text>
+                    )}
+                    {req.preferredTime && <Text style={styles.reqCompany}>Preferred time: {req.preferredTime}</Text>}
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
-                    <Text style={[styles.statusText, { color: sc.text }]}>
-                      {(req.status ?? 'pending').replace('-', ' ')}
-                    </Text>
+                    <Text style={[styles.statusText, { color: sc.text }]}>{req.status ?? 'Pending'}</Text>
                   </View>
                 </View>
 
@@ -146,9 +152,7 @@ export default function SADemoRequestsScreen() {
                     style={[styles.statusChip, { borderColor: sc.text }, active && { backgroundColor: sc.bg }]}
                     onPress={() => setNewStatus(s)}
                   >
-                    <Text style={[styles.statusChipText, { color: sc.text }]}>
-                      {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
-                    </Text>
+                    <Text style={[styles.statusChipText, { color: sc.text }]}>{s}</Text>
                   </TouchableOpacity>
                 );
               })}

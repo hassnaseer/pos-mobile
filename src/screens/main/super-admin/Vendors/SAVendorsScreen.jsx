@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal,
+  TextInput, ActivityIndicator, Alert, Modal, RefreshControl,
 } from 'react-native';
 import { useSAVendors, useUpdateSAVendorStatus } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
@@ -14,7 +14,7 @@ const StatusDot = ({ status }) => {
 };
 
 export default function SAVendorsScreen() {
-  const { data: vendors = [], isLoading } = useSAVendors();
+  const { data: vendors = [], isLoading, isFetching, refetch } = useSAVendors();
   const { mutateAsync: updateStatus, isPending: updating } = useUpdateSAVendorStatus();
 
   const [filter, setFilter]     = useState('all');
@@ -23,7 +23,6 @@ export default function SAVendorsScreen() {
   const [suspendModal, setSuspendModal]   = useState(false);
 
   const visible = filter === 'all' ? vendors : vendors.filter(v => v.status === filter);
-  const selectedVendor = vendors.find(v => v.id === selected) ?? null;
   const suspendedCount = vendors.filter(v => v.status === 'suspended').length;
 
   const handleStatusToggle = vendor => {
@@ -34,14 +33,14 @@ export default function SAVendorsScreen() {
     } else {
       Alert.alert(
         'Unsuspend Vendor',
-        `Reactivate ${vendor.businessName ?? vendor.name}?`,
+        `Reactivate ${vendor.business?.name ?? 'this vendor'}?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Unsuspend',
             onPress: async () => {
               try { await updateStatus({ id: vendor.id, status: 'active' }); }
-              catch (e) { Alert.alert('Error', e?.message ?? 'Failed'); }
+              catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed'); }
             },
           },
         ],
@@ -54,7 +53,7 @@ export default function SAVendorsScreen() {
       await updateStatus({ id: selected, status: 'suspended', suspensionReason: suspendReason });
       setSuspendModal(false);
     } catch (e) {
-      Alert.alert('Error', e?.message ?? 'Failed to suspend');
+      Alert.alert('Error', typeof e === 'string' ? e : 'Failed to suspend');
     }
   };
 
@@ -97,7 +96,11 @@ export default function SAVendorsScreen() {
           <Text style={styles.emptyText}>No vendors{filter !== 'all' ? ` with status "${filter}"` : ''}</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+        >
           {visible.map(vendor => {
             const isSelected = selected === vendor.id;
             return (
@@ -110,13 +113,13 @@ export default function SAVendorsScreen() {
                 <View style={styles.cardRow}>
                   <View style={styles.avatar}>
                     <Text style={styles.avatarText}>
-                      {(vendor.businessName ?? vendor.name ?? 'V')[0].toUpperCase()}
+                      {(vendor.business?.name ?? 'V')[0].toUpperCase()}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.vendorName}>{vendor.businessName ?? vendor.name}</Text>
-                    <Text style={styles.vendorEmail}>{vendor.email}</Text>
-                    <Text style={styles.vendorPlan}>{vendor.plan ?? 'No plan'}</Text>
+                    <Text style={styles.vendorName}>{vendor.business?.name ?? '—'}</Text>
+                    <Text style={styles.vendorEmail}>{vendor.business?.ownerName ? `${vendor.business.ownerName} · ` : ''}{vendor.business?.email}</Text>
+                    <Text style={styles.vendorPlan}>{vendor.vendorCategory ?? 'No category'}</Text>
                   </View>
                   <View style={styles.statusWrap}>
                     <StatusDot status={vendor.status} />
@@ -127,6 +130,12 @@ export default function SAVendorsScreen() {
                 {/* Expanded detail */}
                 {isSelected && (
                   <View style={styles.detail}>
+                    {vendor.businessDescription ? <Text style={styles.detailRow}>{vendor.businessDescription}</Text> : null}
+                    {vendor.website ? <Text style={styles.detailRow}>Website: {vendor.website}</Text> : null}
+                    {vendor.address ? <Text style={styles.detailRow}>Address: {vendor.address}</Text> : null}
+                    {vendor.registrationNumber ? <Text style={styles.detailRow}>Registration No: {vendor.registrationNumber}</Text> : null}
+                    {vendor.taxId ? <Text style={styles.detailRow}>Tax ID: {vendor.taxId}</Text> : null}
+                    {vendor.ownerNationalId ? <Text style={styles.detailRow}>Owner National ID: {vendor.ownerNationalId}</Text> : null}
                     {vendor.suspensionReason ? (
                       <Text style={styles.suspendReason}>Reason: {vendor.suspensionReason}</Text>
                     ) : null}
@@ -162,7 +171,7 @@ export default function SAVendorsScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Suspend Vendor</Text>
             <Text style={styles.modalSub}>
-              Provide a reason for suspending {vendors.find(v => v.id === selected)?.businessName ?? 'this vendor'}:
+              Provide a reason for suspending {vendors.find(v => v.id === selected)?.business?.name ?? 'this vendor'}:
             </Text>
             <TextInput
               style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
@@ -213,6 +222,7 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280' },
   detail: { marginTop: 12, borderTopWidth: 1, borderColor: '#f3f4f6', paddingTop: 12 },
+  detailRow: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#374151', marginBottom: 6 },
   suspendReason: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6b7280', marginBottom: 10, fontStyle: 'italic' },
   detailActions: { flexDirection: 'row', gap: 8 },
   actionBtn: { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: 'center' },

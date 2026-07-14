@@ -6,17 +6,30 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
-import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 
 const PLATFORM_LABELS = {
-  shopify:      { label: 'Shopify',      color: '#95BF47' },
-  woocommerce:  { label: 'WooCommerce',  color: '#7F54B3' },
-  bigcommerce:  { label: 'BigCommerce',  color: '#121118' },
-  squarespace:  { label: 'Squarespace', color: '#000' },
-  wix:          { label: 'Wix',         color: '#FAAD00' },
-  etsy:         { label: 'Etsy',        color: '#F45800' },
+  shopify:         { label: 'Shopify',        color: '#95BF47' },
+  woocommerce:     { label: 'WooCommerce',    color: '#7F54B3' },
+  bigcommerce:     { label: 'BigCommerce',    color: '#121118' },
+  squarespace:     { label: 'Squarespace',    color: '#000' },
+  wix:             { label: 'Wix',            color: '#FAAD00' },
+  etsy:            { label: 'Etsy',           color: '#F45800' },
+  magento:         { label: 'Magento',        color: '#EE672F' },
+  opencart:        { label: 'OpenCart',       color: '#2FA1D6' },
+  prestashop:      { label: 'PrestaShop',     color: '#DF0067' },
+  amazon:          { label: 'Amazon',         color: '#FF9900' },
+  ebay:            { label: 'eBay',           color: '#E53238' },
+  tiktokshop:      { label: 'TikTok Shop',    color: '#000' },
+  walmart:         { label: 'Walmart',        color: '#0071CE' },
+  metashops:       { label: 'Facebook & Instagram Shops', color: '#1877F2' },
+  googleshopping:  { label: 'Google Shopping', color: '#4285F4' },
+  daraz:           { label: 'Daraz',          color: '#F85606' },
+  lazada:          { label: 'Lazada',         color: '#0F146D' },
+  shopee:          { label: 'Shopee',         color: '#EE4D2D' },
 };
+
+const ALL_ECOMMERCE_CODES = Object.keys(PLATFORM_LABELS).map(p => `ecommerce_${p}`);
 
 const useIntegrations = () =>
   useQuery({
@@ -46,13 +59,17 @@ const useDisconnectIntegration = () => {
 
 const IntegrationsScreen = () => {
   const perms = usePermissions();
-  const canManage = perms.can(PERMISSIONS.MANAGE_ECOMMERCE);
+  const canView = perms.canAny(ALL_ECOMMERCE_CODES);
 
   const { data: raw = [], isLoading, refetch } = useIntegrations();
   const { mutate: sync, isPending: syncing } = useSyncIntegration();
   const { mutate: disconnect } = useDisconnectIntegration();
 
   const integrations = Array.isArray(raw) ? raw : (raw?.data ?? []);
+
+  if (!canView) {
+    return <View style={styles.center}><Text style={styles.noAccess}>No access to ecommerce integrations.</Text></View>;
+  }
 
   const handleSync = platform => {
     Alert.alert('Sync', `Sync ${PLATFORM_LABELS[platform]?.label ?? platform} now?`, [
@@ -92,7 +109,8 @@ const IntegrationsScreen = () => {
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
           renderItem={({ item }) => {
             const meta = PLATFORM_LABELS[item.platform] ?? {};
-            const isConnected = item.status === 'active' || item.isConnected;
+            const isConnected = !!item.isActive;
+            const canManageThis = perms.can(`ecommerce_${item.platform}`);
             return (
               <View style={styles.card}>
                 <View style={[styles.platformDot, { backgroundColor: meta.color ?? colors.primary }]} />
@@ -103,13 +121,16 @@ const IntegrationsScreen = () => {
                       {isConnected ? 'Connected' : 'Disconnected'}
                     </Text>
                   </View>
-                  {item.lastSyncedAt && (
+                  {item.lastSyncAt && (
                     <Text style={styles.lastSync}>
-                      Last synced: {new Date(item.lastSyncedAt).toLocaleDateString()}
+                      Last synced: {new Date(item.lastSyncAt).toLocaleDateString()}
                     </Text>
                   )}
+                  {item.lastSyncError && (
+                    <Text style={styles.syncError}>Last sync failed: {item.lastSyncError}</Text>
+                  )}
                 </View>
-                {canManage && isConnected && (
+                {canManageThis && isConnected && (
                   <View style={styles.cardActions}>
                     <TouchableOpacity style={styles.syncBtn} onPress={() => handleSync(item.platform)} disabled={syncing}>
                       <Text style={styles.syncBtnText}>Sync</Text>
@@ -138,6 +159,8 @@ const IntegrationsScreen = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  noAccess: { fontFamily: 'Outfit-Regular', color: '#9CA3AF', textAlign: 'center' },
   loader: { marginTop: 40 },
   infoBox: { margin: 12, backgroundColor: '#EFF6FF', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#BFDBFE' },
   infoTitle: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: '#1d4ed8', marginBottom: 4 },
@@ -152,6 +175,7 @@ const styles = StyleSheet.create({
   statusInactive: { backgroundColor: '#f3f4f6' },
   statusText: { fontSize: 11, fontFamily: 'Outfit-SemiBold' },
   lastSync: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af' },
+  syncError: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#dc2626', marginTop: 2 },
   cardActions: { gap: 6 },
   syncBtn: { backgroundColor: colors.primary, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, alignItems: 'center' },
   syncBtnText: { color: '#fff', fontSize: 12, fontFamily: 'Outfit-SemiBold' },

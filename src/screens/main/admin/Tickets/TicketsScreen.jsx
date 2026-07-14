@@ -12,6 +12,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import CascadingCategorySelect from '../../../../components/Ui/CascadingCategorySelect';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const STATUS_COLORS = {
@@ -22,6 +23,12 @@ const PRIORITY_COLORS = { Low: '#16a34a', Normal: '#3b82f6', High: '#f59e0b', Ur
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 const WARRANTY_UNITS = ['days', 'months', 'years'];
 const FALLBACK_STATUSES = ['New', 'In Progress', 'Waiting for Parts', 'Completed', 'Delivered', 'Cancelled'];
+const convertWarrantyToDays = (value, unit) => {
+  const n = parseInt(value, 10) || 0;
+  if (unit === 'months') return n * 30;
+  if (unit === 'years') return n * 365;
+  return n;
+};
 
 const EMPTY_FORM = {
   customerName: '', customerPhone: '', customerId: '',
@@ -30,7 +37,7 @@ const EMPTY_FORM = {
   estimatedCost: '', advancePayment: '',
   expectedCompletion: '', notes: '', physicalLocation: '',
   manufacturerId: '', deviceId: '', assignedUserId: '',
-  statusId: '',
+  status: '',
   categoryId: '',
   warrantyDays: '', warrantyUnit: 'days',
   lockType: '', lockCode: '', patternSequence: '',
@@ -149,7 +156,7 @@ const MiscChargeModal = ({ visible, onClose, onAdd, charges = [] }) => (
             <TouchableOpacity
               key={c.id}
               style={styles.pickerOption}
-              onPress={() => onAdd({ miscChargeId: c.id, name: c.name, price: parseFloat(c.price ?? c.amount ?? 0) })}
+              onPress={() => onAdd({ miscChargeId: c.id, name: c.name, type: c.type ?? 'fixed', price: parseFloat(c.price ?? c.amount ?? 0) })}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={styles.pickerOptionText}>{c.name}</Text>
@@ -219,26 +226,27 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
           manufacturerId:    editing.manufacturerId ?? '',
           deviceId:          editing.deviceId ?? '',
           assignedUserId:    editing.assignedUser?.id ?? '',
-          statusId:          editing.statusId ?? '',
+          status:            editing.status ?? '',
           categoryId:        editing.categoryId ?? '',
           warrantyDays:      editing.warrantyDays != null ? String(editing.warrantyDays) : '',
-          warrantyUnit:      editing.warrantyUnit ?? 'days',
+          warrantyUnit:      'days',
           lockType:          editing.lockType ?? '',
-          lockCode:          editing.lockCode ?? '',
-          patternSequence:   editing.patternSequence ?? '',
+          lockCode:          editing.lockType === 'passcode' ? (editing.lockCode ?? '') : '',
+          patternSequence:   editing.lockType === 'pattern' ? (editing.lockCode ?? '') : '',
           isTaxExcluded:     editing.isTaxExcluded ?? false,
           taxId:             editing.taxId ?? '',
-          specs:             editing.specs ?? [],
-          lines: (editing.products ?? editing.lines ?? []).map(l => ({
+          specs:             editing.specifications ?? [],
+          lines: (editing.products ?? []).map(l => ({
             productId:   l.product?.id   ?? l.productId   ?? '',
             productName: l.product?.name ?? l.productName ?? '',
             quantity:    l.quantity ?? 1,
-            unitPrice:   l.unitPrice ?? l.price ?? 0,
+            unitPrice:   l.unitPrice ?? 0,
           })),
-          miscLines: (editing.miscLines ?? []).map(l => ({
-            miscChargeId: l.miscChargeId ?? l.id ?? '',
+          miscLines: (editing.miscCharges ?? []).map(l => ({
+            miscChargeId: l.miscChargeId ?? '',
             name:         l.name ?? '',
-            price:        l.price ?? 0,
+            type:         l.type ?? 'fixed',
+            price:        l.amount ?? 0,
           })),
         });
       } else {
@@ -269,24 +277,24 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
       manufacturerId:    form.manufacturerId || undefined,
       deviceId:          form.deviceId || undefined,
       assignedUserId:    form.assignedUserId || undefined,
-      statusId:          form.statusId || undefined,
+      status:            form.status || undefined,
       categoryId:        form.categoryId || undefined,
-      warrantyDays:      form.warrantyDays ? parseInt(form.warrantyDays, 10) : undefined,
-      warrantyUnit:      form.warrantyDays ? form.warrantyUnit : undefined,
+      warrantyDays:      form.warrantyDays ? convertWarrantyToDays(form.warrantyDays, form.warrantyUnit) : undefined,
       lockType:          form.lockType || undefined,
-      lockCode:          form.lockType === 'passcode' ? (form.lockCode || undefined) : undefined,
-      patternSequence:   form.lockType === 'pattern'  ? (form.patternSequence || undefined) : undefined,
+      lockCode:          form.lockType === 'passcode' ? (form.lockCode || undefined)
+        : form.lockType === 'pattern' ? (form.patternSequence || undefined) : undefined,
       isTaxExcluded:     form.isTaxExcluded,
       taxId:             form.taxId || undefined,
-      specs:             form.specs.filter(s => s.key?.trim()).map(s => ({ key: s.key.trim(), value: (s.value ?? '').trim() })),
-      lines:             form.lines.filter(l => l.productId).map(l => ({
+      specifications:    form.specs.filter(s => s.key?.trim()).map(s => ({ key: s.key.trim(), value: (s.value ?? '').trim() })),
+      products:          form.lines.filter(l => l.productId).map(l => ({
         productId: l.productId,
         quantity:  parseInt(l.quantity, 10) || 1,
         unitPrice: parseFloat(l.unitPrice) || 0,
       })),
-      miscLines:         form.miscLines.map(l => ({
-        miscChargeId: l.miscChargeId,
-        price:        parseFloat(l.price) || 0,
+      miscCharges: form.miscLines.map(l => ({
+        name:   l.name,
+        amount: parseFloat(l.price) || 0,
+        type:   l.type ?? 'fixed',
       })),
     };
     onSave(payload);
@@ -349,9 +357,9 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
               <Text style={styles.formSection}>Ticket Info</Text>
               <InlineSelect
                 label="Status"
-                value={form.statusId}
-                options={statuses.map(s => ({ id: s.id, name: s.name }))}
-                onSelect={set('statusId')}
+                value={form.status}
+                options={statuses.map(s => ({ id: s.name, name: s.name }))}
+                onSelect={set('status')}
               />
               <CascadingCategorySelect categories={categories} value={form.categoryId} onChange={set('categoryId')} label="Category" />
               <View style={styles.field}>
@@ -573,7 +581,7 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
                 options={staffList.map(s => ({ id: s.id, name: s.name ?? s.fullName }))}
                 onSelect={set('assignedUserId')}
               />
-              <F label="Expected Completion (YYYY-MM-DD)" fkey="expectedCompletion" placeholder="2025-01-01" />
+              <DatePicker label="Expected Completion" value={form.expectedCompletion} onDateChange={set('expectedCompletion')} placeholder="Select expected completion" />
 
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
@@ -694,10 +702,10 @@ const TicketDetailModal = ({ ticketId, onClose, onEdit, isAdmin, fmt }) => {
               {ticket.physicalLocation        ? <View style={styles.infoRow}><Text style={styles.infoLabel}>Location</Text><Text style={styles.infoValue}>{ticket.physicalLocation}</Text></View> : null}
               {ticket.lockType                ? <View style={styles.infoRow}><Text style={styles.infoLabel}>Lock Type</Text><Text style={styles.infoValue}>{ticket.lockType}</Text></View> : null}
 
-              {ticket.specs?.length > 0 && (
+              {ticket.specifications?.length > 0 && (
                 <>
                   <Text style={styles.formSection}>Specifications</Text>
-                  {ticket.specs.map((s, i) => (
+                  {ticket.specifications.map((s, i) => (
                     <View key={i} style={styles.infoRow}>
                       <Text style={styles.infoLabel}>{s.key}</Text>
                       <Text style={styles.infoValue}>{s.value}</Text>
@@ -722,15 +730,19 @@ const TicketDetailModal = ({ ticketId, onClose, onEdit, isAdmin, fmt }) => {
                 </>
               )}
 
-              {ticket.miscLines?.length > 0 && (
+              {ticket.miscCharges?.length > 0 && (
                 <>
                   <Text style={styles.formSection}>Misc Charges</Text>
-                  {ticket.miscLines.map((ml, i) => (
-                    <View key={i} style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>{ml.name}</Text>
-                      <Text style={styles.infoValue}>{fmt(ml.price)}</Text>
-                    </View>
-                  ))}
+                  {ticket.miscCharges.map((mc, i) => {
+                    const partsTotal = (ticket.products ?? []).reduce((s, tp) => s + tp.quantity * tp.unitPrice, 0);
+                    const amt = mc.type === 'percentage' ? partsTotal * mc.amount / 100 : mc.amount;
+                    return (
+                      <View key={i} style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>{mc.name}</Text>
+                        <Text style={styles.infoValue}>{mc.type === 'percentage' ? `${mc.amount}%` : fmt(amt)}</Text>
+                      </View>
+                    );
+                  })}
                 </>
               )}
 
@@ -786,7 +798,7 @@ const TicketDetailModal = ({ ticketId, onClose, onEdit, isAdmin, fmt }) => {
                   <Text style={styles.formSection}>Warranty</Text>
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Duration</Text>
-                    <Text style={styles.infoValue}>{ticket.warrantyDays} {ticket.warrantyUnit ?? 'days'}</Text>
+                    <Text style={styles.infoValue}>{ticket.warrantyDays} Days</Text>
                   </View>
                 </>
               ) : null}

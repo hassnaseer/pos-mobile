@@ -29,7 +29,7 @@ export const flattenPages = (data) =>
 import apiClient from './globalApi';
 
 // ─── Products ────────────────────────────────────────────────────────────────
-export const useProducts = (params = {}) =>
+export const useProducts = (params = {}, { enabled = true } = {}) =>
   useQuery({
     queryKey: ['products', params],
     queryFn: async () => {
@@ -38,6 +38,7 @@ export const useProducts = (params = {}) =>
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
+    enabled,
   });
 
 export const useProductsInfinite = (params = {}) =>
@@ -171,7 +172,7 @@ export const useDeleteCustomer = () => {
 };
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
-export const useOrders = (params = {}) =>
+export const useOrders = (params = {}, { enabled = true } = {}) =>
   useQuery({
     queryKey: ['orders', params],
     queryFn: async () => {
@@ -180,6 +181,7 @@ export const useOrders = (params = {}) =>
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
+    enabled,
   });
 
 export const useOrdersInfinite = (params = {}) =>
@@ -229,7 +231,7 @@ export const useCheckout = () => {
 };
 
 // ─── Staff ───────────────────────────────────────────────────────────────────
-export const useStaff = () =>
+export const useStaff = ({ enabled = true } = {}) =>
   useQuery({
     queryKey: ['staff'],
     queryFn: async () => {
@@ -237,6 +239,7 @@ export const useStaff = () =>
       return res?.data ?? res ?? [];
     },
     staleTime: 60_000,
+    enabled,
   });
 
 export const useStaffInfinite = (params = {}) =>
@@ -257,7 +260,7 @@ export const useCreateStaff = () => {
   return useMutation({
     mutationFn: data => apiClient.post('/admin/staff', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
-    meta: { successMessage: 'Staff member added' },
+    meta: { successMessage: 'Employee added' },
   });
 };
 
@@ -266,7 +269,7 @@ export const useUpdateStaff = () => {
   return useMutation({
     mutationFn: ({ id, ...data }) => apiClient.put(`/admin/staff/${id}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
-    meta: { successMessage: 'Staff member updated' },
+    meta: { successMessage: 'Employee updated' },
   });
 };
 
@@ -275,7 +278,7 @@ export const useDeleteStaff = () => {
   return useMutation({
     mutationFn: id => apiClient.delete(`/admin/staff/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
-    meta: { successMessage: 'Staff member removed' },
+    meta: { successMessage: 'Employee removed' },
   });
 };
 
@@ -551,7 +554,7 @@ export const useDeleteMiscCharge = () => {
 };
 
 // ─── Tickets ─────────────────────────────────────────────────────────────────
-export const useTickets = (params = {}) =>
+export const useTickets = (params = {}, { enabled = true } = {}) =>
   useQuery({
     queryKey: ['tickets', params],
     queryFn: async () => {
@@ -560,6 +563,7 @@ export const useTickets = (params = {}) =>
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
+    enabled,
   });
 
 export const useTicketsInfinite = (params = {}) =>
@@ -624,6 +628,7 @@ export const useNotifications = () =>
     },
     staleTime: 30_000,
     refetchOnWindowFocus: false,
+    refetchInterval: 30_000,
   });
 
 export const useMarkNotificationRead = () => {
@@ -653,7 +658,7 @@ export const useDashboard = () =>
     staleTime: 60_000,
   });
 
-export const useDashboardReport = (period = '7d') =>
+export const useDashboardReport = (period = '7d', { enabled = true } = {}) =>
   useQuery({
     queryKey: ['dashboard', 'report', period],
     queryFn: async () => {
@@ -661,6 +666,7 @@ export const useDashboardReport = (period = '7d') =>
       return res?.data ?? res ?? {};
     },
     staleTime: 60_000,
+    enabled,
   });
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
@@ -735,7 +741,7 @@ export const useCreateSABusinessType = () => {
 export const useUpdateSABusinessType = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.put(`/super-admin/business-types/${id}`, data),
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/business-types/${id}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-business-types'] }),
   });
 };
@@ -845,7 +851,7 @@ export const useCreateSAPackagePlan = () => {
 export const useUpdateSAPackagePlan = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.put(`/super-admin/package-plans/${id}`, data),
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/package-plans/${id}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-package-plans'] }),
   });
 };
@@ -950,7 +956,7 @@ export const useMyProfile = () =>
   });
 
 // ─── Admin Settings ───────────────────────────────────────────────────────────
-export const useAdminSettings = () =>
+export const useAdminSettings = ({ enabled = true } = {}) =>
   useQuery({
     queryKey: ['admin-settings'],
     queryFn: async () => {
@@ -958,12 +964,22 @@ export const useAdminSettings = () =>
       return res?.data ?? res ?? {};
     },
     staleTime: 60_000,
+    enabled,
   });
 
 export const useUpdateAdminSettings = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.put('/admin/settings', data),
+    mutationFn: data => apiClient.patch('/admin/settings', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-settings'] }),
+    meta: { successMessage: 'Settings saved' },
+  });
+};
+
+export const useUpdateAdminProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.patch('/admin/settings/profile', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-settings'] }),
     meta: { successMessage: 'Settings saved' },
   });
@@ -984,7 +1000,7 @@ export const useSABusinessDetail = id =>
 export const useExtendBusinessTrial = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, expiryDate }) => apiClient.put(`/super-admin/businesses/${id}/extend-trial`, { expiryDate }),
+    mutationFn: ({ id, expiryDate }) => apiClient.patch(`/super-admin/businesses/${id}`, { expiryDate }),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['sa-business', id] });
       qc.invalidateQueries({ queryKey: ['sa-businesses'] });
@@ -995,7 +1011,7 @@ export const useExtendBusinessTrial = () => {
 export const useBlockBusiness = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, blocked }) => apiClient.put(`/super-admin/businesses/${id}/block`, { blocked }),
+    mutationFn: ({ id, blocked }) => apiClient.patch(`/super-admin/businesses/${id}`, { status: blocked ? 'Blocked' : 'Active' }),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['sa-business', id] });
       qc.invalidateQueries({ queryKey: ['sa-businesses'] });
@@ -1003,10 +1019,13 @@ export const useBlockBusiness = () => {
   });
 };
 
-export const useSAResetBusinessPassword = () =>
-  useMutation({
-    mutationFn: id => apiClient.post(`/super-admin/businesses/${id}/reset-password`),
+export const useCreateSABusiness = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/super-admin/businesses', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-businesses'] }),
   });
+};
 
 export const useUpdateSABusiness = () => {
   const qc = useQueryClient();
@@ -1098,6 +1117,79 @@ export const useHRMSDashboard = () =>
     staleTime: 60_000,
   });
 
+export const useHRMSAttendanceTrend = () =>
+  useQuery({
+    queryKey: ['hrms-attendance-trend'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/hrms/attendance-trend');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useInternalChatDirectory = () =>
+  useQuery({
+    queryKey: ['internal-chat-directory'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/internal-chat/directory');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useHRMSUpcomingEvents = () =>
+  useQuery({
+    queryKey: ['hrms-upcoming-events'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/attendance/upcoming-events');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+export const useMyLeaveQuotaUsage = () =>
+  useQuery({
+    queryKey: ['my-leave-quota-usage'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/leave-quotas/my-usage');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useHRMSOrgChart = () =>
+  useQuery({
+    queryKey: ['hrms-org-chart'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/hrms/org-chart');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+// ─── HRMS Staff Profile (designation, shift timing, reports-to, employee type…) ─
+export const useHRMSStaffProfile = id =>
+  useQuery({
+    queryKey: ['hrms-staff-profile', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/hrms/staff/${id}`);
+      return res?.data ?? res ?? {};
+    },
+    enabled: !!id,
+  });
+
+export const useUpdateHRMSStaffProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/hrms/staff/${id}`, data),
+    onSuccess: (_res, { id }) => {
+      qc.invalidateQueries({ queryKey: ['hrms-staff-profile', id] });
+      qc.invalidateQueries({ queryKey: ['staff-inf'] });
+    },
+    meta: { successMessage: 'HRMS profile saved' },
+  });
+};
+
 // ─── Leave ────────────────────────────────────────────────────────────────────
 export const useLeaveRequests = (params = {}) =>
   useQuery({
@@ -1110,21 +1202,32 @@ export const useLeaveRequests = (params = {}) =>
     staleTime: 30_000,
   });
 
+// "Add Leave for Staff" (admin picks a staff member and adds leave on their behalf —
+// distinct from the self-service /admin/leave POST, which always applies for the caller).
 export const useCreateLeaveRequest = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.post('/admin/leave', data),
+    mutationFn: data => apiClient.post('/admin/leave/add-for-staff', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['leave-requests'] }),
-    meta: { successMessage: 'Leave request submitted' },
+    meta: { successMessage: 'Leave added for staff' },
   });
 };
 
-export const useUpdateLeaveRequest = () => {
+export const useApproveLeaveRequest = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/leave/${id}`, data),
+    mutationFn: ({ id, adminNotes }) => apiClient.patch(`/admin/leave/${id}/approve`, { adminNotes }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['leave-requests'] }),
-    meta: { successMessage: 'Leave request updated' },
+    meta: { successMessage: 'Leave approved' },
+  });
+};
+
+export const useRejectLeaveRequest = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, adminNotes }) => apiClient.patch(`/admin/leave/${id}/reject`, { adminNotes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leave-requests'] }),
+    meta: { successMessage: 'Leave rejected' },
   });
 };
 
@@ -1158,12 +1261,21 @@ export const useCreateClaim = () => {
   });
 };
 
-export const useUpdateClaim = () => {
+export const useApproveClaim = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/claims/${id}`, data),
+    mutationFn: ({ id, adminNotes }) => apiClient.patch(`/admin/claims/${id}/approve`, { adminNotes }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['claims'] }),
-    meta: { successMessage: 'Claim updated' },
+    meta: { successMessage: 'Claim approved' },
+  });
+};
+
+export const useRejectClaim = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, adminNotes }) => apiClient.patch(`/admin/claims/${id}/reject`, { adminNotes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['claims'] }),
+    meta: { successMessage: 'Claim rejected' },
   });
 };
 
@@ -1173,6 +1285,207 @@ export const useDeleteClaim = () => {
     mutationFn: id => apiClient.delete(`/admin/claims/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['claims'] }),
     meta: { successMessage: 'Claim deleted' },
+  });
+};
+
+// ─── Expense Categories ───────────────────────────────────────────────────────
+export const useExpenseCategories = () =>
+  useQuery({
+    queryKey: ['expense-categories'],
+    queryFn: async () => { const res = await apiClient.get('/admin/expense-categories'); return res?.data ?? res ?? []; },
+    staleTime: 60_000,
+  });
+
+export const useCreateExpenseCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/expense-categories', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expense-categories'] }),
+    meta: { successMessage: 'Category created' },
+  });
+};
+
+export const useUpdateExpenseCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/expense-categories/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expense-categories'] }),
+    meta: { successMessage: 'Category updated' },
+  });
+};
+
+export const useDeleteExpenseCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/expense-categories/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expense-categories'] }),
+    meta: { successMessage: 'Category deleted' },
+  });
+};
+
+// ─── Project Marketplaces ─────────────────────────────────────────────────────
+export const useProjectMarketplaces = () =>
+  useQuery({
+    queryKey: ['project-marketplaces'],
+    queryFn: async () => { const res = await apiClient.get('/admin/project-marketplaces'); return res?.data ?? res ?? []; },
+    staleTime: 60_000,
+  });
+
+export const useCreateProjectMarketplace = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/project-marketplaces', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-marketplaces'] }),
+    meta: { successMessage: 'Marketplace created' },
+  });
+};
+
+export const useUpdateProjectMarketplace = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/project-marketplaces/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-marketplaces'] }),
+    meta: { successMessage: 'Marketplace updated' },
+  });
+};
+
+export const useDeleteProjectMarketplace = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/project-marketplaces/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-marketplaces'] }),
+    meta: { successMessage: 'Marketplace deleted' },
+  });
+};
+
+// ─── Vendor Dashboard ─────────────────────────────────────────────────────────
+export const useVendorDashboard = () =>
+  useQuery({
+    queryKey: ['vendor-dashboard'],
+    queryFn: async () => { const res = await apiClient.get('/admin/vendor/dashboard'); return res?.data ?? res ?? null; },
+    staleTime: 30_000,
+  });
+
+// ─── Rider (Delivery) ─────────────────────────────────────────────────────────
+export const useRiderDashboard = () =>
+  useQuery({
+    queryKey: ['rider-dashboard'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/vendor/rider/dashboard');
+      return res?.data ?? res ?? { assigned: 0, outForDelivery: 0, delivered: 0, total: 0 };
+    },
+    staleTime: 30_000,
+  });
+
+export const useMyDeliveries = () =>
+  useQuery({
+    queryKey: ['rider-deliveries'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/vendor/rider/deliveries');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useMarkPickedUp = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: orderId => apiClient.patch(`/admin/vendor/rider/orders/${orderId}/pickup`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rider-deliveries'] });
+      qc.invalidateQueries({ queryKey: ['rider-dashboard'] });
+    },
+    meta: { successMessage: 'Order marked as picked up' },
+  });
+};
+
+export const useMarkDelivered = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, ...data }) => apiClient.patch(`/admin/vendor/rider/orders/${orderId}/deliver`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rider-deliveries'] });
+      qc.invalidateQueries({ queryKey: ['rider-dashboard'] });
+    },
+    meta: { successMessage: 'Order marked as delivered' },
+  });
+};
+
+// ─── Fines ────────────────────────────────────────────────────────────────────
+export const useFines = (params = {}) =>
+  useQuery({
+    queryKey: ['fines', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(params).toString();
+      const res = await apiClient.get(`/admin/fines${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useCreateFine = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/fines', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fines'] }),
+    meta: { successMessage: 'Fine applied' },
+  });
+};
+
+export const useUpdateFine = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/fines/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fines'] }),
+    meta: { successMessage: 'Fine updated' },
+  });
+};
+
+export const useDeleteFine = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/fines/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fines'] }),
+    meta: { successMessage: 'Fine deleted' },
+  });
+};
+
+// ─── Salary Advances ──────────────────────────────────────────────────────────
+export const useSalaryAdvances = (params = {}) =>
+  useQuery({
+    queryKey: ['salary-advances', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(params).toString();
+      const res = await apiClient.get(`/admin/salary-advances${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useCreateSalaryAdvance = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/salary-advances', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['salary-advances'] }),
+    meta: { successMessage: 'Salary advance added' },
+  });
+};
+
+export const useUpdateSalaryAdvance = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/salary-advances/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['salary-advances'] }),
+    meta: { successMessage: 'Salary advance updated' },
+  });
+};
+
+export const useDeleteSalaryAdvance = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/salary-advances/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['salary-advances'] }),
+    meta: { successMessage: 'Salary advance deleted' },
   });
 };
 
@@ -1356,14 +1669,6 @@ export const useCreateJobListing = () => {
   });
 };
 
-export const useUpdateJobListing = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/internal-jobs/${id}`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['job-listings'] }),
-  });
-};
-
 export const useDeleteJobListing = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -1464,7 +1769,7 @@ export const useVendorProfile = () =>
     queryKey: ['vendor-profile'],
     queryFn: async () => {
       const res = await apiClient.get('/admin/vendor-profile');
-      return res?.data ?? res ?? {};
+      return res?.data !== undefined ? res.data : (res ?? null);
     },
     staleTime: 60_000,
   });
@@ -1529,6 +1834,15 @@ export const useUpdateIncomingOrder = () => {
     mutationFn: ({ id, status, ...data }) => apiClient.patch(`/admin/vendor/orders/${id}/status`, { status, ...data }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['incoming-orders'] }),
     meta: { successMessage: 'Order status updated' },
+  });
+};
+
+export const useAssignRiderToOrder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, riderId }) => apiClient.patch(`/admin/vendor/orders/${id}/assign`, { riderId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['incoming-orders'] }),
+    meta: { successMessage: 'Rider assigned successfully' },
   });
 };
 
@@ -1641,12 +1955,14 @@ export const useDeleteDepartment = () => {
 };
 
 // ─── Staff Personal — My Attendance ──────────────────────────────────────────
+// NOTE: self-service attendance lives on the same /admin/attendance endpoints as
+// admin management — the backend scopes clock-in/out and history to the caller.
 export const useMyAttendance = (params = {}) =>
   useQuery({
     queryKey: ['my-attendance', params],
     queryFn: async () => {
       const qs = new URLSearchParams(params).toString();
-      const res = await apiClient.get(`/staff/attendance${qs ? `?${qs}` : ''}`);
+      const res = await apiClient.get(`/admin/attendance/history${qs ? `?${qs}` : ''}`);
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
@@ -1655,7 +1971,7 @@ export const useMyAttendance = (params = {}) =>
 export const useClockIn = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.post('/staff/attendance/clock-in', data ?? {}),
+    mutationFn: data => apiClient.post('/admin/attendance/clock-in', data ?? {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
   });
 };
@@ -1663,55 +1979,82 @@ export const useClockIn = () => {
 export const useClockOut = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.post('/staff/attendance/clock-out', data ?? {}),
+    mutationFn: data => apiClient.post('/admin/attendance/clock-out', data ?? {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
+  });
+};
+
+export const useBreakStart = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.post('/admin/attendance/break-start', {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
+  });
+};
+
+export const useBreakEnd = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.post('/admin/attendance/break-end', {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
   });
 };
 
 // ─── Staff Personal — My Leave ────────────────────────────────────────────────
-export const useMyLeaveRequests = () =>
-  useQuery({
-    queryKey: ['my-leave'],
-    queryFn: async () => {
-      const res = await apiClient.get('/staff/leave');
-      return res?.data ?? res ?? [];
+// NOTE: self-service leave lives on the same /admin/leave endpoints as admin
+// management — the backend scopes GET to the caller's own records, and POST
+// always applies for the caller (res.locals.user), regardless of role.
+export const useMyLeaveRequests = (statusFilter = '') =>
+  useInfiniteQuery({
+    queryKey: ['my-leave-inf', statusFilter],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ page: pageParam, limit: 10, ...(statusFilter ? { status: statusFilter } : {}) }).toString();
+      const res = await apiClient.get(`/admin/leave?${qs}`);
+      return { data: res?.data ?? [], total: res?.total ?? 0, statusCounts: res?.statusCounts ?? {}, page: pageParam, limit: 10 };
     },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
     staleTime: 30_000,
   });
 
 export const useApplyLeave = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.post('/staff/leave', data),
+    mutationFn: data => apiClient.post('/admin/leave', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-leave'] }),
   });
 };
 
-export const useCancelLeave = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: id => apiClient.patch(`/staff/leave/${id}/cancel`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-leave'] }),
+export const useMyLeaveUsage = () =>
+  useQuery({
+    queryKey: ['my-leave-usage'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/leave-quotas/my-usage');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
   });
-};
 
 // ─── Staff Personal — My Payslips ─────────────────────────────────────────────
-export const useMyPayslips = () =>
+export const useMyPayslips = (month, year) =>
   useQuery({
-    queryKey: ['my-payslips'],
+    queryKey: ['my-payslips', month, year],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/payslips');
+      const qs = new URLSearchParams({ ...(month ? { month } : {}), ...(year ? { year } : {}) }).toString();
+      const res = await apiClient.get(`/admin/payroll/my-slips${qs ? `?${qs}` : ''}`);
       return res?.data ?? res ?? [];
     },
     staleTime: 60_000,
   });
 
 // ─── Staff Personal — My Claims ───────────────────────────────────────────────
+// NOTE: self-service claims live on the same /admin/claims endpoints as admin
+// management — the backend scopes GET/POST to the caller when not an admin.
 export const useMyClaims = () =>
   useQuery({
     queryKey: ['my-claims'],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/claims');
+      const res = await apiClient.get('/admin/claims');
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
@@ -1720,7 +2063,7 @@ export const useMyClaims = () =>
 export const useSubmitClaim = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.post('/staff/claims', data),
+    mutationFn: data => apiClient.post('/admin/claims', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-claims'] }),
   });
 };
@@ -1730,7 +2073,7 @@ export const useMyAnnouncements = () =>
   useQuery({
     queryKey: ['my-announcements'],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/announcements');
+      const res = await apiClient.get('/admin/announcements');
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
@@ -1741,7 +2084,7 @@ export const useMyTasks = () =>
   useQuery({
     queryKey: ['my-tasks'],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/tasks');
+      const res = await apiClient.get('/admin/tasks');
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
@@ -1750,7 +2093,7 @@ export const useMyTasks = () =>
 export const useUpdateMyTask = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.patch(`/staff/tasks/${id}`, data),
+    mutationFn: ({ id, status }) => apiClient.patch(`/admin/tasks/${id}/status`, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-tasks'] }),
   });
 };
@@ -1760,7 +2103,7 @@ export const useMyReviews = () =>
   useQuery({
     queryKey: ['my-reviews'],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/reviews');
+      const res = await apiClient.get('/admin/reviews');
       return res?.data ?? res ?? [];
     },
     staleTime: 60_000,
@@ -1771,7 +2114,7 @@ export const useStaffJobBoard = () =>
   useQuery({
     queryKey: ['staff-job-board'],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/job-board');
+      const res = await apiClient.get('/admin/internal-jobs');
       return res?.data ?? res ?? [];
     },
     staleTime: 30_000,
@@ -1780,7 +2123,7 @@ export const useStaffJobBoard = () =>
 export const useApplyToJob = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ jobId, ...data }) => apiClient.post(`/staff/job-board/${jobId}/apply`, data),
+    mutationFn: ({ jobId, ...data }) => apiClient.post(`/admin/internal-jobs/${jobId}/apply`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff-job-board'] }),
   });
 };
@@ -1790,22 +2133,47 @@ export const useMyDocuments = () =>
   useQuery({
     queryKey: ['my-documents'],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/documents');
+      const res = await apiClient.get('/admin/hr-documents');
       return res?.data ?? res ?? [];
     },
     staleTime: 60_000,
   });
 
-// ─── Staff Personal — My Trainings ───────────────────────────────────────────
+// ─── Staff Personal — My Trainings ────────────────────────────────────────────
+// Full catalog + the caller's own enrollment records, matching
+// frontend/src/store/employee/trainingsSlice.ts's fetchTrainings exactly.
 export const useMyTrainings = () =>
   useQuery({
     queryKey: ['my-trainings'],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/trainings');
-      return res?.data ?? res ?? [];
+      const [tRes, eRes] = await Promise.all([
+        apiClient.get('/admin/trainings'),
+        apiClient.get('/admin/trainings/my-enrollments').catch(() => null),
+      ]);
+      const trainings = tRes?.data ?? tRes ?? [];
+      const enrolledIds = (eRes?.data ?? eRes ?? [])
+        .map(e => e.training?.id)
+        .filter(Boolean);
+      return { trainings, enrolledIds };
     },
     staleTime: 60_000,
   });
+
+export const useEnrollTraining = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.post(`/admin/trainings/${id}/enroll`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-trainings'] }),
+  });
+};
+
+export const useUnenrollTraining = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/trainings/${id}/unenroll`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-trainings'] }),
+  });
+};
 
 // ─── Ticket Statuses ─────────────────────────────────────────────────────────
 export const useTicketStatuses = () =>
@@ -2047,16 +2415,49 @@ export const useStaffList = () =>
     staleTime: 60_000,
   });
 
-// ─── Staff Dashboard (general variant) ───────────────────────────────────────
-export const useStaffDashboard = () =>
-  useQuery({
-    queryKey: ['staff-dashboard'],
+// ─── Staff Dashboard (general variant) ────────────────────────────────────────
+// NOTE: there's no single aggregate endpoint — built by combining three calls,
+// matching frontend/src/store/employee/staffDashboardSlice.ts. Unlike web (which fires
+// all three unconditionally), each call here is gated behind the matching permission —
+// a plain staff member with none of these should never even attempt them.
+export const useStaffDashboard = (isTechnician = false, perms = {}) => {
+  const { canViewOrders = false, canManageProducts = false, canCreateTickets = false } = perms;
+  return useQuery({
+    queryKey: ['staff-dashboard', isTechnician, canViewOrders, canManageProducts, canCreateTickets],
     queryFn: async () => {
-      const res = await apiClient.get('/staff/dashboard');
-      return res?.data ?? res ?? {};
+      const calls = [
+        canViewOrders ? apiClient.get('/admin/orders?page=1&limit=5').catch(() => null) : Promise.resolve(null),
+        canManageProducts ? apiClient.get('/admin/products?limit=100').catch(() => null) : Promise.resolve(null),
+        canCreateTickets
+          ? (isTechnician
+              ? apiClient.get('/admin/tickets?limit=20&status=In Progress').catch(() => null)
+              : apiClient.get('/admin/tickets?limit=1&status=New').catch(() => null))
+          : Promise.resolve(null),
+        (canCreateTickets && isTechnician) ? apiClient.get('/admin/tickets?limit=1&status=New').catch(() => null) : Promise.resolve(null),
+      ];
+      const [ordRes, prodRes, firstRes, secondRes] = await Promise.all(calls);
+
+      const orders = ordRes?.data ?? [];
+      const todayOrdersCount = ordRes?.total ?? 0;
+      const allProducts = prodRes?.data ?? [];
+      const lowStockProducts = allProducts
+        .filter(p => p.stock <= (p.lowStockThreshold ?? 10))
+        .slice(0, 4);
+
+      let tickets = [];
+      let openTicketsCount = 0;
+      if (isTechnician) {
+        tickets = firstRes?.data ?? [];
+        openTicketsCount = secondRes?.total ?? 0;
+      } else {
+        openTicketsCount = firstRes?.total ?? 0;
+      }
+
+      return { orders, tickets, lowStockProducts, openTicketsCount, todayOrdersCount };
     },
     staleTime: 30_000,
   });
+};
 
 // ─── Super Admin: Vendors ─────────────────────────────────────────────────────
 export const useSAVendors = () =>
@@ -2141,6 +2542,14 @@ export const useCreateSACustomPlan = () => {
   });
 };
 
+export const useUpdateSACustomPlan = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/super-admin/custom-plans/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-custom-plans-inf'] }),
+  });
+};
+
 // ─── Super Admin: Documents ───────────────────────────────────────────────────
 export const useSADocuments = () =>
   useQuery({
@@ -2213,6 +2622,14 @@ export const useUpsertSALearnGuide = () => {
   });
 };
 
+export const useCreateSALearnGuide = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/super-admin/learn-guides', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-learn-guides'] }),
+  });
+};
+
 // ─── Super Admin: Business Categories ────────────────────────────────────────
 export const useSABusinessCategories = () =>
   useQuery({
@@ -2271,6 +2688,22 @@ export const useUpdateSASupportTicket = () => {
   });
 };
 
+export const useDeleteSASupportTicket = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/support/tickets/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-support-tickets-inf'] }),
+  });
+};
+
+export const useCreateSASupportTicket = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/support/tickets', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-support-tickets-inf'] }),
+  });
+};
+
 // ─── Super Admin: Custom Plans ────────────────────────────────────────────────
 export const useSACustomPlans = (params = {}) =>
   useInfiniteQuery({
@@ -2317,6 +2750,14 @@ export const useSAPaymentQueue = (params = {}) =>
     staleTime: 30_000,
   });
 
+export const useReviewSAPayment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.patch(`/super-admin/payment-requests/${id}/review`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-payment-queue-inf'] }),
+  });
+};
+
 export const useApproveSAPayment = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -2341,7 +2782,7 @@ export const useSAErrorLogs = (params = {}) =>
       const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
       const res = await apiClient.get(`/super-admin/error-logs?${qs}`);
       const d = res?.data ?? res;
-      return { data: Array.isArray(d) ? d : (d?.data ?? []), pagination: d?.pagination ?? { page: pageParam, totalPages: 1 } };
+      return { data: Array.isArray(d) ? d : (d?.data ?? []), pagination: res?.pagination ?? { page: pageParam, totalPages: 1 } };
     },
     getNextPageParam: getNextPage,
     initialPageParam: 1,

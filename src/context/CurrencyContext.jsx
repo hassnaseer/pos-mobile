@@ -1,9 +1,18 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import apiClient from '../services/api/globalApi';
-import { isSuperAdmin } from '../utils/permissions';
+import { isSuperAdmin, PERMISSIONS } from '../utils/permissions';
+import { getUSDExchangeRates } from '../utils/currency';
 
-const CURRENCY_SYMBOLS = {
+// Matches the backend's settings.service.ts isSettingsAllowed check — a staff
+// member without one of these codes always gets a 403 from /admin/settings,
+// so skip the request entirely instead of firing a call we know will fail.
+const SETTINGS_PERMS = [
+  PERMISSIONS.SYSTEM_SETTINGS, PERMISSIONS.MANAGE_SUPPLIERS, PERMISSIONS.MANAGE_MANUFACTURERS,
+  PERMISSIONS.MANAGE_TAXES, PERMISSIONS.MANAGE_CONDITIONS, PERMISSIONS.MANAGE_BUSINESSES,
+];
+
+export const CURRENCY_SYMBOLS = {
   USD: '$', EUR: '€', GBP: '£', PKR: 'Rs', INR: '₹', AED: 'د.إ',
   SAR: '﷼', BDT: '৳', CAD: 'C$', AUD: 'A$', NZD: 'NZ$', SGD: 'S$',
   MYR: 'RM', THB: '฿', JPY: '¥', CNY: '¥', KRW: '₩', TRY: '₺',
@@ -27,16 +36,31 @@ const CurrencyContext = createContext({
   symbol: '$',
   invoiceTerms: '',
   fmt: defaultFmt,
+  rates: null,
   refreshCurrency: () => {},
 });
 
 export function CurrencyProvider({ children }) {
   const { user } = useAuth();
-  const [currency, setCurrency] = useState('USD');
+  // Seed straight from the login/profile response so the right currency shows
+  // immediately even for staff who can't call /admin/settings at all.
+  const [currency, setCurrency] = useState(user?.currency ?? 'USD');
   const [invoiceTerms, setInvoiceTerms] = useState('');
+  const [rates, setRates] = useState(null);
+
+  useEffect(() => { getUSDExchangeRates().then(setRates); }, []);
+
+  useEffect(() => {
+    if (user?.currency) setCurrency(user.currency);
+  }, [user?.currency]);
+
+  const canAccessSettings = user && (
+    user.role === 'admin' ||
+    (Array.isArray(user.permissionCodes) && SETTINGS_PERMS.some(p => user.permissionCodes.includes(p)))
+  );
 
   const fetchSettings = useCallback(async () => {
-    if (!user || isSuperAdmin(user.role)) return;
+    if (!user || isSuperAdmin(user.role) || !canAccessSettings) return;
     try {
       const res = await apiClient.get('/admin/settings');
       const data = res?.data ?? res;
@@ -51,7 +75,7 @@ export function CurrencyProvider({ children }) {
     } catch {
       // silently keep defaults
     }
-  }, [user?.id]);
+  }, [user, canAccessSettings]);
 
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
@@ -63,7 +87,7 @@ export function CurrencyProvider({ children }) {
   };
 
   return (
-    <CurrencyContext.Provider value={{ currency, symbol, invoiceTerms, fmt, refreshCurrency: fetchSettings }}>
+    <CurrencyContext.Provider value={{ currency, symbol, invoiceTerms, fmt, rates, refreshCurrency: fetchSettings }}>
       {children}
     </CurrencyContext.Provider>
   );

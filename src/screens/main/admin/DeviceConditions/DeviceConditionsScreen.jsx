@@ -11,7 +11,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 
-const EMPTY_FORM = { name: '', description: '', colorCode: '' };
+const EMPTY_FORM = { name: '', description: '' };
 
 const DeviceConditionsScreen = () => {
   const perms = usePermissions();
@@ -33,7 +33,7 @@ const DeviceConditionsScreen = () => {
   const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setModalVisible(true); };
   const openEdit = item => {
     setEditing(item);
-    setForm({ name: item.name ?? '', description: item.description ?? '', colorCode: item.colorCode ?? '' });
+    setForm({ name: item.name ?? '', description: item.description ?? '' });
     setModalVisible(true);
   };
 
@@ -80,9 +80,6 @@ const DeviceConditionsScreen = () => {
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={styles.rowLeft}>
-                {item.colorCode ? (
-                  <View style={[styles.colorDot, { backgroundColor: item.colorCode }]} />
-                ) : null}
                 <View style={styles.rowInfo}>
                   <Text style={styles.rowName}>{item.name}</Text>
                   {item.description ? <Text style={styles.rowSub}>{item.description}</Text> : null}
@@ -129,18 +126,6 @@ const DeviceConditionsScreen = () => {
                 placeholder="Optional description"
                 placeholderTextColor="#999"
                 multiline
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Color Code (hex)</Text>
-              <TextInput
-                style={styles.input}
-                value={form.colorCode}
-                onChangeText={set('colorCode')}
-                placeholder="#22c55e"
-                placeholderTextColor="#999"
-                autoCapitalize="none"
               />
             </View>
 

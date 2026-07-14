@@ -3,46 +3,100 @@ import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useUpdateSABusiness } from '../../../../services/api/posApi';
+import { useUpdateSABusiness, useCreateSABusiness, useSABusinessTypes, useSAPackagePlans } from '../../../../services/api/posApi';
+import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const STATUSES = ['Active', 'Trial', 'Expired', 'Blocked'];
-const PLANS    = ['monthly', 'quarterly', 'yearly'];
+const PLANS    = ['Monthly', 'Annual'];
+
+const PickerField = ({ label, value, options, onSelect, getLabel = o => o.name, getValue = o => o.id, allowNone }) => (
+  <View style={styles.field}>
+    <Text style={styles.label}>{label}</Text>
+    <View style={styles.chipWrap}>
+      {allowNone && (
+        <TouchableOpacity style={[styles.chip, !value && styles.chipActive]} onPress={() => onSelect('')}>
+          <Text style={[styles.chipText, !value && styles.chipTextActive]}>None</Text>
+        </TouchableOpacity>
+      )}
+      {options.map(opt => {
+        const active = value === getValue(opt);
+        return (
+          <TouchableOpacity key={getValue(opt)} style={[styles.chip, active && styles.chipActive]} onPress={() => onSelect(getValue(opt))}>
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>{getLabel(opt)}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  </View>
+);
 
 const SABusinessFormScreen = ({ route, navigation }) => {
   const { business } = route.params ?? {};
+  const isEdit = !!business;
 
   const [form, setForm] = useState({
     name:       business?.name ?? '',
     ownerName:  business?.owner ?? business?.ownerName ?? '',
     email:      business?.email ?? '',
     phone:      business?.phone ?? '',
-    status:     business?.status ?? '',
-    plan:       business?.plan ?? '',
+    password:   '',
+    country:    business?.country ?? '',
+    status:     business?.status ?? 'Trial',
+    plan:       business?.plan ?? 'Monthly',
     expiryDate: business?.expiryDate ? business.expiryDate.split('T')[0] : '',
+    businessTypeId: business?.businessTypeId ?? business?.businessType?.id ?? '',
+    packagePlanId:  business?.packagePlanId ?? '',
   });
   const [saving, setSaving] = useState(false);
 
+  const { data: rawTypes = [] } = useSABusinessTypes();
+  const { data: rawPlans = [] } = useSAPackagePlans();
+  const types = Array.isArray(rawTypes) ? rawTypes : (rawTypes?.data ?? []);
+  const plans = Array.isArray(rawPlans) ? rawPlans : (rawPlans?.data ?? []);
+
   const { mutateAsync: updateBiz } = useUpdateSABusiness();
+  const { mutateAsync: createBiz } = useCreateSABusiness();
 
   const set = patch => setForm(f => ({ ...f, ...patch }));
 
   const handleSave = async () => {
     if (!form.name.trim()) { Alert.alert('Error', 'Business name is required'); return; }
+    if (!isEdit && (!form.ownerName.trim() || !form.email.trim())) {
+      Alert.alert('Error', 'Owner name and email are required'); return;
+    }
     setSaving(true);
     try {
-      const payload = {};
-      if (form.name)       payload.name       = form.name.trim();
-      if (form.ownerName)  payload.ownerName  = form.ownerName.trim();
-      if (form.email)      payload.email      = form.email.trim();
-      if (form.phone)      payload.phone      = form.phone.trim();
-      if (form.status)     payload.status     = form.status;
-      if (form.plan)       payload.plan       = form.plan;
-      if (form.expiryDate) payload.expiryDate = form.expiryDate;
-      await updateBiz({ id: business.id, ...payload });
+      if (isEdit) {
+        const payload = {};
+        if (form.name)           payload.name           = form.name.trim();
+        if (form.ownerName)      payload.ownerName      = form.ownerName.trim();
+        if (form.email)          payload.email          = form.email.trim();
+        if (form.phone)          payload.phone          = form.phone.trim();
+        if (form.country)        payload.country        = form.country.trim();
+        if (form.status)         payload.status         = form.status;
+        if (form.plan)           payload.plan            = form.plan;
+        if (form.expiryDate)     payload.expiryDate      = form.expiryDate;
+        if (form.businessTypeId) payload.businessTypeId  = form.businessTypeId;
+        if (form.packagePlanId)  payload.packagePlanId   = form.packagePlanId;
+        await updateBiz({ id: business.id, ...payload });
+      } else {
+        await createBiz({
+          name: form.name.trim(),
+          ownerName: form.ownerName.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim() || undefined,
+          country: form.country.trim() || undefined,
+          plan: form.plan,
+          status: form.status,
+          businessTypeId: form.businessTypeId || undefined,
+          packagePlanId: form.packagePlanId || undefined,
+          password: form.password || undefined,
+        });
+      }
       navigation.goBack();
-    } catch {
-      Alert.alert('Error', 'Failed to update business');
+    } catch (e) {
+      Alert.alert('Error', typeof e === 'string' ? e : `Failed to ${isEdit ? 'update' : 'create'} business`);
     } finally { setSaving(false); }
   };
 
@@ -56,7 +110,8 @@ const SABusinessFormScreen = ({ route, navigation }) => {
           { key: 'ownerName',  label: 'Owner Name',       placeholder: 'Enter owner name' },
           { key: 'email',      label: 'Email',            placeholder: 'email@example.com', kb: 'email-address' },
           { key: 'phone',      label: 'Phone',            placeholder: '+1 234 567 8900',   kb: 'phone-pad' },
-          { key: 'expiryDate', label: 'Expiry Date',      placeholder: 'YYYY-MM-DD' },
+          { key: 'country',    label: 'Country',          placeholder: 'e.g. Pakistan' },
+          ...(isEdit ? [] : [{ key: 'password', label: 'Owner Password', placeholder: 'Set initial login password', secure: true }]),
         ].map(f => (
           <View key={f.key} style={styles.field}>
             <Text style={styles.label}>{f.label}</Text>
@@ -67,35 +122,54 @@ const SABusinessFormScreen = ({ route, navigation }) => {
               placeholder={f.placeholder}
               placeholderTextColor="#9ca3af"
               keyboardType={f.kb ?? 'default'}
+              secureTextEntry={f.secure}
               autoCapitalize="none"
             />
           </View>
         ))}
 
+        {isEdit && (
+          <DatePicker
+            label="Expiry Date"
+            value={form.expiryDate}
+            onDateChange={v => set({ expiryDate: v })}
+            placeholder="Select expiry date"
+          />
+        )}
+
+        {types.length > 0 && (
+          <PickerField label="Business Type" value={form.businessTypeId} options={types} onSelect={v => set({ businessTypeId: v })} allowNone />
+        )}
+        {plans.length > 0 && (
+          <PickerField label="Package Plan" value={form.packagePlanId} options={plans} onSelect={v => set({ packagePlanId: v })} allowNone />
+        )}
+
         {/* Status */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Status</Text>
-          <View style={styles.chipWrap}>
-            {STATUSES.map(s => {
-              const active = form.status === s;
-              const statusColors = {
-                Active: { border: '#16a34a', bg: '#dcfce7', text: '#16a34a' },
-                Trial:  { border: '#d97706', bg: '#fef3c7', text: '#d97706' },
-                Expired:{ border: '#dc2626', bg: '#fee2e2', text: '#dc2626' },
-                Blocked:{ border: '#6b7280', bg: '#f3f4f6', text: '#6b7280' },
-              }[s];
-              return (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.chip, { borderColor: statusColors.border }, active && { backgroundColor: statusColors.bg }]}
-                  onPress={() => set({ status: s })}
-                >
-                  <Text style={[styles.chipText, { color: statusColors.text }]}>{s}</Text>
-                </TouchableOpacity>
-              );
-            })}
+        {isEdit && (
+          <View style={styles.field}>
+            <Text style={styles.label}>Status</Text>
+            <View style={styles.chipWrap}>
+              {STATUSES.map(s => {
+                const active = form.status === s;
+                const statusColors = {
+                  Active: { border: '#16a34a', bg: '#dcfce7', text: '#16a34a' },
+                  Trial:  { border: '#d97706', bg: '#fef3c7', text: '#d97706' },
+                  Expired:{ border: '#dc2626', bg: '#fee2e2', text: '#dc2626' },
+                  Blocked:{ border: '#6b7280', bg: '#f3f4f6', text: '#6b7280' },
+                }[s];
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.chip, { borderColor: statusColors.border }, active && { backgroundColor: statusColors.bg }]}
+                    onPress={() => set({ status: s })}
+                  >
+                    <Text style={[styles.chipText, { color: statusColors.text }]}>{s}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Plan Period */}
         <View style={styles.field}>
@@ -105,7 +179,7 @@ const SABusinessFormScreen = ({ route, navigation }) => {
               const active = form.plan === p;
               return (
                 <TouchableOpacity key={p} style={[styles.chip, active && styles.chipActive]} onPress={() => set({ plan: p })}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{p}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -119,7 +193,7 @@ const SABusinessFormScreen = ({ route, navigation }) => {
           </TouchableOpacity>
           <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.saveText}>Save Changes</Text>}
+              : <Text style={styles.saveText}>{isEdit ? 'Save Changes' : 'Create Business'}</Text>}
           </TouchableOpacity>
         </View>
 

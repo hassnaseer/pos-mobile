@@ -58,7 +58,7 @@ const SABusinessTypeFormScreen = ({ route, navigation }) => {
         description: form.description.trim(),
         active: form.active,
         primaryDashboard: form.primaryDashboard,
-        categoryId: form.categoryId ? parseInt(form.categoryId) : undefined,
+        categoryId: form.categoryId || undefined,
         permissionIds: form.permissionIds.length ? form.permissionIds : undefined,
       };
       if (isEdit) await update({ id: item.id, ...payload });

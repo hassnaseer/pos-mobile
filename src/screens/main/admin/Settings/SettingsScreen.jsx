@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal,
-  TextInput, Switch, ActivityIndicator, Alert,
+  TextInput, Switch, ActivityIndicator, Alert, Image, RefreshControl,
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  useAdminSettings, useUpdateAdminSettings,
+  useAdminSettings, useUpdateAdminSettings, useUpdateAdminProfile,
   useClaimCategories, useCreateClaimCategory, useUpdateClaimCategory, useDeleteClaimCategory,
   useLeaveQuotas, useCreateLeaveQuota, useDeleteLeaveQuota,
   useDocumentCategories, useCreateDocumentCategory, useDeleteDocumentCategory,
@@ -12,7 +14,30 @@ import {
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
+import { BASE_URL } from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
+
+// Matches the backend's settings.service.ts isSettingsAllowed check.
+const SETTINGS_PERMS = [
+  PERMISSIONS.SYSTEM_SETTINGS, PERMISSIONS.MANAGE_SUPPLIERS, PERMISSIONS.MANAGE_MANUFACTURERS,
+  PERMISSIONS.MANAGE_TAXES, PERMISSIONS.MANAGE_CONDITIONS, PERMISSIONS.MANAGE_BUSINESSES,
+];
+
+const VENDOR_SUGGESTIONS_KEY = 'vendorSuggestionsEnabled';
+
+const uploadLogo = async (asset) => {
+  const token = await AsyncStorage.getItem('authToken');
+  const body = new FormData();
+  body.append('file', { uri: asset.uri, type: asset.type ?? 'image/jpeg', name: asset.fileName ?? 'logo.jpg' });
+  const res = await fetch(`${BASE_URL}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message ?? 'Upload failed');
+  return json.data?.key ?? json.data?.url ?? '';
+};
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 const CURRENCIES = [
@@ -84,21 +109,24 @@ const PickerRow = ({ label, value, options, onSelect, disabled, lockedNote }) =>
 
 // ─── Business tab ─────────────────────────────────────────────────────────────
 const BusinessTab = () => {
-  const { data: settings, isLoading } = useAdminSettings();
-  const { mutateAsync: updateSettings, isPending: saving } = useUpdateAdminSettings();
+  const perms = usePermissions();
+  const canAccessSettings = perms.isAdmin || perms.canAny(...SETTINGS_PERMS);
+  const { data: settings, isLoading, isFetching, refetch } = useAdminSettings({ enabled: canAccessSettings });
+  const { mutateAsync: updateProfile, isPending: saving } = useUpdateAdminProfile();
   const [form, setForm] = useState({
-    name: '', ownerName: '', email: '', phone: '', country: '', address: '',
+    name: '', ownerName: '', phone: '', country: '', address: '', logoUrl: '',
     registrationNumber: '', taxId: '', nationalId: '',
   });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (settings) setForm({
       name: settings.name ?? '',
       ownerName: settings.ownerName ?? '',
-      email: settings.email ?? '',
       phone: settings.phone ?? '',
       country: settings.country ?? '',
       address: settings.address ?? '',
+      logoUrl: settings.logoUrl ?? '',
       registrationNumber: settings.registrationNumber ?? '',
       taxId: settings.taxId ?? '',
       nationalId: settings.nationalId ?? '',
@@ -107,20 +135,38 @@ const BusinessTab = () => {
 
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
 
+  const handlePickLogo = () => {
+    launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 }, async (res) => {
+      if (res.didCancel || !res.assets?.length) return;
+      setUploadingLogo(true);
+      try {
+        const key = await uploadLogo(res.assets[0]);
+        set('logoUrl')(key);
+      } catch (e) {
+        Alert.alert('Upload failed', typeof e === 'string' ? e : 'Try again');
+      } finally {
+        setUploadingLogo(false);
+      }
+    });
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) { Alert.alert('Error', 'Business name is required'); return; }
     try {
-      // Merge with full settings so General tab fields are preserved
-      await updateSettings({ ...settings, ...form });
-    } catch {
-      Alert.alert('Error', 'Failed to save settings');
+      await updateProfile(form);
+    } catch (e) {
+      Alert.alert('Error', typeof e === 'string' ? e : 'Failed to save settings');
     }
   };
 
   if (isLoading) return <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>;
 
   return (
-    <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={styles.body}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+    >
       {settings?.storeId && (
         <View style={styles.storeIdRow}>
           <Text style={styles.storeIdLabel}>Store ID</Text>
@@ -136,9 +182,26 @@ const BusinessTab = () => {
           </View>
         </View>
       )}
+      <View style={styles.field}>
+        <Text style={styles.label}>Business Logo</Text>
+        <TouchableOpacity style={styles.logoPicker} onPress={handlePickLogo} disabled={uploadingLogo}>
+          {uploadingLogo ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : form.logoUrl ? (
+            <Image source={{ uri: form.logoUrl }} style={styles.logoPreview} resizeMode="cover" />
+          ) : (
+            <Text style={styles.logoPlaceholderText}>📷 Tap to upload logo</Text>
+          )}
+        </TouchableOpacity>
+      </View>
       <Field label="Business Name" value={form.name} onChangeText={set('name')} placeholder="My Business" />
       <Field label="Owner Name" value={form.ownerName} onChangeText={set('ownerName')} placeholder="John Doe" />
-      <Field label="Email" value={form.email} onChangeText={set('email')} placeholder="email@business.com" keyboardType="email-address" />
+      <View style={styles.field}>
+        <Text style={styles.label}>Email</Text>
+        <View style={[styles.input, { justifyContent: 'center', backgroundColor: '#f9fafb' }]}>
+          <Text style={{ fontFamily: 'Outfit-Regular', fontSize: 14, color: '#6b7280' }}>{settings?.email || '—'}</Text>
+        </View>
+      </View>
       <Field label="Phone" value={form.phone} onChangeText={set('phone')} placeholder="+1 234 567 890" keyboardType="phone-pad" />
       <Field label="Country" value={form.country} onChangeText={set('country')} placeholder="United States" />
       <Field label="Address" value={form.address} onChangeText={set('address')} placeholder="123 Main St, City" />
@@ -157,16 +220,17 @@ const BusinessTab = () => {
 
 // ─── General tab ──────────────────────────────────────────────────────────────
 const GeneralTab = () => {
-  const { data: settings, isLoading } = useAdminSettings();
+  const perms = usePermissions();
+  const canAccessSettings = perms.isAdmin || perms.canAny(...SETTINGS_PERMS);
+  const { data: settings, isLoading, isFetching, refetch } = useAdminSettings({ enabled: canAccessSettings });
   const { mutateAsync: updateSettings, isPending: saving } = useUpdateAdminSettings();
   const { refreshCurrency } = useCurrency();
-  const perms = usePermissions();
   const showVendorSuggestions = perms.can(PERMISSIONS.POS_SALES) || perms.can(PERMISSIONS.CREATE_TICKETS);
   const [form, setForm] = useState({
     currency: 'USD', timezone: 'UTC',
-    openingTime: '', closingTime: '', invoiceTerms: '',
-    defaultTaxRate: '', vendorSuggestions: false,
+    openingTime: '', closingTime: '', invoiceTerms: '', taxRate: '',
   });
+  const [vendorSuggestions, setVendorSuggestions] = useState(false);
 
   useEffect(() => {
     if (settings) setForm({
@@ -175,30 +239,41 @@ const GeneralTab = () => {
       openingTime: settings.openingTime ?? '',
       closingTime: settings.closingTime ?? '',
       invoiceTerms: settings.invoiceTerms ?? '',
-      defaultTaxRate: settings.defaultTaxRate != null ? String(settings.defaultTaxRate) : '',
-      vendorSuggestions: settings.vendorSuggestions ?? false,
+      taxRate: settings.taxRate != null ? String(settings.taxRate) : '',
     });
   }, [settings]);
 
+  useEffect(() => {
+    AsyncStorage.getItem(VENDOR_SUGGESTIONS_KEY).then(v => setVendorSuggestions(v === 'true'));
+  }, []);
+
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
+
+  const toggleVendorSuggestions = val => {
+    setVendorSuggestions(val);
+    AsyncStorage.setItem(VENDOR_SUGGESTIONS_KEY, val ? 'true' : 'false');
+  };
 
   const handleSave = async () => {
     try {
       await updateSettings({
-        ...settings,
         ...form,
-        defaultTaxRate: form.defaultTaxRate ? parseFloat(form.defaultTaxRate) : null,
+        taxRate: form.taxRate ? parseFloat(form.taxRate) : null,
       });
       refreshCurrency();
-    } catch {
-      Alert.alert('Error', 'Failed to save settings');
+    } catch (e) {
+      Alert.alert('Error', typeof e === 'string' ? e : 'Failed to save settings');
     }
   };
 
   if (isLoading) return <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>;
 
   return (
-    <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={styles.body}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+    >
       <Text style={styles.sectionTitle}>Regional</Text>
       <PickerRow
         label="Currency"
@@ -222,7 +297,7 @@ const GeneralTab = () => {
       <Field label="Invoice Terms" value={form.invoiceTerms} onChangeText={set('invoiceTerms')} placeholder="Payment due within 30 days…" multiline />
 
       <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Sales & Financial</Text>
-      <Field label="Default Tax Rate (%)" value={form.defaultTaxRate} onChangeText={set('defaultTaxRate')} placeholder="e.g. 10" keyboardType="decimal-pad" />
+      <Field label="Default Tax Rate (%)" value={form.taxRate} onChangeText={set('taxRate')} placeholder="e.g. 10" keyboardType="decimal-pad" />
       {showVendorSuggestions && (
         <View style={styles.switchRow}>
           <View style={styles.switchInfo}>
@@ -230,8 +305,8 @@ const GeneralTab = () => {
             <Text style={styles.switchDesc}>Show vendor product suggestions at POS checkout</Text>
           </View>
           <Switch
-            value={form.vendorSuggestions}
-            onValueChange={set('vendorSuggestions')}
+            value={vendorSuggestions}
+            onValueChange={toggleVendorSuggestions}
             trackColor={{ false: '#D0D5DD', true: colors.primary }}
             thumbColor="#fff"
           />
@@ -254,9 +329,18 @@ const CONFIG_ITEMS = [
   { label: 'Categories',         desc: 'Organise products with a nested category tree',       route: 'Categories',       permission: PERMISSIONS.MANAGE_CATEGORIES },
   { label: 'Roles & Permissions',desc: 'Define staff roles and their access levels',          route: 'Roles',            permission: PERMISSIONS.MANAGE_STAFF },
   { label: 'Departments',        desc: 'Manage departments and organisational structure',     route: 'Departments',      permission: PERMISSIONS.MANAGE_DEPARTMENTS },
+  { label: 'Billing & Subscription', desc: 'View your plan, subscription status, and expiry', route: 'Billing',         permission: null },
   { label: 'Ticket Statuses',    desc: 'Manage status options for repair ticket workflows',  route: 'TicketStatuses',   permission: PERMISSIONS.CREATE_TICKETS },
-  { label: 'Misc Charges',       desc: 'Extra fees added at checkout (delivery, service…)',  route: 'MiscCharges',      permission: PERMISSIONS.MANAGE_MISC },
+  { label: 'Vendor Profile',     desc: 'Submit and manage your vendor marketplace profile',  route: 'VendorProfile',    permission: PERMISSIONS.ACCESS_VENDOR_SELLER },
   { label: 'Appointment Types',  desc: 'Manage appointment type options for medical bookings', route: 'AppointmentTypes', permission: PERMISSIONS.ACCESS_MEDICAL },
+  { label: 'Invoice Template',   desc: 'Customize style, colors, header, footer and paper size of printed invoices', route: 'InvoiceTemplate', permission: PERMISSIONS.MANAGE_INVOICES },
+  { label: 'Payslip Template',   desc: 'Customize the style and appearance of salary slips',  route: 'PayslipTemplate',  permission: PERMISSIONS.MANAGE_PAYROLL },
+  { label: 'Payment Accounts',   desc: 'Add bank accounts and mobile wallets for receiving payments', route: 'PaymentAccounts', permission: PERMISSIONS.MANAGE_PAYMENT_ACCOUNTS },
+  { label: 'Expense Categories', desc: 'Define categories for organising business expenses',  route: 'ExpenseCategories', permission: PERMISSIONS.MANAGE_BUDGETS },
+  { label: 'Marketplaces',       desc: 'Manage your sales channels — TikTok, Daraz, Amazon, eBay, etc.', route: 'ProjectMarketplaces', permission: PERMISSIONS.MANAGE_MARKETPLACES },
+  { label: 'Supplier Bills',     desc: 'Track supplier invoices, record payments and view AP aging', route: 'SupplierBills', permission: PERMISSIONS.MANAGE_SUPPLIER_BILLS },
+  { label: 'Snooker Session Types', desc: 'Define billing methods and rates for snooker sessions', route: 'SnookerSessionTypes', permission: PERMISSIONS.MANAGE_SNOOKER_TABLES },
+  { label: 'Misc Charges',       desc: 'Extra fees added at checkout (delivery, service…)',  route: 'MiscCharges',      permission: PERMISSIONS.MANAGE_MISC },
 ];
 
 const ConfigTab = ({ navigation }) => {
@@ -378,7 +462,7 @@ const CRUDSection = ({
 
 const HRMSTab = ({ canManage, onNavigateFingerprint }) => {
   // ── Claim Categories ──────────────────────────────────────────────────────
-  const { data: claimCatsRaw = [], isLoading: loadingCC } = useClaimCategories();
+  const { data: claimCatsRaw = [], isLoading: loadingCC, isFetching: fetchingCC, refetch: refetchCC } = useClaimCategories();
   const { mutateAsync: createCC, isPending: creatingCC } = useCreateClaimCategory();
   const { mutateAsync: updateCC, isPending: updatingCC } = useUpdateClaimCategory();
   const { mutate: deleteCC } = useDeleteClaimCategory();
@@ -399,7 +483,7 @@ const HRMSTab = ({ canManage, onNavigateFingerprint }) => {
   };
 
   // ── Leave Quotas ─────────────────────────────────────────────────────────
-  const { data: quotasRaw = [], isLoading: loadingLQ } = useLeaveQuotas();
+  const { data: quotasRaw = [], isLoading: loadingLQ, isFetching: fetchingLQ, refetch: refetchLQ } = useLeaveQuotas();
   const { mutateAsync: createLQ, isPending: creatingLQ } = useCreateLeaveQuota();
   const { mutate: deleteLQ } = useDeleteLeaveQuota();
   const [lqForm, setLqForm] = useState({ title: '', totalDays: '' });
@@ -412,7 +496,7 @@ const HRMSTab = ({ canManage, onNavigateFingerprint }) => {
   };
 
   // ── Document Categories ────────────────────────────────────────────────────
-  const { data: docCatsRaw = [], isLoading: loadingDC } = useDocumentCategories();
+  const { data: docCatsRaw = [], isLoading: loadingDC, isFetching: fetchingDC, refetch: refetchDC } = useDocumentCategories();
   const { mutateAsync: createDC, isPending: creatingDC } = useCreateDocumentCategory();
   const { mutate: deleteDC } = useDeleteDocumentCategory();
   const [dcForm, setDcForm] = useState({ name: '' });
@@ -425,7 +509,16 @@ const HRMSTab = ({ canManage, onNavigateFingerprint }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.body}>
+    <ScrollView
+      contentContainerStyle={styles.body}
+      refreshControl={
+        <RefreshControl
+          refreshing={fetchingCC || fetchingLQ || fetchingDC}
+          onRefresh={() => { refetchCC(); refetchLQ(); refetchDC(); }}
+          tintColor={colors.primary}
+        />
+      }
+    >
       {/* Fingerprint Devices card */}
       {canManage && (
         <TouchableOpacity style={styles.fpCard} onPress={onNavigateFingerprint} activeOpacity={0.8}>
@@ -594,6 +687,9 @@ const styles = StyleSheet.create({
   delBtn: { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 },
   delText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.warning },
   empty: { textAlign: 'center', color: colors.secondary, fontFamily: 'Outfit-Regular', marginTop: 20 },
+  logoPicker: { width: 96, height: 96, borderRadius: 12, borderWidth: 1.5, borderColor: '#D0D5DD', borderStyle: 'dashed', backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  logoPreview: { width: '100%', height: '100%' },
+  logoPlaceholderText: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#9CA3AF', textAlign: 'center', paddingHorizontal: 6 },
   field: { marginBottom: 14 },
   label: { fontSize: 14, fontFamily: 'Outfit-Medium', color: colors.defaultBlack, marginBottom: 6 },
   input: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: colors.defaultBlack, backgroundColor: '#fff' },

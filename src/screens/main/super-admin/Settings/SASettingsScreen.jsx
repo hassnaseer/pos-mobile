@@ -426,7 +426,7 @@ const BankAccountsTab = () => {
     try {
       editTarget ? await update({ id: editTarget.id, ...form }) : await create(form);
       setShowModal(false);
-    } catch (e) { Alert.alert('Error', e?.message ?? 'Save failed'); }
+    } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Save failed'); }
   };
 
   const handleDelete = acc => Alert.alert('Delete', `Delete "${acc.bankName}" account?`, [

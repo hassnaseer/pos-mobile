@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import messaging from '@react-native-firebase/messaging';
+import {
+  getMessaging, registerDeviceForRemoteMessages, getToken, onTokenRefresh,
+} from '@react-native-firebase/messaging';
 
 import { useAuth } from '../context/AuthContext';
 import AuthStack from './AuthStack';
@@ -45,8 +47,9 @@ function SplashFlow({ navigation }) {
 // Save FCM token to backend — called on mount and on token refresh
 async function syncFcmToken() {
   try {
-    await messaging().registerDeviceForRemoteMessages();
-    const token = await messaging().getToken();
+    const messagingInstance = getMessaging();
+    await registerDeviceForRemoteMessages(messagingInstance);
+    const token = await getToken(messagingInstance);
     if (token) {
       const { authApi } = await import('../services/api/authApi');
       await authApi.saveFcmToken(token);
@@ -65,7 +68,7 @@ export default function Navigation() {
   useEffect(() => {
     if (!isAuthenticated) return;
     syncFcmToken();
-    const unsub = messaging().onTokenRefresh(() => syncFcmToken());
+    const unsub = onTokenRefresh(getMessaging(), () => syncFcmToken());
     return unsub;
   }, [isAuthenticated]);
 

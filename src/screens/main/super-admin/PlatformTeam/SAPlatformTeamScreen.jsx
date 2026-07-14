@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal,
+  TextInput, ActivityIndicator, Alert, Modal, RefreshControl,
 } from 'react-native';
 import {
   useSAPlatformTeam, useCreateSAPlatformMember,
@@ -10,18 +10,26 @@ import {
 import colors from '../../../../theme/colors';
 
 const SA_PERMISSIONS = [
-  'sa_manage_vendors',
-  'sa_manage_demo_requests',
-  'sa_manage_team',
-  'sa_manage_documents',
-  'sa_view_activity_logs',
-  'sa_manage_guides',
+  'sa_dashboard',
   'sa_manage_businesses',
-  'sa_manage_packages',
-  'sa_manage_roles',
-  'sa_view_reports',
-  'sa_manage_support',
-  'sa_manage_legal',
+  'sa_view_activity_logs',
+  'sa_manage_business_types',
+  'sa_manage_business_categories',
+  'sa_manage_package_plans',
+  'sa_view_revenue_reports',
+  'sa_manage_settings',
+  'sa_manage_legal_pages',
+  'sa_manage_documents',
+  'sa_manage_team',
+  'chat_support',
+  'view_customers',
+  'sa_manage_demo_requests',
+  'sa_manage_guides',
+  'sa_manage_payment_queue',
+  'allow_impersonation',
+  'manage_support_tickets',
+  'monitor_error_logs',
+  'manage_plans',
 ];
 
 const EMPTY_FORM = { name: '', email: '', password: '', permissions: [] };
@@ -39,7 +47,7 @@ const PermToggle = ({ perm, selected, onToggle }) => (
 );
 
 export default function SAPlatformTeamScreen() {
-  const { data: team = [], isLoading } = useSAPlatformTeam();
+  const { data: team = [], isLoading, isFetching, refetch } = useSAPlatformTeam();
   const { mutateAsync: createMember, isPending: creating } = useCreateSAPlatformMember();
   const { mutateAsync: updateMember, isPending: updating } = useUpdateSAPlatformMember();
   const { mutateAsync: deleteMember, isPending: deleting } = useDeleteSAPlatformMember();
@@ -81,7 +89,7 @@ export default function SAPlatformTeamScreen() {
       }
       setModal(null);
     } catch (e) {
-      Alert.alert('Error', e?.message ?? 'Failed to save');
+      Alert.alert('Error', typeof e === 'string' ? e : 'Failed to save');
     }
   };
 
@@ -95,7 +103,7 @@ export default function SAPlatformTeamScreen() {
           text: 'Remove', style: 'destructive',
           onPress: async () => {
             try { await deleteMember(member.id); }
-            catch (e) { Alert.alert('Error', e?.message ?? 'Failed to remove'); }
+            catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Failed to remove'); }
           },
         },
       ],
@@ -126,7 +134,11 @@ export default function SAPlatformTeamScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />}
+        >
           {team.map(member => (
             <View key={member.id} style={styles.card}>
               <View style={styles.cardRow}>

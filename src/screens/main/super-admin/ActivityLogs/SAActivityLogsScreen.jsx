@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator,
+  TextInput, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useSAActivityLogs, flattenPages } from '../../../../services/api/posApi';
+import DateRangePicker from '../../../../components/Ui/DateRangePicker';
 import colors from '../../../../theme/colors';
 
 const fmtDate = d => {
@@ -26,9 +27,16 @@ const actionColor = action => {
 };
 
 export default function SAActivityLogsScreen() {
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo]     = useState('');
+
   const {
     data, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage,
-  } = useSAActivityLogs();
+    isRefetching, refetch,
+  } = useSAActivityLogs({
+    ...(dateFrom ? { from: dateFrom } : {}),
+    ...(dateTo ? { to: dateTo } : {}),
+  });
   const logs = flattenPages(data);
 
   const [search, setSearch]           = useState('');
@@ -89,6 +97,24 @@ export default function SAActivityLogsScreen() {
           placeholder="Search logs…"
           placeholderTextColor="#9ca3af"
         />
+      </View>
+
+      {/* Date range */}
+      <View style={styles.dateRow}>
+        <DateRangePicker
+          from={dateFrom}
+          to={dateTo}
+          onChangeFrom={setDateFrom}
+          onChangeTo={setDateTo}
+          fromPlaceholder="From date"
+          toPlaceholder="To date"
+          style={{ flex: 1 }}
+        />
+        {(dateFrom || dateTo) && (
+          <TouchableOpacity onPress={() => { setDateFrom(''); setDateTo(''); }} style={styles.clearDatesBtn}>
+            <Text style={styles.clearDatesText}>Clear</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Filter rows */}
@@ -157,6 +183,7 @@ export default function SAActivityLogsScreen() {
           onEndReachedThreshold={0.3}
           ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>No logs match your filters</Text>
           }
@@ -174,6 +201,10 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 2 },
   searchWrap: { paddingHorizontal: 16, paddingBottom: 8 },
   searchInput: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827', backgroundColor: '#fff' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  dateInput: { flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 12, fontFamily: 'Outfit-Regular', color: '#111827', backgroundColor: '#fff' },
+  clearDatesBtn: { paddingHorizontal: 10, paddingVertical: 8 },
+  clearDatesText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary },
   filterSection: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 6, gap: 8 },
   filterLabel: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#6b7280', width: 46 },
   filterChip: { borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#f3f4f6' },

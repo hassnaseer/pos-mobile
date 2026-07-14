@@ -8,15 +8,18 @@ import colors from '../../../../theme/colors';
 const STATUS_COLOR = { pending: '#F59E0B', confirmed: '#3B82F6', shipped: '#8B5CF6', delivered: '#10B981', cancelled: '#EF4444' };
 
 const STEPS = ['pending', 'confirmed', 'shipped', 'delivered'];
+const TABS = ['all', 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 
 const VendorOrdersScreen = () => {
   const perms = usePermissions();
   const canAccess = perms.canAccessVendorBuyer();
   const { fmt } = useCurrency();
   const [expanded, setExpanded] = useState(null);
+  const [filter, setFilter] = useState('all');
 
   const { data: raw = [], isLoading, refetch } = useVendorOrders();
-  const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const allItems = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const items = filter === 'all' ? allItems : allItems.filter(o => o.status === filter);
 
   if (!canAccess) {
     return <View style={styles.centered}><Text style={styles.noAccess}>No access to vendor orders.</Text></View>;
@@ -66,6 +69,19 @@ const VendorOrdersScreen = () => {
         <Text style={styles.heading}>My Orders</Text>
       </View>
       <FlatList
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsList}
+        contentContainerStyle={styles.tabsRow}
+        data={TABS}
+        keyExtractor={t => t}
+        renderItem={({ item: tab }) => (
+          <TouchableOpacity style={[styles.tabChip, filter === tab && styles.tabChipActive]} onPress={() => setFilter(tab)}>
+            <Text style={[styles.tabChipText, filter === tab && styles.tabChipTextActive]}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</Text>
+          </TouchableOpacity>
+        )}
+      />
+      <FlatList
         data={items}
         keyExtractor={i => String(i.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
@@ -103,7 +119,7 @@ const VendorOrdersScreen = () => {
                   {(item.lines ?? []).map((line, idx) => (
                     <View key={line.id ?? idx} style={styles.lineRow}>
                       <Text style={styles.lineName}>{line.productName}</Text>
-                      <Text style={styles.lineQty}>{line.qty} × {fmt(line.unitPrice)}</Text>
+                      <Text style={styles.lineQty}>{line.qty} × {fmt(line.unitPrice)}{line.discountPct > 0 ? ` (${line.discountPct}% off)` : ''}</Text>
                       <Text style={styles.lineTotal}>{fmt(line.subtotal)}</Text>
                     </View>
                   ))}
@@ -119,7 +135,11 @@ const VendorOrdersScreen = () => {
             </TouchableOpacity>
           );
         }}
-        ListEmptyComponent={!isLoading && <Text style={styles.empty}>No wholesale orders yet.</Text>}
+        ListEmptyComponent={!isLoading && (
+          <Text style={styles.empty}>
+            {filter === 'all' ? "You haven't placed any wholesale orders yet. Visit the Marketplace to buy." : `No orders with status "${filter}".`}
+          </Text>
+        )}
         contentContainerStyle={{ paddingBottom: 20 }}
       />
     </View>
@@ -132,6 +152,12 @@ const styles = StyleSheet.create({
   noAccess:           { fontFamily: 'Outfit-Regular', color: '#9CA3AF', textAlign: 'center' },
   topBar:             { padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
   heading:            { fontSize: 18, fontFamily: 'Outfit-SemiBold', color: '#111' },
+  tabsList:           { flexGrow: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#f0f0f0' },
+  tabsRow:            { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  tabChip:            { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0' },
+  tabChipActive:      { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabChipText:        { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#6B7280' },
+  tabChipTextActive:  { color: '#fff' },
   card:               { backgroundColor: '#fff', marginHorizontal: 12, marginTop: 8, borderRadius: 12, padding: 14 },
   cardHeader:         { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   cardRight:          { alignItems: 'flex-end', gap: 4 },

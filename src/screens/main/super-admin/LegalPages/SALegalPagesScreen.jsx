@@ -36,6 +36,9 @@ const LegalTab = ({ type, label }) => {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.tabContent}>
         <Text style={styles.fieldLabel}>{label} Content</Text>
+        {data?.updatedAt && (
+          <Text style={styles.updatedNote}>Last updated: {new Date(data.updatedAt).toLocaleString()}</Text>
+        )}
         <TextInput
           style={styles.bigInput}
           value={content}
@@ -95,6 +98,7 @@ const styles = StyleSheet.create({
   tabTextActive: { fontFamily: 'Outfit-SemiBold', color: colors.primary },
   tabContent: { padding: 16, flexGrow: 1 },
   fieldLabel: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack, marginBottom: 8 },
+  updatedNote: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: -4, marginBottom: 10 },
   bigInput: {
     backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E5E7EB',
     borderRadius: 10, padding: 14, fontSize: 14, fontFamily: 'Outfit-Regular',

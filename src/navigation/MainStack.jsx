@@ -4,8 +4,9 @@ import { createStackNavigator } from '@react-navigation/stack';
 
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../services/api/posApi';
-import { ROLES } from '../utils/permissions';
+import { ROLES, PERMISSIONS, isStaff } from '../utils/permissions';
 import { useSidebarStore } from '../store/sidebarStore';
+import { useActiveRouteStore } from '../store/activeRouteStore';
 import SidebarOverlay from '../components/Sidebar/SidebarOverlay';
 import ChatFAB from '../components/ChatFAB/ChatFAB';
 import Header from '../components/Header/Header';
@@ -36,6 +37,10 @@ import IntegrationsScreen from '../screens/main/admin/Integrations/IntegrationsS
 import MiscChargesScreen from '../screens/main/admin/MiscCharges/MiscChargesScreen';
 import ActivityLogsScreen from '../screens/main/admin/ActivityLogs/ActivityLogsScreen';
 import AttendanceScreen from '../screens/main/admin/Attendance/AttendanceScreen';
+import AdvancedAnalyticsScreen from '../screens/main/admin/Reports/AdvancedAnalyticsScreen';
+import MultiBranchViewScreen from '../screens/main/admin/Reports/MultiBranchViewScreen';
+import LearnHubScreen from '../screens/main/admin/Learn/LearnHubScreen';
+import LearnPageScreen from '../screens/main/admin/Learn/LearnPageScreen';
 
 // HRMS
 import HRMSDashboardScreen from '../screens/main/admin/HRMS/HRMSDashboardScreen';
@@ -48,6 +53,13 @@ import ReviewsScreen from '../screens/main/admin/HRMS/ReviewsScreen';
 import JobBoardScreen from '../screens/main/admin/HRMS/JobBoardScreen';
 import HRDocumentsScreen from '../screens/main/admin/HRMS/HRDocumentsScreen';
 import TrainingsScreen from '../screens/main/admin/HRMS/TrainingsScreen';
+import OrgChartScreen from '../screens/main/admin/HRMS/OrgChartScreen';
+import FinesScreen from '../screens/main/admin/HRMS/FinesScreen';
+import SalaryAdvancesScreen from '../screens/main/admin/HRMS/SalaryAdvancesScreen';
+
+// Team Chat
+import TeamChatListScreen from '../screens/main/admin/TeamChat/TeamChatListScreen';
+import TeamChatThreadScreen from '../screens/main/admin/TeamChat/TeamChatThreadScreen';
 
 // Vendor / Marketplace
 import MarketplaceScreen from '../screens/main/admin/Vendor/MarketplaceScreen';
@@ -55,9 +67,13 @@ import VendorOrdersScreen from '../screens/main/admin/Vendor/VendorOrdersScreen'
 import VendorProfileScreen from '../screens/main/admin/Vendor/VendorProfileScreen';
 import VendorListingsScreen from '../screens/main/admin/Vendor/VendorListingsScreen';
 import IncomingOrdersScreen from '../screens/main/admin/Vendor/IncomingOrdersScreen';
+import VendorDashboardScreen from '../screens/main/admin/Vendor/VendorDashboardScreen';
 import SupportChatScreen from '../screens/main/admin/Chat/SupportChatScreen';
 import SettingsScreen from '../screens/main/admin/Settings/SettingsScreen';
+import BillingScreen from '../screens/main/admin/Billing/BillingScreen';
 import AwaitingPaymentScreen from '../screens/main/admin/Billing/AwaitingPaymentScreen';
+import InvoiceTemplateScreen from '../screens/main/admin/Settings/InvoiceTemplateScreen';
+import PayslipTemplateScreen from '../screens/main/admin/Settings/PayslipTemplateScreen';
 
 // Medical
 import MedicalDashboardScreen from '../screens/main/admin/Medical/MedicalDashboardScreen';
@@ -126,14 +142,27 @@ import BudgetsScreen        from '../screens/main/admin/Finance/BudgetsScreen';
 import ExpensesScreen        from '../screens/main/admin/Finance/ExpensesScreen';
 import PaymentAccountsScreen from '../screens/main/admin/Finance/PaymentAccountsScreen';
 import SupplierBillsScreen   from '../screens/main/admin/Finance/SupplierBillsScreen';
+import ExpenseCategoriesScreen from '../screens/main/admin/Finance/ExpenseCategoriesScreen';
+import FinanceDashboardScreen from '../screens/main/admin/Finance/FinanceDashboardScreen';
+import FinanceReportsScreen from '../screens/main/admin/Finance/FinanceReportsScreen';
 
 // Projects
 import ProjectsScreen       from '../screens/main/admin/Projects/ProjectsScreen';
 import ProjectClientsScreen from '../screens/main/admin/Projects/ProjectClientsScreen';
+import KanbanBoardScreen    from '../screens/main/admin/Projects/KanbanBoardScreen';
+import ProjectMarketplacesScreen from '../screens/main/admin/Projects/ProjectMarketplacesScreen';
+import ProjectDetailScreen from '../screens/main/admin/Projects/ProjectDetailScreen';
+
+// Rider (Delivery)
+import RiderDashboardScreen  from '../screens/main/staff/RiderDashboardScreen';
+import RiderDeliveriesScreen from '../screens/main/staff/RiderDeliveriesScreen';
 
 // Snooker
 import SnookerTablesScreen       from '../screens/main/admin/Snooker/SnookerTablesScreen';
 import SnookerSessionTypesScreen from '../screens/main/admin/Snooker/SnookerSessionTypesScreen';
+import SnookerDashboardScreen    from '../screens/main/admin/Snooker/SnookerDashboardScreen';
+import SnookerSessionsScreen     from '../screens/main/admin/Snooker/SnookerSessionsScreen';
+import SnookerSessionDetailScreen from '../screens/main/admin/Snooker/SnookerSessionDetailScreen';
 
 // Medical — prescriptions (sub-screen opened from PatientsScreen)
 import PatientPrescriptionsScreen from '../screens/main/admin/Medical/PatientPrescriptionsScreen';
@@ -204,6 +233,9 @@ const ADMIN_SCREENS = [
   { name: 'Tickets',      component: TicketsScreen },
   { name: 'Staff',        component: StaffScreen },
   { name: 'Reports',      component: ReportsScreen },
+  { name: 'AdvancedAnalytics', component: AdvancedAnalyticsScreen },
+  { name: 'MultiBranchView',   component: MultiBranchViewScreen },
+  { name: 'LearnHub',     component: LearnHubScreen },
   { name: 'Integrations', component: IntegrationsScreen },
   { name: 'ActivityLogs', component: ActivityLogsScreen },
   { name: 'Attendance',   component: AttendanceScreen },
@@ -215,11 +247,15 @@ const ADMIN_SCREENS = [
   { name: 'HRMSClaims',        component: ClaimsScreen },
   { name: 'HRMSAnnouncements', component: AnnouncementsScreen },
   { name: 'HRMSPayroll',       component: PayrollScreen },
+  { name: 'HRMSSalaryAdvances', component: SalaryAdvancesScreen },
+  { name: 'HRMSFines',          component: FinesScreen },
   { name: 'HRMSTasks',         component: TasksScreen },
   { name: 'HRMSReviews',       component: ReviewsScreen },
   { name: 'HRMSJobBoard',      component: JobBoardScreen },
   { name: 'HRMSDocuments',     component: HRDocumentsScreen },
   { name: 'HRMSTrainings',     component: TrainingsScreen },
+  { name: 'OrgChart',          component: OrgChartScreen },
+  { name: 'TeamChat',          component: TeamChatListScreen },
 
   // Vendor / Marketplace
   { name: 'Marketplace',    component: MarketplaceScreen },
@@ -227,6 +263,7 @@ const ADMIN_SCREENS = [
   { name: 'VendorProfile',  component: VendorProfileScreen },
   { name: 'VendorListings', component: VendorListingsScreen },
   { name: 'IncomingOrders', component: IncomingOrdersScreen },
+  { name: 'VendorDashboard', component: VendorDashboardScreen },
 
   { name: 'SupportChat',  component: SupportChatScreen },
   { name: 'Settings',     component: SettingsScreen },
@@ -263,14 +300,25 @@ const ADMIN_SCREENS = [
   // Finance
   { name: 'Budgets',         component: BudgetsScreen },
   { name: 'Expenses',        component: ExpensesScreen },
+  { name: 'ExpenseCategories', component: ExpenseCategoriesScreen },
+  { name: 'FinanceDashboard', component: FinanceDashboardScreen },
+  { name: 'FinanceReports', component: FinanceReportsScreen },
   { name: 'PaymentAccounts', component: PaymentAccountsScreen },
   { name: 'SupplierBills',   component: SupplierBillsScreen },
 
   // Projects
   { name: 'Projects',        component: ProjectsScreen },
+  { name: 'ProjectKanban',   component: KanbanBoardScreen },
   { name: 'ProjectClients',  component: ProjectClientsScreen },
+  { name: 'ProjectMarketplaces', component: ProjectMarketplacesScreen },
+
+  // Rider (Delivery)
+  { name: 'RiderDashboard',  component: RiderDashboardScreen },
+  { name: 'RiderDeliveries', component: RiderDeliveriesScreen },
 
   // Snooker
+  { name: 'SnookerDashboard',    component: SnookerDashboardScreen },
+  { name: 'SnookerSessions',     component: SnookerSessionsScreen },
   { name: 'SnookerTables',       component: SnookerTablesScreen },
   { name: 'SnookerSessionTypes', component: SnookerSessionTypesScreen },
 
@@ -304,17 +352,54 @@ const SETTINGS_SCREENS = [
   { name: 'TicketStatuses',    component: TicketStatusesScreen },
   { name: 'FingerprintDevices', component: FingerprintDevicesScreen },
   { name: 'AppointmentTypes',   component: AppointmentTypesScreen },
+  { name: 'Billing',            component: BillingScreen },
   { name: 'AwaitingPayment',    component: AwaitingPaymentScreen },
+  { name: 'InvoiceTemplate',    component: InvoiceTemplateScreen },
+  { name: 'PayslipTemplate',    component: PayslipTemplateScreen },
 ];
 
-const AdminNavigator = ({ unreadCount, userRole }) => {
+// Mirrors the web admin's dashboard-selection logic exactly (ProtectedRoute's
+// getDashboardPath / business-admin-dashboard's redirect effect): a business
+// owner with manage_businesses always lands on My Businesses; otherwise the
+// admin's business primaryDashboard picks the industry-specific dashboard,
+// falling back to the retail/POS dashboard.
+const DASHBOARD_ROUTE_BY_PRIMARY = {
+  medical: 'MedicalDashboard',
+  restaurant: 'RestaurantDashboard',
+  hrms: 'HRMSDashboard',
+  finance: 'FinanceDashboard',
+  snooker: 'SnookerDashboard',
+};
+
+const adminInitialRoute = user => {
+  if (user?.permissionCodes?.includes(PERMISSIONS.MANAGE_BUSINESSES)) return 'MyBusinesses';
+  return DASHBOARD_ROUTE_BY_PRIMARY[user?.primaryDashboard] ?? 'Dashboard';
+};
+
+const AdminNavigator = ({ unreadCount, userRole, user }) => {
   const openSidebar = useSidebarStore(s => s.open);
+  const setActiveRoute = useActiveRouteStore(s => s.setActiveRoute);
   const menuHdr = makeMenuHeader(openSidebar, unreadCount);
   const backHdr = makeBackHeader(unreadCount);
-  const initialRoute = userRole === ROLES.STAFF ? 'StaffDashboard' : 'Dashboard';
+  const initialRoute = isStaff(userRole) ? 'StaffDashboard' : adminInitialRoute(user);
+
+  React.useEffect(() => {
+    setActiveRoute(initialRoute);
+  }, [initialRoute, setActiveRoute]);
+
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Navigator screenOptions={{ headerShown: true }} initialRouteName={initialRoute}>
+      <Stack.Navigator
+        screenOptions={{ headerShown: true }}
+        initialRouteName={initialRoute}
+        screenListeners={{
+          state: e => {
+            const s = e.data.state;
+            const current = s?.routes?.[s.index];
+            if (current) setActiveRoute(current.name);
+          },
+        }}
+      >
         {ADMIN_SCREENS.map(({ name, component: C }) => (
           <Stack.Screen key={name} name={name} component={C} options={{ header: menuHdr }} />
         ))}
@@ -327,6 +412,10 @@ const AdminNavigator = ({ unreadCount, userRole }) => {
         <Stack.Screen name="CreateTicket"          component={CreateTicketScreen}          options={{ header: backHdr }} />
         <Stack.Screen name="ProductForm"           component={ProductFormScreen}           options={{ header: backHdr }} />
         <Stack.Screen name="PatientPrescriptions"  component={PatientPrescriptionsScreen}  options={{ header: backHdr }} />
+        <Stack.Screen name="TeamChatThread"        component={TeamChatThreadScreen}        options={{ header: backHdr }} />
+        <Stack.Screen name="LearnPage"              component={LearnPageScreen}             options={{ header: backHdr }} />
+        <Stack.Screen name="SnookerSessionDetail"   component={SnookerSessionDetailScreen}   options={{ header: backHdr }} />
+        <Stack.Screen name="ProjectDetail"          component={ProjectDetailScreen}          options={{ header: backHdr }} />
       </Stack.Navigator>
       <SidebarOverlay />
       <ChatFAB />
@@ -400,7 +489,7 @@ const SupportNavigator = ({ unreadCount }) => {
 
 // ─── Main Stack — role switch ─────────────────────────────────────────────────
 export default function MainStack() {
-  const { userRole } = useAuth();
+  const { userRole, user } = useAuth();
   const { data: notifs } = useNotifications();
   const unreadCount = useMemo(
     () => Array.isArray(notifs) ? notifs.filter(n => !n.isRead).length : 0,
@@ -413,5 +502,5 @@ export default function MainStack() {
 
   if (userRole === ROLES.SUPER_ADMIN)   return <SuperAdminNavigator unreadCount={unreadCount} />;
   if (userRole === ROLES.SUPPORT_STAFF) return <SupportNavigator    unreadCount={unreadCount} />;
-  return <AdminNavigator unreadCount={unreadCount} userRole={userRole} />;
+  return <AdminNavigator unreadCount={unreadCount} userRole={userRole} user={user} />;
 }
