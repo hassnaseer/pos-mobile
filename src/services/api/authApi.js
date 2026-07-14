@@ -30,6 +30,7 @@ export const authApi = {
   login: async ({ email, password }) => {
     const res = await apiClient.post(AUTH.LOGIN, { email, password }, { skipAuth: true });
     // res.data contains { message, email, devOtp? }
+    console.log(res?.data, "loging data")
     return res?.data ?? res;
   },
 

@@ -214,7 +214,7 @@ const SUPER_ADMIN_MENU = [
   { id: 'sa-custom-plans',         title: 'Custom Plans',        route: 'SACustomPlans',        icon: rolesIcon },
   { id: 'sa-payment-queue',        title: 'Payment Queue',       route: 'SAPaymentQueue',       icon: ordersIcon },
   { id: 'sa-error-logs',           title: 'Error Logs',          route: 'SAErrorLogs',          icon: reportsIcon },
-  { id: 'sa-roles',               title: 'SA Roles',            route: 'SARoles',              icon: rolesIcon },
+  // { id: 'sa-roles',               title: 'SA Roles',            route: 'SARoles',              icon: rolesIcon },
 ];
 
 const SUPPORT_STAFF_MENU = [
