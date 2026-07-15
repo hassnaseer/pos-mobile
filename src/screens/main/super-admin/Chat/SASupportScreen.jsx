@@ -8,7 +8,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../../../context/AuthContext';
 import { useSAPlatformTeam, useCreateSASupportTicket } from '../../../../services/api/posApi';
-import { BASE_URL } from '../../../../services/api/globalApi';
+import apiClient, { BASE_URL } from '../../../../services/api/globalApi';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import colors from '../../../../theme/colors';
 
@@ -123,6 +123,20 @@ const SASupportScreen = ({ navigation }) => {
       ? { lastMessage: content, lastMessageAt: serverTs(), isReadByGuest: false, isReadBySupport: true }
       : { lastMessage: content, lastMessageAt: serverTs(), isReadByCustomer: false, isReadBySupport: true };
     await fs.updateDoc(convRef, updatePayload);
+
+    // Guest conversations have no backend notify route yet (guest-notify only
+    // covers guest→support) — only business conversations can be notified here.
+    if (userType !== 'guest') {
+      const conv = conversations.find(c => c.id === convId);
+      apiClient.post('/support/notify', {
+        senderRole: 'super-admin',
+        customerName: conv?.customerName,
+        customerId: conv?.customerId,
+        assignedToId: conv?.assignedToId ?? null,
+        messagePreview: content.slice(0, 100),
+        conversationId: convId,
+      }).catch(() => {});
+    }
   };
 
   const send = async () => {
@@ -511,7 +525,7 @@ const styles = StyleSheet.create({
   msgText: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#111827' },
   msgTextMine: { color: '#fff' },
   inputRow: { flexDirection: 'row', padding: 10, gap: 8, backgroundColor: '#fff', borderTopWidth: 1, borderColor: '#eee' },
-  input: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, fontSize: 14, fontFamily: 'Outfit-Regular', maxHeight: 80 },
+  input: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827', maxHeight: 80 },
   sendBtn: { backgroundColor: colors.primary, borderRadius: 16, paddingHorizontal: 16, justifyContent: 'center' },
   sendBtnOff: { backgroundColor: '#D0D5DD' },
   sendBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 13 },

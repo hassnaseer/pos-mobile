@@ -8,9 +8,12 @@ import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../../../services/api/globalApi';
 import { useProjectMarketplaces } from '../../../../services/api/posApi';
 import { useAuth } from '../../../../context/AuthContext';
-import { useCurrency } from '../../../../context/CurrencyContext';
+import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
+import { compactAmt } from '../../../../utils/currency';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+
+const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 
 const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
@@ -46,8 +49,18 @@ const ProjectsScreen = () => {
   const navigation = useNavigation();
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { fmt: fmtMoney } = useCurrency();
+  const { currency: bizCurrency, rates } = useCurrency();
   const canCompanyEarning = !user?.permissionCodes?.length || user.permissionCodes.includes('manage_projects');
+  const [displayCurrency, setDisplayCurrency] = useState(bizCurrency);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+
+  // Backend project totals are USD-denominated — convert for display the same way
+  // web's listFmt does (frontend/src/app/pages/admin/projects/index.tsx:91-98).
+  const fmtMoney = usdAmt => {
+    const displayAmt = (usdAmt ?? 0) * (rates?.[displayCurrency] ?? 1);
+    const sym = CURRENCY_SYMBOLS[displayCurrency] ?? displayCurrency + ' ';
+    return compactAmt(sym, displayAmt);
+  };
 
   const { data: raw = [], isLoading, refetch } = useProjects();
   const { data: clientRaw = [] } = useClients();
@@ -138,8 +151,28 @@ const ProjectsScreen = () => {
     <View style={s.root}>
       <View style={s.topBar}>
         <Text style={s.heading}>Projects</Text>
-        <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={s.currencyLabel}>Display in</Text>
+          <TouchableOpacity style={s.currencySelect} onPress={() => setShowCurrencyPicker(true)}>
+            <Text style={s.currencySelectText}>{displayCurrency} ▾</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+        </View>
       </View>
+
+      <Modal visible={showCurrencyPicker} transparent animationType="fade" onRequestClose={() => setShowCurrencyPicker(false)}>
+        <TouchableOpacity style={s.pickerBackdrop} activeOpacity={1} onPress={() => setShowCurrencyPicker(false)}>
+          <View style={s.pickerSheet}>
+            <ScrollView>
+              {CURRENCY_OPTIONS.map(c => (
+                <TouchableOpacity key={c} style={s.pickerOption} onPress={() => { setDisplayCurrency(c); setShowCurrencyPicker(false); }}>
+                  <Text style={[s.pickerOptionText, displayCurrency === c && { color: colors.primary, fontFamily: 'Outfit-SemiBold' }]}>{c} — {CURRENCY_SYMBOLS[c]}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <View style={s.summaryGrid}>
         <View style={[s.summaryCard, { backgroundColor: '#f0fdf4' }]}><Text style={s.summaryLabel}>Total Income</Text><Text style={[s.summaryValue, { color: '#15803d' }]}>{fmtMoney(totalIncome)}</Text></View>
@@ -342,6 +375,13 @@ const s = StyleSheet.create({
   heading: { fontSize: 18, fontFamily: 'Outfit-Bold', color: '#0f172a' },
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 14 },
+  currencyLabel: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280' },
+  currencySelect: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
+  currencySelectText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#374151' },
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: 360, padding: 8 },
+  pickerOption: { paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderColor: '#f0f0f0' },
+  pickerOptionText: { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
   summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 12 },
   summaryCard: { flexBasis: '47%', flexGrow: 1, borderRadius: 12, padding: 12 },
   summaryLabel: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280', marginBottom: 2 },

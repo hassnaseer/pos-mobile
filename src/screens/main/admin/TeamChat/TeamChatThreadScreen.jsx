@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   replyBarText: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280' },
   inputRow: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8, backgroundColor: '#fff', borderTopWidth: 1, borderColor: '#eee' },
   attachBtn: { padding: 8 },
-  input: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', maxHeight: 100 },
+  input: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827', maxHeight: 100 },
   sendBtn: { backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 20, justifyContent: 'center', paddingVertical: 10 },
   sendBtnDisabled: { backgroundColor: '#D0D5DD' },
   sendBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 14 },

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,21 @@ const Toast = ({
   const opacity = React.useRef(new Animated.Value(0)).current;
   const translateY = React.useRef(new Animated.Value(-40)).current;
 
+  const hideToast = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: -40,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => onHide && onHide());
+  }, [opacity, translateY, onHide]);
+
   useEffect(() => {
     if (visible) {
       Animated.parallel([
@@ -38,22 +53,7 @@ const Toast = ({
       const timer = setTimeout(() => hideToast(), duration);
       return () => clearTimeout(timer);
     }
-  }, [visible]);
-
-  const hideToast = () => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: -40,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => onHide && onHide());
-  };
+  }, [visible, duration, hideToast, opacity, translateY]);
 
   if (!visible) return null;
 

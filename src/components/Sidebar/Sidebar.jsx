@@ -6,6 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useSupportChatUnreadCount } from '../../hooks/useSupportChatUnreadCount';
 import { ROLES, PERMISSIONS } from '../../utils/permissions';
 import colors from '../../theme/colors';
 import crossIcon from '../../assets/icons/cross-icon.png';
@@ -40,6 +41,10 @@ const ADMIN_MENU = [
   // StaffDashboard as their initial route after login; they just get no sidebar link
   // back to it, same as web.
   { id: 'staff-dashboard', title: 'Dashboard', route: 'StaffDashboard', icon: dashIcon, staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_ATTENDANCE },
+  // Web repoints this same link to /admin/hrms for HRMS-primary businesses instead of
+  // hiding it (adminDashboardPath) — mobile doesn't have that dynamic re-pointing, so
+  // hiding the generic retail Dashboard and relying on the dedicated HRMS Dashboard
+  // entry below is the correct mobile equivalent, not a bug to remove.
   { id: 'dashboard',  title: 'Dashboard', route: 'Dashboard', icon: dashIcon, adminOnly: true,
     hideFor: [PERMISSIONS.ACCESS_MEDICAL, PERMISSIONS.ACCESS_RESTAURANT, PERMISSIONS.MANAGE_ATTENDANCE] },
   { id: 'my-biz',     title: 'My Businesses',  route: 'MyBusinesses', icon: suppliersIcon, permission: PERMISSIONS.MANAGE_BUSINESSES },
@@ -64,44 +69,58 @@ const ADMIN_MENU = [
   { id: 'staff', title: 'Employee', route: 'Staff', icon: staffIcon, permission: PERMISSIONS.MANAGE_STAFF },
 
   // ── Reports & Logs ────────────────────────────────────────────────────────────
-  { id: 'reports',       title: 'Reports',       route: 'Reports',      icon: reportsIcon, permission: PERMISSIONS.VIEW_REPORTS },
-  { id: 'advanced-analytics', title: 'Advanced Analytics', route: 'AdvancedAnalytics', icon: reportsIcon, permission: PERMISSIONS.ACCESS_ADVANCED_ANALYTICS },
+  { id: 'reports',       title: 'Reports',       route: 'Reports',      icon: reportsIcon, canShow: p => p.canAny(PERMISSIONS.VIEW_REPORTS, PERMISSIONS.VIEW_FINANCE_REPORTS) },
   { id: 'multi-branch-view', title: 'Multi-Branch View', route: 'MultiBranchView', icon: reportsIcon, permission: PERMISSIONS.ACCESS_MULTI_BRANCH_VIEW },
   { id: 'activity-logs', title: 'Activity Logs', route: 'ActivityLogs', icon: reportsIcon, permission: PERMISSIONS.VIEW_ACTIVITY_LOGS },
 
   // ── Integrations ─────────────────────────────────────────────────────────────
-  { id: 'integrations', title: 'Integrations', route: 'Integrations', icon: rolesIcon, permission: PERMISSIONS.MANAGE_ECOMMERCE, adminOnly: true },
+  // No shared master permission — web gates this by having ANY one platform's code
+  // (sidebarItems.ts). manage_ecommerce_integrations isn't granted by any real flow.
+  {
+    id: 'integrations', title: 'Integrations', route: 'Integrations', icon: rolesIcon, adminOnly: true,
+    canShow: p => p.canAny(
+      'ecommerce_shopify', 'ecommerce_bigcommerce', 'ecommerce_wix', 'ecommerce_woocommerce',
+      'ecommerce_squarespace', 'ecommerce_magento', 'ecommerce_opencart', 'ecommerce_prestashop',
+      'ecommerce_amazon', 'ecommerce_ebay', 'ecommerce_tiktokshop', 'ecommerce_etsy', 'ecommerce_walmart',
+      'ecommerce_metashops', 'ecommerce_googleshopping', 'ecommerce_daraz', 'ecommerce_lazada', 'ecommerce_shopee',
+    ),
+  },
 
-  // ── Finance (expandable group) ────────────────────────────────────────────────
+  // ── Projects — flat top-level links, matching web exactly (no dropdown group) ──
+  { id: 'projects',        title: 'Projects', route: 'Projects',       icon: productsIcon,  permission: PERMISSIONS.MANAGE_PROJECTS },
+  { id: 'project-kanban',  title: 'Board',    route: 'ProjectKanban',  icon: productsIcon,  permission: PERMISSIONS.MANAGE_KANBAN },
+  { id: 'project-clients', title: 'Clients',  route: 'ProjectClients', icon: customersIcon, permission: PERMISSIONS.MANAGE_CLIENTS },
+
+  // ── Finance (expandable group — trimmed to match web's 3-item dropdown; Finance
+  // Dashboard is reached via the top-level Dashboard for finance-type businesses,
+  // Expense Categories/Payment Accounts live in Settings, matching web's IA) ──────
   {
     id: 'finance', title: 'Finance', icon: reportsIcon, isGroup: true,
     canShow: p => p.hasAnyFinance(),
     subItems: [
-      { id: 'finance-dashboard', title: 'Finance Dashboard', route: 'FinanceDashboard', icon: dashIcon,    permission: PERMISSIONS.MANAGE_BUDGETS },
       { id: 'budgets',          title: 'Budgets',          route: 'Budgets',         icon: reportsIcon,   permission: PERMISSIONS.MANAGE_BUDGETS },
       { id: 'expenses',         title: 'Expenses',         route: 'Expenses',        icon: ordersIcon,    permission: PERMISSIONS.MANAGE_EXPENSES },
-      { id: 'expense-categories', title: 'Expense Categories', route: 'ExpenseCategories', icon: reportsIcon, permission: PERMISSIONS.MANAGE_BUDGETS },
-      { id: 'payment-accounts', title: 'Payment Accounts', route: 'PaymentAccounts', icon: suppliersIcon, permission: PERMISSIONS.MANAGE_PAYMENT_ACCOUNTS },
       { id: 'supplier-bills',   title: 'Supplier Bills',   route: 'SupplierBills',   icon: reportsIcon,   permission: PERMISSIONS.MANAGE_SUPPLIER_BILLS },
-      { id: 'finance-reports', title: 'Finance Reports', route: 'FinanceReports', icon: reportsIcon, permission: PERMISSIONS.MANAGE_PROJECTS },
-    ],
-  },
-
-  // ── Projects (expandable group) ───────────────────────────────────────────────
-  {
-    id: 'projects-group', title: 'Projects', icon: productsIcon, isGroup: true,
-    canShow: p => p.canAny(PERMISSIONS.MANAGE_PROJECTS, PERMISSIONS.MANAGE_KANBAN, PERMISSIONS.MANAGE_CLIENTS, PERMISSIONS.MANAGE_MARKETPLACES),
-    subItems: [
-      { id: 'projects',        title: 'Projects',        route: 'Projects',       icon: productsIcon,  permission: PERMISSIONS.MANAGE_PROJECTS },
-      { id: 'project-kanban',  title: 'Board',            route: 'ProjectKanban',  icon: productsIcon,  permission: PERMISSIONS.MANAGE_KANBAN },
-      { id: 'project-clients', title: 'Project Clients', route: 'ProjectClients', icon: customersIcon, permission: PERMISSIONS.MANAGE_CLIENTS },
-      { id: 'project-marketplaces', title: 'Marketplaces', route: 'ProjectMarketplaces', icon: productsIcon, permission: PERMISSIONS.MANAGE_MARKETPLACES },
+      // Not a sidebar item on web either — the top-level "Reports" link points here
+      // instead for finance-type businesses. Kept reachable here since mobile's
+      // "Reports" link doesn't do that same primaryDashboard-based redirect yet.
+      { id: 'finance-reports', title: 'Finance Reports', route: 'FinanceReports', icon: reportsIcon, canShow: p => p.canAny(PERMISSIONS.MANAGE_BUDGETS, PERMISSIONS.MANAGE_PROJECTS, PERMISSIONS.MANAGE_SUPPLIER_BILLS, PERMISSIONS.VIEW_FINANCE_REPORTS, PERMISSIONS.VIEW_REPORTS) },
     ],
   },
 
   // ── HRMS ──────────────────────────────────────────────────────────────────────
-  { id: 'hrms-dash',           title: 'HRMS Dashboard',      route: 'HRMSDashboard',      icon: dashIcon,    canShow: p => p.hasAnyHRMS(), adminOnly: true },
-  { id: 'fingerprint-devices', title: 'Fingerprint Devices', route: 'FingerprintDevices', icon: staffIcon,   permission: PERMISSIONS.DEVICE_ATTENDANCE, adminOnly: true },
+  // Matches web's exact HRMS Dashboard permission array (frontend/src/app/layouts/sidebarItems.ts) —
+  // deliberately narrower than the shared hasAnyHRMS()/HRMS_PERMISSIONS used elsewhere (e.g.
+  // Settings' HRMS tab), which also includes manage_tasks/manage_transport.
+  {
+    id: 'hrms-dash', title: 'HRMS Dashboard', route: 'HRMSDashboard', icon: dashIcon, adminOnly: true,
+    canShow: p => p.canAny(
+      PERMISSIONS.MANAGE_ATTENDANCE, PERMISSIONS.MANAGE_LEAVE, PERMISSIONS.MANAGE_CLAIMS,
+      PERMISSIONS.MANAGE_PAYROLL, PERMISSIONS.MANAGE_ANNOUNCEMENTS, PERMISSIONS.MANAGE_DEPARTMENTS,
+      PERMISSIONS.MANAGE_REVIEWS, PERMISSIONS.MANAGE_INTERNAL_JOBS, PERMISSIONS.MANAGE_DOCUMENTS,
+      PERMISSIONS.MANAGE_TRAININGS,
+    ),
+  },
   { id: 'attendance',     title: 'Attendance',    route: 'HRMSAttendance',    icon: ordersIcon,  permission: PERMISSIONS.MANAGE_ATTENDANCE },
   { id: 'hrms-leave',     title: 'Leave',         route: 'HRMSLeave',         icon: ordersIcon,  permission: PERMISSIONS.MANAGE_LEAVE },
   { id: 'hrms-claims',    title: 'Claims',        route: 'HRMSClaims',        icon: reportsIcon, permission: PERMISSIONS.MANAGE_CLAIMS },
@@ -114,6 +133,7 @@ const ADMIN_MENU = [
   { id: 'hrms-jobs',      title: 'Job Board',     route: 'HRMSJobBoard',      icon: staffIcon,   permission: PERMISSIONS.MANAGE_INTERNAL_JOBS },
   { id: 'hrms-docs',      title: 'Documents',     route: 'HRMSDocuments',     icon: ordersIcon,  permission: PERMISSIONS.MANAGE_DOCUMENTS },
   { id: 'hrms-trainings', title: 'Trainings',     route: 'HRMSTrainings',     icon: productsIcon,permission: PERMISSIONS.MANAGE_TRAININGS },
+  { id: 'departments',    title: 'Departments',   route: 'Departments',       icon: rolesIcon,   permission: PERMISSIONS.MANAGE_DEPARTMENTS },
   { id: 'org-chart',      title: 'Org. Chart',    route: 'OrgChart',          icon: staffIcon,   permission: PERMISSIONS.MANAGE_STAFF },
   { id: 'team-chat',      title: 'Team Chat',     route: 'TeamChat',         icon: chatIcon,    permission: PERMISSIONS.INTERNAL_CHAT },
 
@@ -127,19 +147,20 @@ const ADMIN_MENU = [
 
   // ── Specialty: Medical ────────────────────────────────────────────────────────
   { id: 'medical-dash',    title: 'Medical Dashboard',  route: 'MedicalDashboard',    icon: dashIcon,      permission: PERMISSIONS.ACCESS_MEDICAL },
-  { id: 'appointments',    title: 'Appointments',       route: 'Appointments',        icon: ordersIcon,    permission: PERMISSIONS.ACCESS_MEDICAL },
-  { id: 'patients',        title: 'Patients',           route: 'Patients',            icon: customersIcon, permission: PERMISSIONS.ACCESS_MEDICAL },
-  { id: 'doctors',         title: 'Doctors',            route: 'Doctors',             icon: staffIcon,     permission: PERMISSIONS.ACCESS_MEDICAL },
-  { id: 'appt-types',      title: 'Appointment Types',  route: 'AppointmentTypes',    icon: rolesIcon,     permission: PERMISSIONS.ACCESS_MEDICAL },
-  { id: 'medical-reminders', title: 'Reminders',        route: 'MedicalReminders',    icon: ticketsIcon,   permission: PERMISSIONS.ACCESS_MEDICAL },
-  { id: 'medical-insurance', title: 'Insurance',        route: 'MedicalInsurance',    icon: reportsIcon,   permission: PERMISSIONS.ACCESS_MEDICAL },
-  { id: 'patient-tracking',  title: 'Patient Tracking', route: 'PatientTracking',     icon: customersIcon, permission: PERMISSIONS.ACCESS_MEDICAL },
+  { id: 'appointments',    title: 'Appointments',       route: 'Appointments',        icon: ordersIcon,    permission: PERMISSIONS.MANAGE_APPOINTMENTS },
+  { id: 'patients',        title: 'Patients',           route: 'Patients',            icon: customersIcon, permission: PERMISSIONS.MANAGE_PATIENTS },
+  { id: 'doctors',         title: 'Doctors',            route: 'Doctors',             icon: staffIcon,     permission: PERMISSIONS.MANAGE_DOCTORS },
+  // Staff-only on web — business owners don't get a dedicated Appointment Types link.
+  { id: 'appt-types',      title: 'Appointment Types',  route: 'AppointmentTypes',    icon: rolesIcon,     permission: PERMISSIONS.ACCESS_MEDICAL, staffOnly: true },
+  { id: 'medical-reminders', title: 'Reminders',        route: 'MedicalReminders',    icon: ticketsIcon,   permission: PERMISSIONS.ACCESS_MEDICAL_REMINDERS },
+  { id: 'medical-insurance', title: 'Insurance',        route: 'MedicalInsurance',    icon: reportsIcon,   permission: PERMISSIONS.ACCESS_MEDICAL_INSURANCE },
+  { id: 'patient-tracking',  title: 'Patient Tracking', route: 'PatientTracking',     icon: customersIcon, permission: PERMISSIONS.ACCESS_MEDICAL_PATIENT_TRACKING },
 
   // ── Specialty: Restaurant ─────────────────────────────────────────────────────
   { id: 'restaurant-dash',   title: 'Restaurant Dashboard', route: 'RestaurantDashboard', icon: dashIcon,     permission: PERMISSIONS.ACCESS_RESTAURANT },
   { id: 'restaurant-menu',   title: 'Menu',                 route: 'RestaurantMenu',      icon: productsIcon, permission: PERMISSIONS.ACCESS_RESTAURANT },
   { id: 'restaurant-tables', title: 'Tables',               route: 'RestaurantTables',    icon: rolesIcon,    permission: PERMISSIONS.ACCESS_RESTAURANT },
-  { id: 'restaurant-orders', title: 'Restaurant Orders',    route: 'RestaurantOrders',    icon: ordersIcon,   permission: PERMISSIONS.ACCESS_RESTAURANT },
+  { id: 'restaurant-orders', title: 'Orders',    route: 'RestaurantOrders',    icon: ordersIcon,   permission: PERMISSIONS.ACCESS_RESTAURANT },
 
   // ── Specialty: Factory ────────────────────────────────────────────────────────
   { id: 'factory-medicines',   title: 'Medicines',   route: 'FactoryMedicines',   icon: productsIcon, permission: PERMISSIONS.ACCESS_FACTORY },
@@ -148,20 +169,14 @@ const ADMIN_MENU = [
 
   // ── Specialty: Pharmacy ───────────────────────────────────────────────────────
   { id: 'pharmacy-factories',   title: 'Browse Factories', route: 'PharmacyFactories',   icon: suppliersIcon, permission: PERMISSIONS.ACCESS_PHARMACY },
-  { id: 'pharmacy-orders',      title: 'My Med Orders',    route: 'PharmacyOrders',      icon: ordersIcon,    permission: PERMISSIONS.ACCESS_PHARMACY },
+  { id: 'pharmacy-orders',      title: 'My Orders',    route: 'PharmacyOrders',      icon: ordersIcon,    permission: PERMISSIONS.ACCESS_PHARMACY },
   { id: 'pharmacy-connections', title: 'Connections',      route: 'PharmacyConnections', icon: rolesIcon,     permission: PERMISSIONS.ACCESS_PHARMACY },
 
-  // ── Specialty: Snooker ────────────────────────────────────────────────────────
-  {
-    id: 'snooker', title: 'Snooker', icon: rolesIcon, isGroup: true,
-    canShow: p => p.hasAnySnooker(), adminOnly: true,
-    subItems: [
-      { id: 'snooker-dashboard', title: 'Snooker Dashboard', route: 'SnookerDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS },
-      { id: 'snooker-sessions',  title: 'Sessions',          route: 'SnookerSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS },
-      { id: 'snooker-tables', title: 'Tables',        route: 'SnookerTables',       icon: rolesIcon,    permission: PERMISSIONS.MANAGE_SNOOKER_TABLES },
-      { id: 'snooker-types',  title: 'Session Types', route: 'SnookerSessionTypes', icon: productsIcon, permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS },
-    ],
-  },
+  // ── Specialty: Snooker — flat links, matching web (no dropdown group); Session
+  // Types has no sidebar entry on web either, still reachable via Settings ──────
+  { id: 'snooker-dashboard', title: 'Snooker Dashboard', route: 'SnookerDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS, adminOnly: true },
+  { id: 'snooker-sessions',  title: 'Sessions',          route: 'SnookerSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS, adminOnly: true },
+  { id: 'snooker-tables',    title: 'Tables',             route: 'SnookerTables',   icon: rolesIcon,  permission: PERMISSIONS.MANAGE_SNOOKER_TABLES, adminOnly: true },
 
   // ── Social Media (expandable group) ──────────────────────────────────────────
   {
@@ -180,11 +195,11 @@ const ADMIN_MENU = [
   { id: 'my-leave',       title: 'My Leave',       route: 'MyLeave',      icon: ordersIcon,    staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_LEAVE },
   { id: 'my-payslips',    title: 'My Payslips',    route: 'MyPayslips',   icon: reportsIcon,   staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_PAYROLL },
   { id: 'my-claims',      title: 'My Claims',      route: 'MyClaims',     icon: reportsIcon,   staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_CLAIMS },
-  { id: 'my-announce',    title: 'Announcements',  route: 'MyAnnouncements', icon: chatIcon,   staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_ANNOUNCEMENTS },
+  { id: 'my-announce',    title: 'My Announcements', route: 'MyAnnouncements', icon: chatIcon,   staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_ANNOUNCEMENTS },
   { id: 'my-tasks',       title: 'My Tasks',       route: 'MyTasks',      icon: ticketsIcon,   staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_TASKS },
   { id: 'my-reviews',     title: 'My Reviews',     route: 'MyReviews',    icon: reportsIcon,   staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_REVIEWS },
   { id: 'staff-jobs',     title: 'Job Board',      route: 'StaffJobBoard', icon: staffIcon,    staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_INTERNAL_JOBS },
-  { id: 'my-documents',   title: 'My Documents',   route: 'MyDocuments',  icon: ordersIcon,    staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_DOCUMENTS },
+  { id: 'my-documents',   title: 'Documents',   route: 'MyDocuments',  icon: ordersIcon,    staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_DOCUMENTS },
   { id: 'my-trainings',   title: 'My Trainings',   route: 'MyTrainings',  icon: productsIcon,  staffOnly: true, ownerPerm: PERMISSIONS.MANAGE_TRAININGS },
 
   // ── Help ──────────────────────────────────────────────────────────────────────
@@ -195,31 +210,33 @@ const ADMIN_MENU = [
   { id: 'rider-deliveries', title: 'My Deliveries',  route: 'RiderDeliveries', icon: ordersIcon, staffOnly: true, permission: PERMISSIONS.RIDER_ACCESS },
 ];
 
+// Shared by both super-admin (sees everything, unfiltered) and support-staff (filtered
+// by their granted sa_* permission codes) — mirrors web's single allItems array in
+// sidebarItems.ts, where super-admin and support-staff share the same item list.
 const SUPER_ADMIN_MENU = [
-  { id: 'sa-dashboard',      title: 'Dashboard',         route: 'SADashboard',     icon: dashIcon },
-  { id: 'sa-businesses',     title: 'Businesses',        route: 'SABusinesses',    icon: productsIcon },
-  { id: 'sa-business-types', title: 'Business Types',    route: 'SABusinessTypes', icon: ordersIcon },
-  { id: 'sa-packages',       title: 'Package Plans',     route: 'SAPackagePlans',  icon: rolesIcon },
-  { id: 'sa-reports',        title: 'Revenue Reports',   route: 'SAReports',       icon: reportsIcon },
-  { id: 'sa-support',         title: 'Customer Support',  route: 'SASupport',         icon: chatIcon },
-  { id: 'sa-support-tickets', title: 'Support Tickets',   route: 'SASupportTickets',  icon: ticketsIcon },
-  { id: 'sa-legal',          title: 'Legal Pages',       route: 'SALegalPages',    icon: ordersIcon },
-  { id: 'sa-vendors',        title: 'Vendors',           route: 'SAVendors',       icon: productsIcon },
-  { id: 'sa-demo-requests',  title: 'Demo Requests',     route: 'SADemoRequests',  icon: ordersIcon },
-  { id: 'sa-platform-team',  title: 'Platform Team',     route: 'SAPlatformTeam',  icon: staffIcon },
-  { id: 'sa-documents',      title: 'Documents',         route: 'SADocuments',     icon: reportsIcon },
-  { id: 'sa-activity-logs',        title: 'Activity Logs',       route: 'SAActivityLogs',       icon: reportsIcon },
-  { id: 'sa-learn-guides',         title: 'Learn Guides',        route: 'SALearnGuides',        icon: dashIcon },
-  { id: 'sa-business-categories',  title: 'Business Categories', route: 'SABusinessCategories', icon: productsIcon },
-  { id: 'sa-custom-plans',         title: 'Custom Plans',        route: 'SACustomPlans',        icon: rolesIcon },
-  { id: 'sa-payment-queue',        title: 'Payment Queue',       route: 'SAPaymentQueue',       icon: ordersIcon },
-  { id: 'sa-error-logs',           title: 'Error Logs',          route: 'SAErrorLogs',          icon: reportsIcon },
+  { id: 'sa-dashboard',      title: 'Dashboard',         route: 'SADashboard',     icon: dashIcon,     permission: 'sa_dashboard' },
+  { id: 'sa-businesses',     title: 'Businesses',        route: 'SABusinesses',    icon: productsIcon, permission: 'sa_manage_businesses' },
+  { id: 'sa-business-types', title: 'Business Types',    route: 'SABusinessTypes', icon: ordersIcon,   permission: 'sa_manage_business_types' },
+  { id: 'sa-business-categories',  title: 'Business Categories', route: 'SABusinessCategories', icon: productsIcon, permission: 'sa_manage_business_categories' },
+  { id: 'sa-packages',       title: 'Package Plans',     route: 'SAPackagePlans',  icon: rolesIcon,    permission: 'sa_manage_package_plans' },
+  { id: 'sa-custom-plans',         title: 'Custom Plans',        route: 'SACustomPlans',        icon: rolesIcon, permission: 'manage_plans' },
+  { id: 'sa-reports',        title: 'Revenue Reports',   route: 'SAReports',       icon: reportsIcon,  permission: 'sa_view_revenue_reports' },
+  { id: 'sa-settings',       title: 'Platform Settings', route: 'SASettings',      icon: rolesIcon,    permission: 'sa_manage_settings' },
+  { id: 'sa-legal',          title: 'Legal Pages',       route: 'SALegalPages',    icon: ordersIcon,   permission: 'sa_manage_legal_pages' },
+  { id: 'sa-documents',      title: 'Documents',         route: 'SADocuments',     icon: reportsIcon,  permission: 'sa_manage_documents' },
+  { id: 'sa-vendors',        title: 'Vendors',           route: 'SAVendors',       icon: productsIcon, permission: 'sa_manage_vendors' },
+  { id: 'sa-demo-requests',  title: 'Demo Requests',     route: 'SADemoRequests',  icon: ordersIcon,   canShow: p => p.canAny('sa_dashboard', 'sa_manage_demo_requests') },
+  { id: 'sa-payment-queue',        title: 'Payment Queue',       route: 'SAPaymentQueue',       icon: ordersIcon, permission: 'sa_manage_payment_queue' },
+  { id: 'sa-support',         title: 'Chat Support',  route: 'SASupport',         icon: chatIcon,    canShow: p => p.canAny('chat_support', 'view_customers') },
+  { id: 'sa-support-tickets', title: 'Support Tickets',   route: 'SASupportTickets',  icon: ticketsIcon, canShow: p => p.canAny('manage_support_tickets', 'chat_support') },
+  { id: 'sa-error-logs',           title: 'Error Logs',          route: 'SAErrorLogs',          icon: reportsIcon, permission: 'monitor_error_logs' },
+  { id: 'sa-platform-team',  title: 'Team',     route: 'SAPlatformTeam',  icon: staffIcon,   permission: 'sa_manage_team' },
+  { id: 'sa-activity-logs',        title: 'Activity Logs',       route: 'SAActivityLogs',       icon: reportsIcon, permission: 'sa_view_activity_logs' },
+  { id: 'sa-learn-guides',         title: 'Manage Guides',        route: 'SALearnGuides',        icon: dashIcon, permission: 'sa_manage_guides' },
   // { id: 'sa-roles',               title: 'SA Roles',            route: 'SARoles',              icon: rolesIcon },
 ];
 
-const SUPPORT_STAFF_MENU = [
-  { id: 'support-chat', title: 'Customer Support', route: 'SupportDashboard', icon: chatIcon },
-];
+const SUPPORT_STAFF_MENU = SUPER_ADMIN_MENU;
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
@@ -229,6 +246,7 @@ const Sidebar = ({ onClose }) => {
   const perms = usePermissions();
   const [activeRoute, setActiveRoute] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});
+  const supportUnread = useSupportChatUnreadCount(user);
 
   const filterItem = (item, isStaff, isAdmin, permCodes, bizPermCodes) => {
     if (isStaff && item.adminOnly)   return false;
@@ -241,8 +259,13 @@ const Sidebar = ({ onClose }) => {
   };
 
   const getMenuItems = () => {
-    if (userRole === ROLES.SUPER_ADMIN)   return SUPER_ADMIN_MENU;
-    if (userRole === ROLES.SUPPORT_STAFF) return SUPPORT_STAFF_MENU;
+    // True super-admins see everything, unfiltered — matches web (a real super-admin
+    // account isn't restricted by sa_* permission codes). Support-staff share the same
+    // item list but only see what their granted sa_* permission codes allow.
+    if (userRole === ROLES.SUPER_ADMIN) return SUPER_ADMIN_MENU;
+    if (userRole === ROLES.SUPPORT_STAFF) {
+      return SUPPORT_STAFF_MENU.filter(item => filterItem(item, false, false, user?.permissionCodes ?? [], undefined));
+    }
 
     const isStaff      = perms.isStaff;
     const isAdmin      = !isStaff;
@@ -335,6 +358,7 @@ const Sidebar = ({ onClose }) => {
           }
 
           const active = activeRoute === item.route;
+          const isSupportItem = item.id === 'sa-support' || item.id === 'support-chat';
           return (
             <TouchableOpacity
               key={item.id}
@@ -344,6 +368,11 @@ const Sidebar = ({ onClose }) => {
             >
               <Image source={item.icon} style={[styles.menuIcon, { tintColor: active ? colors.primary : '#666' }]} />
               <Text style={[styles.menuText, active && styles.menuTextActive]}>{item.title}</Text>
+              {isSupportItem && supportUnread > 0 && (
+                <View style={styles.menuBadge}>
+                  <Text style={styles.menuBadgeText}>{supportUnread > 99 ? '99+' : supportUnread}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -369,6 +398,8 @@ const styles = StyleSheet.create({
   menuContent: { paddingVertical: 8, paddingBottom: 20 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, marginHorizontal: 10, marginVertical: 1, paddingVertical: 12, borderRadius: 8, gap: 12 },
   menuItemActive: { backgroundColor: colors.primary + '15' },
+  menuBadge: { backgroundColor: colors.warning, borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  menuBadgeText: { color: '#fff', fontSize: 11, fontFamily: 'Outfit-Bold' },
   menuIcon: { width: 20, height: 20, resizeMode: 'contain' },
   menuText: { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#333', flex: 1 },
   menuTextActive: { fontFamily: 'Outfit-SemiBold', color: colors.primary },

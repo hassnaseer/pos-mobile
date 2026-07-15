@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
-  ActivityIndicator, TouchableOpacity,
+  ActivityIndicator, TouchableOpacity, Modal,
 } from 'react-native';
 import { useSARevenueReports } from '../../../../services/api/posApi';
-import { useCurrency } from '../../../../context/CurrencyContext';
+import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
+
+const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PERIODS = [
@@ -15,10 +17,22 @@ const PERIODS = [
 ];
 
 const SAReportsScreen = () => {
-  const { fmt } = useCurrency();
+  const { rates } = useCurrency();
   const [period, setPeriod] = useState('monthly');
   const [year, setYear]     = useState(new Date().getFullYear());
   const [month, setMonth]   = useState(new Date().getMonth() + 1);
+  const [viewCurrency, setViewCurrency] = useState('USD');
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+
+  // Revenue figures are USD-denominated — convert for display the same way web's
+  // fmtView does (frontend/src/app/pages/super-admin/revenue-reports/index.tsx:113-120).
+  const fmt = val => {
+    const num = typeof val === 'string' ? parseFloat(val) : (val ?? 0);
+    if (Number.isNaN(num)) return '—';
+    const rate = rates?.[viewCurrency] ?? 1;
+    const sym = CURRENCY_SYMBOLS[viewCurrency] ?? viewCurrency + ' ';
+    return `${sym}${(num * rate).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  };
 
   const { data, isLoading, refetch } = useSARevenueReports({ period, year, ...(period === 'daily' ? { month } : {}) });
 
@@ -56,6 +70,9 @@ const SAReportsScreen = () => {
               <Text style={[styles.chipText, period === p.key && styles.chipTextActive]}>{p.label}</Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity style={styles.currencySelect} onPress={() => setShowCurrencyPicker(true)}>
+            <Text style={styles.currencySelectText}>{viewCurrency} ▾</Text>
+          </TouchableOpacity>
         </ScrollView>
         {period !== 'yearly' && (
           <View style={styles.yearRow}>
@@ -82,6 +99,20 @@ const SAReportsScreen = () => {
           </ScrollView>
         )}
       </View>
+
+      <Modal visible={showCurrencyPicker} transparent animationType="fade" onRequestClose={() => setShowCurrencyPicker(false)}>
+        <TouchableOpacity style={styles.pickerBackdrop} activeOpacity={1} onPress={() => setShowCurrencyPicker(false)}>
+          <View style={styles.pickerSheet}>
+            <ScrollView>
+              {CURRENCY_OPTIONS.map(c => (
+                <TouchableOpacity key={c} style={styles.pickerOption} onPress={() => { setViewCurrency(c); setShowCurrencyPicker(false); }}>
+                  <Text style={[styles.pickerOptionText, viewCurrency === c && { color: colors.primary, fontFamily: 'Outfit-SemiBold' }]}>{c} — {CURRENCY_SYMBOLS[c]}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {isLoading
         ? <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
@@ -199,6 +230,12 @@ const styles = StyleSheet.create({
   yearRow: { flexDirection: 'row', alignItems: 'center', paddingRight: 12, gap: 6 },
   yearArrow: { fontSize: 20, color: colors.primary, fontFamily: 'Outfit-Bold' },
   yearText: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#374151', minWidth: 38, textAlign: 'center' },
+  currencySelect: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: '#fff' },
+  currencySelectText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#374151' },
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: 360, padding: 8 },
+  pickerOption: { paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderColor: '#f0f0f0' },
+  pickerOptionText: { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
   // Cards
   cardsRow: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10 },
   statCard: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderTopWidth: 3, width: 150, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, elevation: 2 },

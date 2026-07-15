@@ -20,6 +20,7 @@ export const PERMISSIONS = {
   VIEW_PRODUCTS:          'view_products',
   MANAGE_CATEGORIES:      'manage_categories',
   MANAGE_MISC:            'manage_misc',
+  ACCESS_BULK_OPERATIONS: 'access_bulk_operations',
 
   // ── Customers / Tickets ──────────────────────────────────────────────────────
   MANAGE_CUSTOMERS:       'manage_customers',
@@ -71,6 +72,12 @@ export const PERMISSIONS = {
 
   // ── Specialty modules ────────────────────────────────────────────────────────
   ACCESS_MEDICAL:         'access_medical',
+  MANAGE_APPOINTMENTS:    'manage_appointments',
+  MANAGE_PATIENTS:        'manage_patients',
+  MANAGE_DOCTORS:         'manage_doctors',
+  ACCESS_MEDICAL_REMINDERS: 'access_medical_reminders',
+  ACCESS_MEDICAL_INSURANCE: 'access_medical_insurance',
+  ACCESS_MEDICAL_PATIENT_TRACKING: 'access_medical_patient_tracking',
   ACCESS_RESTAURANT:      'access_restaurant',
   ACCESS_FACTORY:         'access_factory',
   ACCESS_PHARMACY:        'access_pharmacy',
@@ -102,7 +109,7 @@ export const PERMISSIONS = {
   HANDLE_DELIVERIES:          'handle_deliveries',
 
   // ── HRMS extras ──────────────────────────────────────────────────────────────
-  MANAGE_KPI_TARGETS:         'manage_kpi_targets',
+  MANAGE_COMMISSIONS:         'manage_commissions',
   MANAGE_TRANSPORT:           'manage_transport',
 
   // ── Snooker ───────────────────────────────────────────────────────────────────

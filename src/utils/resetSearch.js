@@ -16,5 +16,5 @@ export const useResetSearchOnFocus = (autoClear = true) => {
     if (isFocused && autoClear) {
       clearSearch();
     }
-  }, [isFocused, autoClear]);
+  }, [isFocused, autoClear, clearSearch]);
 };

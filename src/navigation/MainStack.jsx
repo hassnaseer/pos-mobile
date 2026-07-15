@@ -56,6 +56,8 @@ import TrainingsScreen from '../screens/main/admin/HRMS/TrainingsScreen';
 import OrgChartScreen from '../screens/main/admin/HRMS/OrgChartScreen';
 import FinesScreen from '../screens/main/admin/HRMS/FinesScreen';
 import SalaryAdvancesScreen from '../screens/main/admin/HRMS/SalaryAdvancesScreen';
+import CommissionStructuresScreen from '../screens/main/admin/HRMS/CommissionStructuresScreen';
+import CommissionEntriesScreen from '../screens/main/admin/HRMS/CommissionEntriesScreen';
 
 // Team Chat
 import TeamChatListScreen from '../screens/main/admin/TeamChat/TeamChatListScreen';
@@ -249,6 +251,8 @@ const ADMIN_SCREENS = [
   { name: 'HRMSPayroll',       component: PayrollScreen },
   { name: 'HRMSSalaryAdvances', component: SalaryAdvancesScreen },
   { name: 'HRMSFines',          component: FinesScreen },
+  { name: 'HRMSCommissionStructures', component: CommissionStructuresScreen },
+  { name: 'HRMSCommissionEntries',    component: CommissionEntriesScreen },
   { name: 'HRMSTasks',         component: TasksScreen },
   { name: 'HRMSReviews',       component: ReviewsScreen },
   { name: 'HRMSJobBoard',      component: JobBoardScreen },

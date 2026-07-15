@@ -1,13 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Switch, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../../../services/api/globalApi';
+import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../../../../context/AuthContext';
+import { useCurrency } from '../../../../context/CurrencyContext';
+import { useAdminSettings, useInvoiceTemplate, useUpdateInvoiceTemplate } from '../../../../services/api/posApi';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
+import InvoicePreviewModal from '../../../../components/InvoicePreviewModal/InvoicePreviewModal';
+import { buildSalesInvoiceHtml } from '../../../../utils/invoicePrinter';
 import colors from '../../../../theme/colors';
+
+const COLOR_SWATCHES = ['#2563eb', '#7c3aed', '#dc2626', '#16a34a', '#d97706', '#0891b2', '#db2777', '#111827'];
+const SAMPLE_ORDER = { orderNumber: 'INV-001', paymentMethod: 'Cash', amountReceived: 30, totalAmount: 44, subtotal: 40, amountPaid: 30, balanceDue: 14 };
+const SAMPLE_CART = [{ name: 'Sample Product', quantity: 2, price: 20 }];
+const SAMPLE_TAX = [{ name: 'VAT', percentage: 10, amount: 4, type: 'excluded' }];
+const SAMPLE_CUSTOMER = { name: 'John Doe', phone: '+1 (555) 987-6543', email: 'john@example.com' };
 
 const DEFAULT_TEMPLATE = {
   style: 'classic', primaryColor: '#2563eb', fontSize: 'medium', paperSize: 'a4',
@@ -44,9 +53,6 @@ const PAPER_SIZES = [{ id: 'a4', name: 'A4' }, { id: 'thermal-80', name: 'Therma
 const STYLES = [{ id: 'classic', name: 'Classic' }, { id: 'modern', name: 'Modern' }, { id: 'minimal', name: 'Minimal' }];
 const FONT_SIZES = [{ id: 'small', name: 'Small' }, { id: 'medium', name: 'Medium' }, { id: 'large', name: 'Large' }];
 
-const useInvoiceTemplate = () =>
-  useQuery({ queryKey: ['invoice-template'], queryFn: async () => { const r = await apiClient.get('/admin/invoice-template'); return { ...DEFAULT_TEMPLATE, ...(r?.data?.config ?? r?.config ?? {}) }; } });
-
 function ToggleRow({ label, desc, value, onChange }) {
   return (
     <View style={styles.toggleRow}>
@@ -61,32 +67,58 @@ function ToggleRow({ label, desc, value, onChange }) {
 
 export default function InvoiceTemplateScreen() {
   const { user } = useAuth();
-  const qc = useQueryClient();
+  const { symbol } = useCurrency();
+  const { data: settings } = useAdminSettings();
   const { data: saved, isLoading } = useInvoiceTemplate();
+  const updateMut = useUpdateInvoiceTemplate();
   const bizCodes = user?.businessPermissionCodes ?? [];
   const invoiceTypes = ALL_INVOICE_TYPES.filter(t => !t.bizCode || bizCodes.length === 0 || bizCodes.includes(t.bizCode));
 
   const [cfg, setCfg] = useState(DEFAULT_TEMPLATE);
   const [activeType, setActiveType] = useState(invoiceTypes[0]?.value ?? 'sales');
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  useEffect(() => { if (saved) setCfg(saved); }, [saved]);
+  useEffect(() => { if (saved) setCfg({ ...DEFAULT_TEMPLATE, ...saved }); }, [saved]);
 
   const set = (key, val) => setCfg(prev => ({ ...prev, [key]: val }));
   const setFooter = (type, val) => setCfg(prev => ({ ...prev, typeOverrides: { ...prev.typeOverrides, [type]: { ...prev.typeOverrides?.[type], footerMessage: val } } }));
 
   const saveMut = useMutation({
-    mutationFn: () => apiClient.put('/admin/invoice-template', cfg),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoice-template'] }),
+    mutationFn: () => updateMut.mutateAsync(cfg),
     onError: () => Alert.alert('Error', 'Failed to save invoice template'),
   });
+
+  const handleReset = () => setCfg(DEFAULT_TEMPLATE);
+
+  const previewHtml = useMemo(() => buildSalesInvoiceHtml({
+    order: SAMPLE_ORDER,
+    cart: SAMPLE_CART,
+    businessName: settings?.name || 'My Business',
+    businessPhone: settings?.phone || '+1 (555) 123-4567',
+    businessEmail: settings?.email || 'info@mybusiness.com',
+    businessAddress: settings?.address || '123 Business Street, City',
+    symbol,
+    invoiceTerms: settings?.invoiceTerms || 'All sales are final. Returns accepted within 7 days.',
+    subtotal: 40,
+    excludedTaxes: SAMPLE_TAX,
+    includedTaxes: [],
+    cartMiscCharges: [],
+    selectedCustomer: SAMPLE_CUSTOMER,
+    template: { ...cfg, typeOverrides: { sales: { footerMessage: cfg.typeOverrides?.[activeType]?.footerMessage ?? cfg.typeOverrides?.sales?.footerMessage } } },
+  }), [cfg, activeType, symbol, settings]);
 
   if (isLoading) return <ActivityIndicator color={colors.primary} style={{ marginTop: 30 }} />;
 
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Invoice Template</Text>
-        <Text style={styles.subHeading}>Configure what appears on generated invoices and receipts</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.heading}>Invoice Template</Text>
+          <Text style={styles.subHeading}>Configure what appears on generated invoices and receipts</Text>
+        </View>
+        <TouchableOpacity style={styles.previewBtn} onPress={() => setPreviewOpen(true)}>
+          <Text style={styles.previewBtnText}>Preview</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -98,6 +130,25 @@ export default function InvoiceTemplateScreen() {
           <InlinePicker options={FONT_SIZES} value={cfg.fontSize} onSelect={v => set('fontSize', v)} allowNone={false} />
           <Text style={styles.label}>Paper Size</Text>
           <InlinePicker options={PAPER_SIZES} value={cfg.paperSize} onSelect={v => set('paperSize', v)} allowNone={false} />
+          <Text style={styles.label}>Primary Color</Text>
+          <View style={styles.swatchRow}>
+            {COLOR_SWATCHES.map(c => (
+              <TouchableOpacity
+                key={c}
+                style={[styles.swatch, { backgroundColor: c }, cfg.primaryColor === c && styles.swatchActive]}
+                onPress={() => set('primaryColor', c)}
+              />
+            ))}
+          </View>
+          <TextInput
+            style={styles.colorInput}
+            value={cfg.primaryColor}
+            onChangeText={v => set('primaryColor', v)}
+            placeholder="#2563eb"
+            placeholderTextColor="#999"
+            maxLength={7}
+            autoCapitalize="none"
+          />
         </View>
 
         <View style={styles.card}>
@@ -158,19 +209,42 @@ export default function InvoiceTemplateScreen() {
           />
         </View>
 
-        <TouchableOpacity style={styles.saveBtn} onPress={() => saveMut.mutate()} disabled={saveMut.isPending}>
-          {saveMut.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save Template</Text>}
-        </TouchableOpacity>
+        <View style={styles.btnRow}>
+          <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+            <Text style={styles.resetBtnText}>Reset to Default</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveBtn, styles.saveBtnFlex]} onPress={() => saveMut.mutate()} disabled={saveMut.isPending}>
+            {saveMut.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save Template</Text>}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      <InvoicePreviewModal
+        visible={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        html={previewHtml}
+        title="Invoice Preview"
+        previewOnly
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f9fafb' },
-  header: { padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
   heading: { fontSize: 18, fontFamily: 'Outfit-Bold', color: '#111827' },
   subHeading: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 2 },
+  previewBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8, borderWidth: 1.5, borderColor: colors.primary, marginLeft: 12 },
+  previewBtnText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary },
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  swatch: { width: 30, height: 30, borderRadius: 8, borderWidth: 2, borderColor: 'transparent' },
+  swatchActive: { borderColor: '#111827' },
+  colorInput: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, fontFamily: 'Outfit-Regular', color: '#111' },
+  btnRow: { flexDirection: 'row', gap: 10 },
+  resetBtn: { paddingHorizontal: 16, paddingVertical: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#D0D5DD', alignItems: 'center', justifyContent: 'center' },
+  resetBtnText: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#374151' },
+  saveBtnFlex: { flex: 1 },
   content: { padding: 16, gap: 14, paddingBottom: 40 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#e5e7eb' },
   cardTitle: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#111827', marginBottom: 8 },

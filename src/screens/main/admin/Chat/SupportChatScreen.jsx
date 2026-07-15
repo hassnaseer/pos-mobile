@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../../../context/AuthContext';
+import apiClient from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
 
 let fs = null;
@@ -14,6 +15,7 @@ const serverTs = () => fs?.serverTimestamp?.() ?? null;
 const SupportChatScreen = ({ route, navigation }) => {
   const { user } = useAuth();
   const [conversationId, setConversationId] = useState(null);
+  const [assignedToId, setAssignedToId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,6 +35,7 @@ const SupportChatScreen = ({ route, navigation }) => {
       if (!snap.empty) {
         setConversationId(snap.docs[0].id);
         const d = snap.docs[0].data();
+        setAssignedToId(d.assignedToId ?? null);
         if (d.isReadByCustomer === false) {
           fs.updateDoc(snap.docs[0].ref, { isReadByCustomer: true });
         }
@@ -115,6 +118,15 @@ const SupportChatScreen = ({ route, navigation }) => {
       content,
       timestamp: serverTs(),
     });
+
+    apiClient.post('/support/notify', {
+      senderRole: 'admin',
+      customerName: user.name,
+      customerId: user.id,
+      assignedToId,
+      messagePreview: content.slice(0, 100),
+      conversationId: convId,
+    }).catch(() => {});
   };
 
   if (!fs) {
@@ -186,7 +198,7 @@ const styles = StyleSheet.create({
   msgTimeMine: { color: 'rgba(255,255,255,0.7)' },
   empty: { textAlign: 'center', color: colors.secondary, fontFamily: 'Outfit-Regular', marginTop: 60 },
   inputRow: { flexDirection: 'row', padding: 12, gap: 8, backgroundColor: '#fff', borderTopWidth: 1, borderColor: '#eee' },
-  input: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', maxHeight: 100 },
+  input: { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827', maxHeight: 100 },
   sendBtn: { backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 20, justifyContent: 'center' },
   sendBtnDisabled: { backgroundColor: '#D0D5DD' },
   sendBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 14 },

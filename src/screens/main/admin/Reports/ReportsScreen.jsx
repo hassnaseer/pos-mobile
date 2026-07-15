@@ -1,22 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, Modal,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
-import { useCurrency } from '../../../../context/CurrencyContext';
+import { useAuth } from '../../../../context/AuthContext';
+import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
+import { compactAmt } from '../../../../utils/currency';
 import colors from '../../../../theme/colors';
 
+const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
+
+// Matches web's frontend/src/app/pages/admin/reports/types.ts + index.tsx gating exactly
+// for the 5 tabs shared with web; 'summary'/'customers'/'tickets' don't exist on web at
+// all, so they fall back to the backend's own baseline requirement for every /admin/reports/*
+// route (view_reports — see backendProject reports.module.ts).
 const TABS = [
   { key: 'summary',   label: 'Sales' },
-  { key: 'sales',     label: 'Invoices' },
-  { key: 'taxes',     label: 'Taxes' },
+  { key: 'sales',     label: 'Invoices', requiresPOS: true },
+  { key: 'taxes',     label: 'Taxes', requiresPOS: true },
   { key: 'inventory', label: 'Inventory' },
   { key: 'customers', label: 'Customers' },
   { key: 'tickets',   label: 'Tickets' },
-  { key: 'finance',   label: 'Profit & Loss' },
-  { key: 'projects',  label: 'Project Sales' },
+  { key: 'finance',   label: 'Profit & Loss', permission: 'view_finance_reports' },
+  { key: 'projects',  label: 'Project Sales', permission: 'manage_projects' },
 ];
 
 const TAB_ENDPOINT = {
@@ -255,9 +263,46 @@ const ProjectsTab = ({ data, fmt }) => (
 const PERIODS = ['7d', '30d', '90d', '1y', 'all'];
 
 const ReportsScreen = () => {
+  const { user } = useAuth();
   const [tab, setTab] = useState('summary');
   const [period, setPeriod] = useState('30d');
-  const { fmt } = useCurrency();
+  const { fmt, currency: bizCurrency, rates } = useCurrency();
+
+  // "Profit & Loss" tab has its own optional display-currency toggle (figures are
+  // bizCurrency-denominated); "Project Sales" tab is always USD-denominated on the
+  // backend and always converted to bizCurrency, no toggle — matches web's
+  // financeFmt/projectUsdFmt exactly (frontend/src/app/pages/admin/reports/index.tsx:66-83).
+  const [financeCurrency, setFinanceCurrency] = useState(bizCurrency);
+  const [showFinanceCurrencyPicker, setShowFinanceCurrencyPicker] = useState(false);
+  const financeFmt = amount => {
+    if (!rates || financeCurrency === bizCurrency) return fmt(amount);
+    const usdAmt = (amount ?? 0) / (rates[bizCurrency] ?? 1);
+    const displayAmt = usdAmt * (rates[financeCurrency] ?? 1);
+    const sym = CURRENCY_SYMBOLS[financeCurrency] ?? financeCurrency + ' ';
+    return compactAmt(sym, displayAmt);
+  };
+  const projectUsdFmt = usdAmt => fmt((usdAmt ?? 0) * (rates?.[bizCurrency] ?? 1));
+
+  const permCodes = user?.permissionCodes ?? [];
+  const noRestrict = permCodes.length === 0;
+  const hasReports  = noRestrict || permCodes.includes('view_reports');
+  const hasFinance  = noRestrict || permCodes.includes('view_finance_reports');
+  const hasPOS      = noRestrict || permCodes.some(p => ['pos_sales', 'view_orders'].includes(p));
+  const hasProjects = noRestrict || permCodes.includes('manage_projects');
+
+  const visibleTabs = TABS.filter(t => {
+    if (t.requiresPOS && !hasPOS) return false;
+    if (t.key === 'projects') return hasProjects;
+    if (t.permission === 'view_finance_reports') return hasFinance && (hasPOS || hasProjects);
+    return hasReports;
+  });
+
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.some(t => t.key === tab)) {
+      setTab(visibleTabs[0].key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleTabs.map(t => t.key).join(',')]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['reports', tab, period],
@@ -267,13 +312,22 @@ const ReportsScreen = () => {
       return res?.data ?? res ?? {};
     },
     staleTime: 60_000,
+    enabled: visibleTabs.some(t => t.key === tab),
   });
+
+  if (!hasReports && !hasProjects) {
+    return (
+      <View style={styles.root}>
+        <Text style={styles.empty}>You don't have permission to view reports.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
       {/* Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsWrap} contentContainerStyle={styles.tabs}>
-        {TABS.map(t => (
+        {visibleTabs.map(t => (
           <TouchableOpacity key={t.key} style={[styles.tab, tab === t.key && styles.tabActive]} onPress={() => setTab(t.key)}>
             <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
@@ -288,8 +342,27 @@ const ReportsScreen = () => {
               <Text style={[styles.periodText, period === p && styles.periodTextActive]}>{p}</Text>
             </TouchableOpacity>
           ))}
+          {tab === 'finance' && (
+            <TouchableOpacity style={styles.currencySelect} onPress={() => setShowFinanceCurrencyPicker(true)}>
+              <Text style={styles.currencySelectText}>{financeCurrency} ▾</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
+
+      <Modal visible={showFinanceCurrencyPicker} transparent animationType="fade" onRequestClose={() => setShowFinanceCurrencyPicker(false)}>
+        <TouchableOpacity style={styles.pickerBackdrop} activeOpacity={1} onPress={() => setShowFinanceCurrencyPicker(false)}>
+          <View style={styles.pickerSheet}>
+            <ScrollView>
+              {CURRENCY_OPTIONS.map(c => (
+                <TouchableOpacity key={c} style={styles.pickerOption} onPress={() => { setFinanceCurrency(c); setShowFinanceCurrencyPicker(false); }}>
+                  <Text style={[styles.pickerOptionText, financeCurrency === c && { color: colors.primary, fontFamily: 'Outfit-SemiBold' }]}>{c} — {CURRENCY_SYMBOLS[c]}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
@@ -304,8 +377,8 @@ const ReportsScreen = () => {
           {tab === 'inventory' && data && <InventoryTab data={data} fmt={fmt} />}
           {tab === 'customers' && data && <CustomersTab data={data} fmt={fmt} />}
           {tab === 'tickets'   && data && <TicketsTab   data={data} fmt={fmt} />}
-          {tab === 'finance'   && data && <FinanceTab   data={data} fmt={fmt} />}
-          {tab === 'projects'  && data && <ProjectsTab  data={data} fmt={fmt} />}
+          {tab === 'finance'   && data && <FinanceTab   data={data} fmt={financeFmt} />}
+          {tab === 'projects'  && data && <ProjectsTab  data={data} fmt={projectUsdFmt} />}
           {!data && <Text style={styles.empty}>No data available for this period.</Text>}
         </ScrollView>
       )}
@@ -326,6 +399,12 @@ const styles = StyleSheet.create({
   periodBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   periodText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: colors.secondary },
   periodTextActive: { color: '#fff' },
+  currencySelect: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fff', marginLeft: 4 },
+  currencySelectText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#374151' },
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: 360, padding: 8 },
+  pickerOption: { paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderColor: '#f0f0f0' },
+  pickerOptionText: { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, flex: 1, minWidth: '45%', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06 },
   cardValue: { fontSize: 22, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginBottom: 3 },

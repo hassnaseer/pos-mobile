@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl,
+  RefreshControl, Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSADashboard } from '../../../../services/api/posApi';
 import { useAuth } from '../../../../context/AuthContext';
-import { useCurrency } from '../../../../context/CurrencyContext';
+import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
+
+const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const CHART_TABS = ['Platform Earnings', 'Business Revenue'];
@@ -17,13 +19,24 @@ const GREETING_KEY = 'sa_greeted';
 
 const SADashboardScreen = () => {
   const { user } = useAuth();
-  const { fmt, currency } = useCurrency();
+  const { rates } = useCurrency();
   const [year, setYear]           = useState(new Date().getFullYear());
   const [chartTab, setChartTab]   = useState(0);
   const [showGreeting, setShowGreeting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [viewCurrency, setViewCurrency] = useState('USD');
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   const { data: summary, isLoading, refetch } = useSADashboard({ year, status: statusFilter || undefined });
+
+  // Dashboard summary amounts are USD-denominated — convert for display the same
+  // way web's fmtView does (frontend/src/app/pages/dashboards/super-admin-dashboard/index.tsx:39-44).
+  const fmt = val => {
+    const num = typeof val === 'string' ? parseFloat(val) : (val ?? 0);
+    if (Number.isNaN(num)) return '—';
+    const symbol = CURRENCY_SYMBOLS[viewCurrency] ?? viewCurrency + ' ';
+    return `${symbol}${(num * (rates?.[viewCurrency] ?? 1)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
 
   useEffect(() => {
     AsyncStorage.getItem(GREETING_KEY).then(val => {
@@ -75,7 +88,7 @@ const SADashboardScreen = () => {
     },
     {
       label: 'Platform Earnings',
-      value: fmt(summary?.platformEarnings ?? 0),
+      value: fmt(summary?.platformEarnings ?? summary?.totalRevenue ?? 0),
       sub: 'from subscription',
       sub2: 'paid to platform',
       color: '#22c55e',
@@ -83,7 +96,7 @@ const SADashboardScreen = () => {
     },
     {
       label: 'Total Revenue',
-      value: fmt(summary?.totalRevenue ?? 0),
+      value: fmt(summary?.businessRevenue ?? 0),
       sub: 'all businesses',
       sub2: 'customer payments',
       color: '#06b6d4',
@@ -121,10 +134,24 @@ const SADashboardScreen = () => {
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <View style={styles.currencyTag}>
-          <Text style={styles.currencyText}>{currency ?? 'USD'}</Text>
-        </View>
+        <TouchableOpacity style={styles.currencyTag} onPress={() => setShowCurrencyPicker(true)}>
+          <Text style={styles.currencyText}>{viewCurrency} ▾</Text>
+        </TouchableOpacity>
       </View>
+
+      <Modal visible={showCurrencyPicker} transparent animationType="fade" onRequestClose={() => setShowCurrencyPicker(false)}>
+        <TouchableOpacity style={styles.pickerBackdrop} activeOpacity={1} onPress={() => setShowCurrencyPicker(false)}>
+          <View style={styles.pickerSheet}>
+            <ScrollView>
+              {CURRENCY_OPTIONS.map(c => (
+                <TouchableOpacity key={c} style={styles.pickerOption} onPress={() => { setViewCurrency(c); setShowCurrencyPicker(false); }}>
+                  <Text style={[styles.pickerOptionText, viewCurrency === c && { color: colors.primary, fontFamily: 'Outfit-SemiBold' }]}>{c} — {CURRENCY_SYMBOLS[c]}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* ── Stat Cards ── */}
       <ScrollView
@@ -340,6 +367,10 @@ const styles = StyleSheet.create({
   filterChipTextActive: { color: '#fff' },
   currencyTag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#f4f6f9', borderWidth: 1, borderColor: '#e0e0e0', marginLeft: 4 },
   currencyText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#374151' },
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: 360, padding: 8 },
+  pickerOption: { paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderColor: '#f0f0f0' },
+  pickerOptionText: { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
 });
 
 export default SADashboardScreen;

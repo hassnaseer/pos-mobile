@@ -1,14 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, Switch,
 } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../../../services/api/globalApi';
+import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../../../../context/AuthContext';
+import { useCurrency } from '../../../../context/CurrencyContext';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
+import { useAdminSettings, usePayslipTemplate, useUpdatePayslipTemplate } from '../../../../services/api/posApi';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
+import InvoicePreviewModal from '../../../../components/InvoicePreviewModal/InvoicePreviewModal';
+import { generateSlipHtml } from '../../../../utils/payslipPrinter';
 import colors from '../../../../theme/colors';
 
 const DEFAULT_PAYSLIP_TEMPLATE = {
@@ -18,25 +21,45 @@ const DEFAULT_PAYSLIP_TEMPLATE = {
 };
 const STYLES = [{ id: 'classic', name: 'Classic' }, { id: 'modern', name: 'Modern' }, { id: 'minimal', name: 'Minimal' }];
 const FONT_SIZES = [{ id: 'small', name: 'Small' }, { id: 'medium', name: 'Medium' }, { id: 'large', name: 'Large' }];
+const COLOR_SWATCHES = ['#2563eb', '#7c3aed', '#dc2626', '#16a34a', '#d97706', '#0891b2', '#db2777', '#111827'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const SAMPLE_PERIOD = `${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`;
+
+const SAMPLE_SLIP = {
+  baseSalary: 3000, claimsTotal: 150, lateDeduction: 20, halfDayDeduction: 0, breakDeduction: 0,
+  fineDeduction: 0, advanceDeduction: 0, transportDeduction: 50, kpiIncentive: 100,
+  kpiTargetSnapshot: 5000, kpiActualSales: 6200, kpiCommissionRateSnapshot: 5,
+  workingDays: 22, netPay: 3180,
+  employee: { name: 'Jane Doe', email: 'jane@example.com', employeeId: 'EMP-001' },
+};
 
 const toggleField = (cfg, set, key, label) => ({ key, label, value: cfg[key], onChange: v => set(key, v) });
-
-const usePayslipTemplate = () =>
-  useQuery({ queryKey: ['payslip-template'], queryFn: async () => { const r = await apiClient.get('/admin/payslip-template'); return { ...DEFAULT_PAYSLIP_TEMPLATE, ...(r?.data?.config ?? r?.config ?? {}) }; } });
 
 export default function PayslipTemplateScreen() {
   const { user } = useAuth();
   const perms = usePermissions();
-  const qc = useQueryClient();
+  const { symbol } = useCurrency();
+  const { data: businessSettings } = useAdminSettings();
   const { data: saved, isLoading } = usePayslipTemplate();
+  const updateMut = useUpdatePayslipTemplate();
   const [cfg, setCfg] = useState(DEFAULT_PAYSLIP_TEMPLATE);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  useEffect(() => { if (saved) setCfg(saved); }, [saved]);
+  useEffect(() => { if (saved) setCfg({ ...DEFAULT_PAYSLIP_TEMPLATE, ...saved }); }, [saved]);
   const set = (key, val) => setCfg(prev => ({ ...prev, [key]: val }));
+  const handleReset = () => setCfg(DEFAULT_PAYSLIP_TEMPLATE);
+
+  const previewHtml = useMemo(() => generateSlipHtml(
+    SAMPLE_SLIP,
+    SAMPLE_PERIOD,
+    businessSettings?.name || 'My Business',
+    symbol,
+    cfg,
+    { logoUrl: businessSettings?.logoUrl, phone: businessSettings?.phone, email: businessSettings?.email, address: businessSettings?.address },
+  ), [cfg, businessSettings, symbol]);
 
   const saveMut = useMutation({
-    mutationFn: () => apiClient.put('/admin/payslip-template', cfg),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['payslip-template'] }),
+    mutationFn: () => updateMut.mutateAsync(cfg),
     onError: () => Alert.alert('Error', 'Failed to save payslip template'),
   });
 
@@ -65,15 +88,29 @@ export default function PayslipTemplateScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Payslip Template</Text>
-        <Text style={styles.subHeading}>Customize the style and appearance of salary slips</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.heading}>Payslip Template</Text>
+          <Text style={styles.subHeading}>Customize the style and appearance of salary slips</Text>
+        </View>
+        <TouchableOpacity style={styles.previewBtn} onPress={() => setPreviewOpen(true)}>
+          <Text style={styles.previewBtnText}>Preview</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Style</Text>
           <InlinePicker options={STYLES} value={cfg.style} onSelect={v => set('style', v)} allowNone={false} />
-          <Text style={styles.label}>Primary Color (hex)</Text>
+          <Text style={styles.label}>Primary Color</Text>
+          <View style={styles.swatchRow}>
+            {COLOR_SWATCHES.map(c => (
+              <TouchableOpacity
+                key={c}
+                style={[styles.swatch, { backgroundColor: c }, cfg.primaryColor === c && styles.swatchActive]}
+                onPress={() => set('primaryColor', c)}
+              />
+            ))}
+          </View>
           <TextInput style={styles.input} value={cfg.primaryColor} onChangeText={v => set('primaryColor', v)} placeholder="#2563eb" placeholderTextColor="#999" maxLength={7} autoCapitalize="none" />
           <Text style={styles.label}>Font Size</Text>
           <InlinePicker options={FONT_SIZES} value={cfg.fontSize} onSelect={v => set('fontSize', v)} allowNone={false} />
@@ -103,10 +140,23 @@ export default function PayslipTemplateScreen() {
           />
         </View>
 
-        <TouchableOpacity style={styles.saveBtn} onPress={() => saveMut.mutate()} disabled={saveMut.isPending}>
-          {saveMut.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save Template</Text>}
-        </TouchableOpacity>
+        <View style={styles.btnRow}>
+          <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+            <Text style={styles.resetBtnText}>Reset to Default</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveBtn, styles.saveBtnFlex]} onPress={() => saveMut.mutate()} disabled={saveMut.isPending}>
+            {saveMut.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save Template</Text>}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      <InvoicePreviewModal
+        visible={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        html={previewHtml}
+        title="Payslip Preview"
+        previewOnly
+      />
     </View>
   );
 }
@@ -116,9 +166,18 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   restrictedTitle: { fontSize: 16, fontFamily: 'Outfit-SemiBold', color: '#374151' },
   restrictedSub: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 6, textAlign: 'center' },
-  header: { padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
   heading: { fontSize: 18, fontFamily: 'Outfit-Bold', color: '#111827' },
   subHeading: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 2 },
+  previewBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8, borderWidth: 1.5, borderColor: colors.primary, marginLeft: 12 },
+  previewBtnText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary },
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  swatch: { width: 30, height: 30, borderRadius: 8, borderWidth: 2, borderColor: 'transparent' },
+  swatchActive: { borderColor: '#111827' },
+  btnRow: { flexDirection: 'row', gap: 10 },
+  resetBtn: { paddingHorizontal: 16, paddingVertical: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#D0D5DD', alignItems: 'center', justifyContent: 'center' },
+  resetBtnText: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#374151' },
+  saveBtnFlex: { flex: 1 },
   content: { padding: 16, gap: 14, paddingBottom: 40 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#e5e7eb' },
   cardTitle: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#111827', marginBottom: 4 },

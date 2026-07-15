@@ -66,7 +66,7 @@ export const useCreateProduct = () => {
 export const useUpdateProduct = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.put(`/admin/products/${id}`, data),
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/products/${id}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
     meta: { successMessage: 'Product updated' },
   });
@@ -78,6 +78,44 @@ export const useDeleteProduct = () => {
     mutationFn: id => apiClient.delete(`/admin/products/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
     meta: { successMessage: 'Product deleted' },
+  });
+};
+
+export const useBulkDeleteProducts = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ids => apiClient.delete('/admin/products/bulk', { body: JSON.stringify({ ids }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
+    meta: { successMessage: 'Products deleted' },
+  });
+};
+
+export const useImportProducts = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: rows => apiClient.post('/admin/products/import', { rows }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['products'] });
+      qc.invalidateQueries({ queryKey: ['import-batches'] });
+    },
+  });
+};
+
+export const useImportBatches = module =>
+  useQuery({
+    queryKey: ['import-batches', module],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/import-batches?module=${module}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useDeleteImportBatch = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/import-batches/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['import-batches'] }),
   });
 };
 
@@ -985,6 +1023,44 @@ export const useUpdateAdminProfile = () => {
   });
 };
 
+// ─── Invoice Template ─────────────────────────────────────────────────────────
+export const useInvoiceTemplate = () =>
+  useQuery({
+    queryKey: ['invoice-template'],
+    queryFn: async () => {
+      const r = await apiClient.get('/admin/invoice-template');
+      return r?.data?.config ?? r?.config ?? {};
+    },
+    staleTime: 60_000,
+  });
+
+export const useUpdateInvoiceTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: cfg => apiClient.put('/admin/invoice-template', cfg),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoice-template'] }),
+  });
+};
+
+// ─── Payslip Template ─────────────────────────────────────────────────────────
+export const usePayslipTemplate = () =>
+  useQuery({
+    queryKey: ['payslip-template'],
+    queryFn: async () => {
+      const r = await apiClient.get('/admin/payslip-template');
+      return r?.data?.config ?? r?.config ?? {};
+    },
+    staleTime: 60_000,
+  });
+
+export const useUpdatePayslipTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: cfg => apiClient.put('/admin/payslip-template', cfg),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payslip-template'] }),
+  });
+};
+
 // ─── SA Business Detail ───────────────────────────────────────────────────────
 export const useSABusinessDetail = id =>
   useQuery({
@@ -1450,6 +1526,93 @@ export const useDeleteFine = () => {
   });
 };
 
+// ─── Commission Structures ─────────────────────────────────────────────────────
+export const useCommissionStructures = () =>
+  useQuery({
+    queryKey: ['commission-structures'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/commission-structures');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useCommissionStructureForEmployee = employeeId =>
+  useQuery({
+    queryKey: ['commission-structure-for-employee', employeeId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/commission-structures/for-employee/${employeeId}`);
+      return res?.data ?? res ?? null;
+    },
+    enabled: !!employeeId,
+  });
+
+export const useCreateCommissionStructure = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/commission-structures', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-structures'] }),
+    meta: { successMessage: 'Commission structure created' },
+  });
+};
+
+export const useUpdateCommissionStructure = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/commission-structures/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-structures'] }),
+    meta: { successMessage: 'Commission structure updated' },
+  });
+};
+
+export const useDeleteCommissionStructure = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/commission-structures/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-structures'] }),
+    meta: { successMessage: 'Commission structure deleted' },
+  });
+};
+
+// ─── Commission Entries ─────────────────────────────────────────────────────────
+export const useCommissionEntries = (params = {}) =>
+  useQuery({
+    queryKey: ['commission-entries', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(params).toString();
+      const res = await apiClient.get(`/admin/commission-entries${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useCreateCommissionEntry = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/commission-entries', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-entries'] }),
+    meta: { successMessage: 'Commission entry added' },
+  });
+};
+
+export const useUpdateCommissionEntry = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/commission-entries/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-entries'] }),
+    meta: { successMessage: 'Commission entry updated' },
+  });
+};
+
+export const useDeleteCommissionEntry = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/commission-entries/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-entries'] }),
+    meta: { successMessage: 'Commission entry deleted' },
+  });
+};
+
 // ─── Salary Advances ──────────────────────────────────────────────────────────
 export const useSalaryAdvances = (params = {}) =>
   useQuery({
@@ -1543,7 +1706,10 @@ export const useRunPayroll = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: data => apiClient.post('/admin/payroll/run', data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-runs'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payroll-runs'] });
+      qc.invalidateQueries({ queryKey: ['payroll-all-slips'] });
+    },
   });
 };
 
@@ -1564,6 +1730,28 @@ export const usePayrollSlips = (runId) =>
     },
     enabled: !!runId,
     staleTime: 60_000,
+  });
+
+// Cross-run, filterable slip listing — powers the per-employee payslip list (unlike
+// usePayrollSlips above, which is scoped to one run id).
+export const useAllPayrollSlips = (filters = {}) =>
+  useQuery({
+    queryKey: ['payroll-all-slips', filters],
+    queryFn: async () => {
+      const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(filters).filter(([, v]) => v != null && v !== '')),
+      ).toString();
+      const res = await apiClient.get(`/admin/payroll/slips${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+// Computes a payslip's numbers without persisting anything — lets the admin review before
+// clicking Generate (useRunPayroll, above).
+export const usePreviewPayslip = () =>
+  useMutation({
+    mutationFn: data => apiClient.post('/admin/payroll/preview', data),
   });
 
 export const usePayroll = (params = {}) =>

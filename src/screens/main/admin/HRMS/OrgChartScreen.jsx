@@ -84,7 +84,7 @@ function TreeNode({ node, childrenMap, depth, expanded, toggle, onSelect, select
 
 export default function OrgChartScreen() {
   const { data: rawNodes = [], isLoading, refetch, isRefetching } = useHRMSOrgChart();
-  const nodes = Array.isArray(rawNodes) ? rawNodes : (rawNodes?.data ?? []);
+  const nodes = useMemo(() => Array.isArray(rawNodes) ? rawNodes : (rawNodes?.data ?? []), [rawNodes]);
   const [expanded, setExpanded] = useState(new Set());
   const [selected, setSelected] = useState(null);
 

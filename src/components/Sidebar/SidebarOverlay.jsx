@@ -1,18 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Modal, View, TouchableOpacity, Animated, StyleSheet,
-  Dimensions, Platform, StatusBar,
+  Dimensions,
 } from 'react-native';
 import { useSidebarStore } from '../../store/sidebarStore';
 import Sidebar from './Sidebar';
 
-const { width: W, height: WH } = Dimensions.get('window');
+const { width: W } = Dimensions.get('window');
 const SIDEBAR_WIDTH = Math.min(W * 0.82, 300);
-// On Android with statusBarTranslucent the modal fills the full screen height
-// (including status bar), so we need screen height not window height.
-const PANEL_HEIGHT = Platform.OS === 'android'
-  ? WH + (StatusBar.currentHeight ?? 0)
-  : WH;
 
 const SidebarOverlay = () => {
   const { isOpen, close } = useSidebarStore();
@@ -32,7 +27,7 @@ const SidebarOverlay = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [isOpen]);
+  }, [isOpen, slideAnim, fadeAnim]);
 
   return (
     <Modal
@@ -69,8 +64,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
+    bottom: 0,
     width: SIDEBAR_WIDTH,
-    height: PANEL_HEIGHT,
     backgroundColor: '#fff',
     elevation: 16,
     shadowColor: '#000',

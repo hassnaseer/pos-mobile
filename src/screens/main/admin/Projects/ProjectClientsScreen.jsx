@@ -6,12 +6,11 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
 import { useAuth } from '../../../../context/AuthContext';
-import { useCurrency } from '../../../../context/CurrencyContext';
+import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 
 const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED', 'SAR', 'BDT', 'CAD', 'AUD', 'NZD', 'SGD', 'MYR', 'THB', 'JPY', 'CNY', 'KRW', 'TRY', 'ZAR', 'NGN'];
-const INVOICE_STATUSES = ['Draft', 'Sent', 'Paid', 'Partially Paid', 'Overdue'];
 const STATUS_COLOR = {
   Paid: { bg: '#dcfce7', text: '#15803d' },
   'Payment Submitted': { bg: '#dbeafe', text: '#1d4ed8' },
@@ -20,7 +19,14 @@ const STATUS_COLOR = {
 };
 const DEFAULT_STATUS_COLOR = { bg: '#fef3c7', text: '#b45309' };
 const EMPTY = { name: '', contactPerson: '', email: '', phone: '', company: '', notes: '' };
-const EMPTY_INVOICE = { lineItems: [{ description: '', amount: '' }], notes: '', status: 'Draft', applyTax: false, taxRate: '', currency: '', installmentsEnabled: false, installmentCount: 2, installmentRows: [], thirdPartyEnabled: false, thirdPartyPercentage: '' };
+const EMPTY_INVOICE = {
+  lineItems: [{ description: '', amount: '' }], notes: '', applyTax: false, taxRate: '', currency: '',
+  installmentsEnabled: false, installmentCount: 2, installmentRows: [],
+  thirdPartyEnabled: false, thirdPartyPercentage: '', showThirdPartyToClient: false, sendToClient: false,
+};
+
+// total - amountPaid, floored at 0 — mirrors web's projectClientsSlice.pendingAmount.
+const pendingAmount = inv => Math.max(0, Number(inv.total) - Number(inv.amountPaid ?? 0));
 
 const useClients = () =>
   useQuery({
@@ -70,6 +76,9 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [form, setForm] = useState(EMPTY_INVOICE);
   const [expanded, setExpanded] = useState({});
+  const [paymentTarget, setPaymentTarget] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
 
   const { data: raw = [], isLoading } = useQuery({
     queryKey: ['client-invoices', client?.id],
@@ -93,6 +102,11 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
     mutationFn: ({ invoiceId, installmentId }) => apiClient.patch(`/admin/project-clients/${client.id}/invoices/${invoiceId}/installments/${installmentId}/pay`, {}),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['client-invoices', client.id] }); onRefreshSummary(); },
   });
+  const recordPayment = useMutation({
+    mutationFn: ({ invoiceId, amount, note }) => apiClient.patch(`/admin/project-clients/${client.id}/invoices/${invoiceId}/record-payment`, { amount, note }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['client-invoices', client.id] }); onRefreshSummary(); setPaymentTarget(null); },
+    onError: () => Alert.alert('Error', 'Failed to record payment'),
+  });
 
   const invSubtotal = form.lineItems.reduce((sum, li) => sum + (parseFloat(li.amount) || 0), 0);
   const taxRateNum = parseFloat(form.taxRate) || 0;
@@ -107,13 +121,24 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
     const hasTax = Number(inv.taxRate) > 0;
     setForm({
       lineItems: inv.lineItems?.length ? inv.lineItems.map(l => ({ description: l.description, amount: String(l.amount) })) : [{ description: '', amount: '' }],
-      notes: inv.notes ?? '', status: inv.status, applyTax: hasTax, taxRate: hasTax ? String(inv.taxRate) : '',
+      notes: inv.notes ?? '', applyTax: hasTax, taxRate: hasTax ? String(inv.taxRate) : '',
       currency: inv.currency ?? '', installmentsEnabled: inv.installmentsEnabled ?? false,
       installmentCount: inv.installments?.length ?? 2,
       installmentRows: (inv.installments ?? []).map(i => ({ amount: Number(i.amount), dueDate: String(i.dueDate ?? '').slice(0, 10) })),
       thirdPartyEnabled: inv.thirdPartyEnabled ?? false, thirdPartyPercentage: inv.thirdPartyPercentage != null ? String(inv.thirdPartyPercentage) : '',
+      showThirdPartyToClient: inv.showThirdPartyToClient ?? false, sendToClient: !!inv.sentToClientAt,
     });
     setCreateOpen(true);
+  };
+  const openRecordPayment = inv => {
+    setPaymentTarget(inv);
+    setPaymentAmount(pendingAmount(inv) > 0 ? String(pendingAmount(inv)) : '');
+    setPaymentNote('');
+  };
+  const handleRecordPayment = () => {
+    const amount = parseFloat(paymentAmount) || 0;
+    if (amount <= 0) { Alert.alert('Error', 'Enter a valid payment amount'); return; }
+    recordPayment.mutate({ invoiceId: paymentTarget.id, amount, note: paymentNote || undefined });
   };
   const handleSaveInvoice = () => {
     const validItems = form.lineItems.filter(li => li.description.trim());
@@ -121,9 +146,11 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
     if (form.installmentsEnabled && form.installmentRows.some(r => !r.dueDate)) { Alert.alert('Error', 'Set a due date for all installments.'); return; }
     save.mutate({
       lineItems: validItems.map(l => ({ description: l.description, amount: parseFloat(l.amount) || 0 })),
-      notes: form.notes, status: form.status, taxRate: form.applyTax ? taxRateNum : 0,
+      notes: form.notes, taxRate: form.applyTax ? taxRateNum : 0,
       currency: form.currency || undefined, thirdPartyEnabled: form.thirdPartyEnabled,
       thirdPartyPercentage: form.thirdPartyEnabled ? thirdPartyPctNum : 0,
+      showThirdPartyToClient: form.thirdPartyEnabled ? form.showThirdPartyToClient : false,
+      sendToClient: form.sendToClient,
       installmentsEnabled: form.installmentsEnabled,
       installments: form.installmentsEnabled ? form.installmentRows.map((r, i) => ({ installmentNumber: i + 1, amount: r.amount, dueDate: r.dueDate })) : [],
     });
@@ -162,10 +189,17 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
                         </View>
                         <Text style={s.invoiceTotal}>{inv.currency ? `${inv.currency} ` : ''}{Number(inv.total).toFixed(2)}</Text>
                         {Number(inv.taxRate) > 0 && <Text style={s.invoiceSub}>Subtotal {Number(inv.subtotal).toFixed(2)} + Tax {Number(inv.taxRate)}%</Text>}
-                        {inv.thirdPartyEnabled && <Text style={s.invoiceSubAmber}>3rd party {Number(inv.thirdPartyPercentage)}%: -{Number(inv.thirdPartyAmount).toFixed(2)} · Net {(Number(inv.total) - Number(inv.thirdPartyAmount)).toFixed(2)}</Text>}
+                        {inv.thirdPartyEnabled && <Text style={s.invoiceSubAmber}>3rd party {Number(inv.thirdPartyPercentage)}%: -{Number(inv.thirdPartyAmount).toFixed(2)} · Net {(Number(inv.total) - Number(inv.thirdPartyAmount)).toFixed(2)}{inv.showThirdPartyToClient ? ' · visible to client' : ''}</Text>}
+                        {Number(inv.amountPaid) > 0 && inv.status !== 'Paid' && (
+                          <Text style={s.invoiceSub}>Paid {Number(inv.amountPaid).toFixed(2)} · Pending {pendingAmount(inv).toFixed(2)}</Text>
+                        )}
+                        {inv.sentToClientAt && <Text style={s.invoiceSub}>Sent to client {new Date(inv.sentToClientAt).toLocaleDateString()}</Text>}
                         <Text style={s.invoiceDate}>{new Date(inv.createdAt).toLocaleDateString()}</Text>
                       </View>
                       <View style={{ gap: 6 }}>
+                        {inv.status !== 'Paid' && (
+                          <TouchableOpacity onPress={() => openRecordPayment(inv)}><Text style={[s.iconBtn, { color: '#15803d' }]}>Record Payment</Text></TouchableOpacity>
+                        )}
                         <TouchableOpacity onPress={() => shareInvoice(inv)}><Text style={s.iconBtn}>Share</Text></TouchableOpacity>
                         <TouchableOpacity onPress={() => openEdit(inv)}><Text style={s.iconBtn}>Edit</Text></TouchableOpacity>
                         <TouchableOpacity onPress={() => Alert.alert('Delete Invoice', 'Delete this invoice?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => removeInvoice.mutate(inv.id) }])}><Text style={[s.iconBtn, { color: '#dc2626' }]}>Delete</Text></TouchableOpacity>
@@ -234,9 +268,18 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
                   {form.thirdPartyEnabled && (
                     <>
                       <TextInput style={s.input} placeholder="3rd party %" placeholderTextColor="#999" keyboardType="decimal-pad" value={form.thirdPartyPercentage} onChangeText={v => setForm(f => ({ ...f, thirdPartyPercentage: v }))} />
-                      <Text style={s.hintText}>Internal only — the client's total is unaffected; this is what you net after the 3rd party's cut.</Text>
+                      <Text style={s.hintText}>Internal only by default — the client's total is unaffected; this is what you net after the 3rd party's cut.</Text>
+                      <View style={s.switchRow}>
+                        <Text style={s.switchLabel}>Show 3rd-party cut to client</Text>
+                        <Switch value={form.showThirdPartyToClient} onValueChange={v => setForm(f => ({ ...f, showThirdPartyToClient: v }))} trackColor={{ false: '#e5e7eb', true: colors.primary + '80' }} thumbColor={form.showThirdPartyToClient ? colors.primary : '#fff'} />
+                      </View>
                     </>
                   )}
+
+                  <View style={s.switchRow}>
+                    <Text style={s.switchLabel}>Send to Client{editingInvoice?.sentToClientAt ? ' (already sent)' : ''}</Text>
+                    <Switch value={form.sendToClient} onValueChange={v => setForm(f => ({ ...f, sendToClient: v }))} trackColor={{ false: '#e5e7eb', true: colors.primary + '80' }} thumbColor={form.sendToClient ? colors.primary : '#fff'} />
+                  </View>
 
                   <View style={s.summaryBox}>
                     <View style={s.summaryLine}><Text style={s.invSummaryLabel}>Subtotal</Text><Text style={s.invSummaryValue}>{invSubtotal.toFixed(2)}</Text></View>
@@ -259,13 +302,6 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
                       ))}
                     </View>
                   </ScrollView>
-
-                  <Text style={s.label}>Status</Text>
-                  <View style={s.chips}>
-                    {INVOICE_STATUSES.map(st => (
-                      <TouchableOpacity key={st} style={[s.chip, form.status === st && s.chipActive]} onPress={() => setForm(f => ({ ...f, status: st }))}><Text style={[s.chipText, form.status === st && s.chipTextActive]}>{st}</Text></TouchableOpacity>
-                    ))}
-                  </View>
 
                   <Text style={s.label}>Notes</Text>
                   <TextInput style={s.input} placeholder="Optional notes…" placeholderTextColor="#999" value={form.notes} onChangeText={v => setForm(f => ({ ...f, notes: v }))} />
@@ -308,6 +344,29 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
               </View>
             </View>
           </Modal>
+
+          <Modal visible={!!paymentTarget} animationType="fade" transparent onRequestClose={() => setPaymentTarget(null)}>
+            <View style={s.modalBg}>
+              <View style={s.modalCard}>
+                <Text style={s.modalTitle}>Record Payment</Text>
+                {paymentTarget && (
+                  <Text style={s.hintText}>
+                    Total {Number(paymentTarget.total).toFixed(2)} · Paid {Number(paymentTarget.amountPaid ?? 0).toFixed(2)} · Pending {pendingAmount(paymentTarget).toFixed(2)}
+                  </Text>
+                )}
+                <Text style={s.label}>Amount</Text>
+                <TextInput style={s.input} keyboardType="decimal-pad" value={paymentAmount} onChangeText={setPaymentAmount} placeholder="0.00" placeholderTextColor="#999" />
+                <Text style={s.label}>Note (optional)</Text>
+                <TextInput style={s.input} value={paymentNote} onChangeText={setPaymentNote} placeholder="e.g. bank transfer, cheque #..." placeholderTextColor="#999" />
+                <View style={s.modalActions}>
+                  <TouchableOpacity style={s.cancelBtn} onPress={() => setPaymentTarget(null)}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={[s.saveBtn, { backgroundColor: '#16a34a' }]} onPress={handleRecordPayment} disabled={recordPayment.isPending}>
+                    {recordPayment.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveText}>Record Payment</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </View>
       </View>
     </Modal>
@@ -317,7 +376,7 @@ function InvoicesSheet({ client, onClose, canInvoice, fmtMoney, onRefreshSummary
 const ProjectClientsScreen = () => {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { fmt: fmtMoney } = useCurrency();
+  const { fmt: fmtMoney, currency: bizCurrency, rates } = useCurrency();
   const hasPortalPerm = user?.permissionCodes?.includes('access_client_portal') ?? false;
   const hasInvoicePerm = user?.permissionCodes?.includes('client_invoice') ?? false;
   const hasProjectsPerm = !user?.permissionCodes?.length || user.permissionCodes.includes('manage_projects');
@@ -327,7 +386,7 @@ const ProjectClientsScreen = () => {
   const { data: summary } = useInvoiceSummary(hasInvoicePerm);
   const { data: projectsRaw = [] } = useProjectsForEarning(hasProjectsPerm);
   const projects = Array.isArray(projectsRaw) ? projectsRaw : (projectsRaw?.data ?? []);
-  const totalCompanyEarning = projects.reduce((sum, p) => sum + (p.companyEarning ?? 0), 0);
+  const totalCompanyEarningUSD = projects.reduce((sum, p) => sum + (p.companyEarning ?? 0), 0);
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -335,7 +394,33 @@ const ProjectClientsScreen = () => {
   const [invoiceClient, setInvoiceClient] = useState(null);
   const [portalClient, setPortalClient] = useState(null);
   const [portalPassword, setPortalPassword] = useState('');
+  const [displayCurrency, setDisplayCurrency] = useState(bizCurrency);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const set = k => v => setForm(p => ({ ...p, [k]: v }));
+
+  // Convert an amount stored in `cur` to the chosen display currency.
+  // rates[X] = X units per 1 USD, so: amount / rates[cur] = USD, then * rates[displayCurrency].
+  const toDC = (amount, cur) => {
+    const effectiveCur = cur || bizCurrency;
+    const fromRate = rates?.[effectiveCur] ?? 1;
+    const toRate = rates?.[displayCurrency] ?? 1;
+    return fromRate > 0 ? amount * toRate / fromRate : amount;
+  };
+  // Sum a field across the invoice-summary's per-currency breakdown with proper
+  // conversion — matches web's kpiAmt (frontend/src/app/pages/admin/project-clients/index.tsx:93-98).
+  const kpiAmt = field => {
+    const sym = CURRENCY_SYMBOLS[displayCurrency] ?? displayCurrency + ' ';
+    if (!summary?.byCurrency) return `${sym}0.00`;
+    const total = Object.entries(summary.byCurrency).reduce((acc, [cur, amounts]) => acc + toDC(amounts[field], cur), 0);
+    return `${sym}${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  // Company earning from projects is USD-denominated — convert for display
+  // (matches web's companyEarningFmt, index.tsx:101-106).
+  const companyEarningFmt = () => {
+    const sym = CURRENCY_SYMBOLS[displayCurrency] ?? displayCurrency + ' ';
+    const displayAmt = totalCompanyEarningUSD * (rates?.[displayCurrency] ?? 1);
+    return `${sym}${displayAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   const save = useMutation({
     mutationFn: data => editing
@@ -405,17 +490,38 @@ const ProjectClientsScreen = () => {
     <View style={s.root}>
       <View style={s.topBar}>
         <Text style={s.heading}>Clients</Text>
-        <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {hasInvoicePerm && summary && (
+            <TouchableOpacity style={s.currencySelect} onPress={() => setShowCurrencyPicker(true)}>
+              <Text style={s.currencySelectText}>{displayCurrency} ▾</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+        </View>
       </View>
+
+      <Modal visible={showCurrencyPicker} transparent animationType="fade" onRequestClose={() => setShowCurrencyPicker(false)}>
+        <TouchableOpacity style={s.pickerBackdrop} activeOpacity={1} onPress={() => setShowCurrencyPicker(false)}>
+          <View style={s.pickerSheet}>
+            <ScrollView>
+              {CURRENCY_OPTIONS.map(c => (
+                <TouchableOpacity key={c} style={s.pickerOption} onPress={() => { setDisplayCurrency(c); setShowCurrencyPicker(false); }}>
+                  <Text style={[s.pickerOptionText, displayCurrency === c && { color: colors.primary, fontFamily: 'Outfit-SemiBold' }]}>{c} — {CURRENCY_SYMBOLS[c]}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {hasInvoicePerm && summary && (
         <View style={s.summaryGrid}>
-          <View style={[s.summaryCard, { backgroundColor: '#eff6ff' }]}><Text style={s.summaryLabel}>Total Invoice</Text><Text style={[s.summaryValue, { color: '#1d4ed8' }]}>{fmtMoney(summary.totalEarning ?? 0)}</Text></View>
+          <View style={[s.summaryCard, { backgroundColor: '#eff6ff' }]}><Text style={s.summaryLabel}>Total Invoice</Text><Text style={[s.summaryValue, { color: '#1d4ed8' }]}>{kpiAmt('earning')}</Text></View>
           {hasProjectsPerm && (
-            <View style={[s.summaryCard, { backgroundColor: '#f5f3ff' }]}><Text style={s.summaryLabel}>Company Earning</Text><Text style={[s.summaryValue, { color: '#6d28d9' }]}>{fmtMoney(totalCompanyEarning)}</Text></View>
+            <View style={[s.summaryCard, { backgroundColor: '#f5f3ff' }]}><Text style={s.summaryLabel}>Company Earning</Text><Text style={[s.summaryValue, { color: '#6d28d9' }]}>{companyEarningFmt()}</Text></View>
           )}
-          <View style={[s.summaryCard, { backgroundColor: '#f0fdf4' }]}><Text style={s.summaryLabel}>Invoice Paid</Text><Text style={[s.summaryValue, { color: '#15803d' }]}>{fmtMoney(summary.totalPaid ?? 0)}</Text></View>
-          <View style={[s.summaryCard, { backgroundColor: '#fefce8' }]}><Text style={s.summaryLabel}>Pending</Text><Text style={[s.summaryValue, { color: '#a16207' }]}>{fmtMoney(summary.totalPending ?? 0)}</Text></View>
+          <View style={[s.summaryCard, { backgroundColor: '#f0fdf4' }]}><Text style={s.summaryLabel}>Invoice Paid</Text><Text style={[s.summaryValue, { color: '#15803d' }]}>{kpiAmt('paid')}</Text></View>
+          <View style={[s.summaryCard, { backgroundColor: '#fefce8' }]}><Text style={s.summaryLabel}>Pending</Text><Text style={[s.summaryValue, { color: '#a16207' }]}>{kpiAmt('pending')}</Text></View>
         </View>
       )}
 
@@ -501,6 +607,12 @@ const s = StyleSheet.create({
   heading: { fontSize: 18, fontFamily: 'Outfit-Bold', color: '#0f172a' },
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 14 },
+  currencySelect: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
+  currencySelectText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#374151' },
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: 360, padding: 8 },
+  pickerOption: { paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderColor: '#f0f0f0' },
+  pickerOptionText: { fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827' },
   summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 12 },
   summaryCard: { flexBasis: '47%', flexGrow: 1, borderRadius: 12, padding: 12 },
   summaryLabel: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280', marginBottom: 2 },

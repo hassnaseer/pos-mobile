@@ -326,6 +326,8 @@ const CONFIG_ITEMS = [
   { label: 'Manufacturers',      desc: 'Manage device manufacturers and their models',        route: 'Manufacturers',    permission: PERMISSIONS.MANAGE_MANUFACTURERS },
   { label: 'Device Conditions',  desc: 'Manage condition options (New, Used, Refurbished…)', route: 'DeviceConditions', permission: PERMISSIONS.MANAGE_CONDITIONS },
   { label: 'Taxes',              desc: 'Configure tax rates and types for your business',     route: 'Taxes',            permission: PERMISSIONS.MANAGE_TAXES },
+  { label: 'Commission Structures', desc: 'Configure tiered dollar-bracket sales commission brackets', route: 'HRMSCommissionStructures', permission: PERMISSIONS.MANAGE_COMMISSIONS },
+  { label: 'Commission Entries', desc: 'Log sale amounts against employees to calculate their commission', route: 'HRMSCommissionEntries', permission: PERMISSIONS.MANAGE_COMMISSIONS },
   { label: 'Categories',         desc: 'Organise products with a nested category tree',       route: 'Categories',       permission: PERMISSIONS.MANAGE_CATEGORIES },
   { label: 'Roles & Permissions',desc: 'Define staff roles and their access levels',          route: 'Roles',            permission: PERMISSIONS.MANAGE_STAFF },
   { label: 'Departments',        desc: 'Manage departments and organisational structure',     route: 'Departments',      permission: PERMISSIONS.MANAGE_DEPARTMENTS },

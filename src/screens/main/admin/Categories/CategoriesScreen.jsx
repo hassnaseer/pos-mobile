@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput,
   Modal, ActivityIndicator, Alert, RefreshControl, ScrollView,
@@ -57,7 +57,7 @@ const CategoriesScreen = () => {
   }, [raw]);
 
   const roots = useMemo(() => allCats.filter(c => !c.parentId), [allCats]);
-  const childrenOf = id => allCats.filter(c => c.parentId === id);
+  const childrenOf = useCallback(id => allCats.filter(c => c.parentId === id), [allCats]);
 
   // ── Depth-annotated list for parent picker ─────────────────────────────────
   const flatWithDepth = useMemo(() => {
@@ -68,7 +68,7 @@ const CategoriesScreen = () => {
     });
     walk(roots, 0);
     return result;
-  }, [allCats]);
+  }, [roots, childrenOf]);
 
   const [expanded, setExpanded] = useState({});
 

@@ -37,6 +37,7 @@ const ALL_PERMS = [
   { code: 'manage_documents',              label: 'Document Library',         category: 'HRMS' },
   { code: 'manage_trainings',              label: 'Upcoming Trainings',       category: 'HRMS' },
   { code: 'manage_transport',              label: 'Company Transport',        category: 'HRMS' },
+  { code: 'manage_commissions',            label: 'Commission Structures & Entries', category: 'HRMS' },
   // Finance & Projects
   { code: 'manage_budgets',                label: 'Budgets & Earnings',       category: 'Finance & Projects' },
   { code: 'manage_projects',               label: 'Manage Projects',          category: 'Finance & Projects' },

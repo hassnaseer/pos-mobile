@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet, Image,
   Modal, TouchableWithoutFeedback,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import SearchBar from '../Searchbar/SearchBar';
@@ -26,6 +27,7 @@ const SCREEN_TITLES = {
   Settings: 'Settings', SupportChat: 'Support Chat',
   HRMSDashboard: 'HRMS', HRMSLeave: 'Leave', HRMSClaims: 'Claims',
   HRMSAnnouncements: 'Announcements', HRMSPayroll: 'Payroll', HRMSTasks: 'Tasks',
+  HRMSCommissionStructures: 'Commission Structures', HRMSCommissionEntries: 'Commission Entries',
   Marketplace: 'Marketplace', VendorOrders: 'Vendor Orders', VendorProfile: 'Vendor Profile',
   VendorListings: 'Listings', IncomingOrders: 'Incoming Orders',
   MedicalDashboard: 'Medical', Appointments: 'Appointments', Patients: 'Patients',
@@ -91,7 +93,7 @@ const Header = ({
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
         {/* Left */}
         <View style={styles.leftSection}>

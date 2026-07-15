@@ -16,10 +16,10 @@ const SARolesScreen = () => {
   const [selectedPerms, setSelectedPerms] = useState({});
 
   const { data: raw = [], isLoading, refetch, isError } = useSARoles();
-  const roles = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const roles = useMemo(() => Array.isArray(raw) ? raw : (raw?.data ?? []), [raw]);
 
   const { data: rawPerms = [] } = useSAPermissions();
-  const allPermissions = Array.isArray(rawPerms) ? rawPerms : (rawPerms?.data ?? []);
+  const allPermissions = useMemo(() => Array.isArray(rawPerms) ? rawPerms : (rawPerms?.data ?? []), [rawPerms]);
 
   const byCategory = useMemo(() => {
     return allPermissions.reduce((acc, p) => {

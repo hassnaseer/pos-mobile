@@ -330,6 +330,25 @@ const GeneralTab = ({ settingMap, saving, onSave }) => {
 };
 
 // ─── Email Templates tab ──────────────────────────────────────────────────────
+const EmailFieldRow = ({ fieldKey, isBody, value, onChangeText, onSave }) => {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{fmtEmailLabel(fieldKey)}</Text>
+      <TextInput
+        style={[styles.input, isBody && styles.inputMulti, focused && styles.inputFocused]}
+        value={String(value ?? '')}
+        onChangeText={onChangeText}
+        multiline={isBody}
+        onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); onSave(); }}
+        placeholderTextColor="#aaa"
+        placeholder={isBody ? 'Email body…' : 'Email subject…'}
+      />
+    </View>
+  );
+};
+
 const EmailTab = ({ settingMap, onSave }) => {
   const [local, setLocal] = useState({});
 
@@ -358,25 +377,16 @@ const EmailTab = ({ settingMap, onSave }) => {
           <View key={group.label}>
             {gi > 0 && <View style={[styles.divider, { marginVertical: 16 }]} />}
             <Text style={styles.emailGroupLabel}>{group.label}</Text>
-            {group.keys.map(key => {
-              const isBody = key.includes('body');
-              const [focused, setFocused] = useState(false);
-              return (
-                <View key={key} style={styles.field}>
-                  <Text style={styles.fieldLabel}>{fmtEmailLabel(key)}</Text>
-                  <TextInput
-                    style={[styles.input, isBody && styles.inputMulti, focused && styles.inputFocused]}
-                    value={String(local[key] ?? '')}
-                    onChangeText={v => set(key, v)}
-                    multiline={isBody}
-                    onFocus={() => setFocused(true)}
-                    onBlur={() => { setFocused(false); saveKey(key); }}
-                    placeholderTextColor="#aaa"
-                    placeholder={isBody ? 'Email body…' : 'Email subject…'}
-                  />
-                </View>
-              );
-            })}
+            {group.keys.map(key => (
+              <EmailFieldRow
+                key={key}
+                fieldKey={key}
+                isBody={key.includes('body')}
+                value={local[key]}
+                onChangeText={v => set(key, v)}
+                onSave={() => saveKey(key)}
+              />
+            ))}
           </View>
         ))}
       </SectionCard>
@@ -548,7 +558,7 @@ const SASettingsScreen = () => {
   const { mutateAsync: updateSetting, isPending: saving } = useUpdateSAPlatformSetting();
   const [tab, setTab] = useState('general');
 
-  const settingList = Array.isArray(settings) ? settings : (settings?.data ?? []);
+  const settingList = useMemo(() => Array.isArray(settings) ? settings : (settings?.data ?? []), [settings]);
 
   const settingMap = useMemo(() => {
     const map = {};
