@@ -19,6 +19,39 @@ const fmtDate = dateStr => {
   return new Date(dateStr).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+// Show decimal hours (e.g. 9.5) as "9 hrs 30 mins".
+const fmtHours = hours => {
+  if (!hours) return '—';
+  const totalMin = Math.round(hours * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  const parts = [];
+  if (h > 0) parts.push(`${h} hr${h === 1 ? '' : 's'}`);
+  if (m > 0) parts.push(`${m} min${m === 1 ? '' : 's'}`);
+  return parts.length ? parts.join(' ') : '0 mins';
+};
+const fmtBreakDuration = minutes => {
+  if (!minutes) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+};
+// Green when the employee worked at least their scheduled shift, red when short; neutral when unknown.
+const timeColor = (worked, scheduled) => {
+  if (worked == null || scheduled == null) return '#6b7280';
+  return worked >= scheduled ? '#16a34a' : '#dc2626';
+};
+// Green within the break allowance, red once exceeded; neutral when no allowance set.
+const breakColor = (used, allowed) => {
+  if (!used || allowed == null) return '#6b7280';
+  return used > allowed ? '#dc2626' : '#16a34a';
+};
+// Clock-in: red if late (after shift start), green if early/on-time; neutral when unknown.
+const clockInColor = late => (late == null ? '#6b7280' : late ? '#dc2626' : '#16a34a');
+// Clock-out: red if early (before shift end), green if on-time/overtime; neutral when unknown.
+const clockOutColor = early => (early == null ? '#6b7280' : early ? '#dc2626' : '#16a34a');
+
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // ─── Company-wide attendance management (admin only) ─────────────────────────
@@ -60,7 +93,7 @@ const useDeleteAttendanceRecord = () => {
 };
 
 const EMPTY_MANUAL_FORM = { userId: '', date: todayStr(), clockIn: '', clockOut: '', notes: '', status: '' };
-const ATTENDANCE_STATUSES = ['Present', 'Late', 'Absent', 'Unpaid Leave', 'Paid Leave', 'Sick Leave', 'Half Day', 'Short Leave']
+const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Half Day', 'Unpaid Leave', 'Paid Leave', 'Sick Leave', 'Short Leave']
   .map(s => ({ id: s, name: s }));
 
 function CompanyAttendanceSection() {
@@ -176,7 +209,11 @@ function CompanyAttendanceSection() {
             <View style={{ flex: 1 }}>
               <Text style={styles.staffName}>{r.user?.fullName ?? r.user?.name ?? '—'}</Text>
               <Text style={styles.histTimes}>
-                {fmtDate(r.date)} · {fmtTime(r.clockIn)} → {fmtTime(r.clockOut)} · {r.status ?? '—'}
+                {fmtDate(r.date)} · <Text style={{ color: clockInColor(r.lateClockIn), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockIn)}</Text> → <Text style={{ color: clockOutColor(r.earlyClockOut), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockOut)}</Text> · {r.status ?? '—'}
+              </Text>
+              <Text style={styles.histTimes}>
+                Time: <Text style={{ color: timeColor(r.hoursWorked, r.scheduledHours), fontFamily: 'Outfit-SemiBold' }}>{fmtHours(r.hoursWorked)}</Text>
+                {'   '}Break: <Text style={{ color: breakColor(r.totalBreakMinutes, r.breakMinutesAllowed), fontFamily: 'Outfit-SemiBold' }}>{fmtBreakDuration(r.totalBreakMinutes)}</Text>
               </Text>
             </View>
             <TouchableOpacity onPress={() => handleDelete(r)} style={styles.staffDelBtn}>

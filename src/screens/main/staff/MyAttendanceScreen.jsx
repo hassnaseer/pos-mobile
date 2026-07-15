@@ -21,6 +21,26 @@ const fmtBreakDuration = minutes => {
   if (h === 0) return `${m}m`;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 };
+// Show decimal hours (e.g. 9.5) as "9 hrs 30 mins".
+const fmtHours = hours => {
+  if (!hours) return '—';
+  const totalMin = Math.round(hours * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  const parts = [];
+  if (h > 0) parts.push(`${h} hr${h === 1 ? '' : 's'}`);
+  if (m > 0) parts.push(`${m} min${m === 1 ? '' : 's'}`);
+  return parts.length ? parts.join(' ') : '0 mins';
+};
+// Green when the employee worked at least their scheduled shift, red when short; neutral when unknown.
+const timeColor = (worked, scheduled) => {
+  if (worked == null || scheduled == null) return '#111827';
+  return worked >= scheduled ? '#16a34a' : '#dc2626';
+};
+// Clock-in: red if late (after shift start), green if early/on-time; neutral when unknown.
+const clockInColor = late => (late == null ? '#111827' : late ? '#dc2626' : '#16a34a');
+// Clock-out: red if early (before shift end), green if on-time/overtime; neutral when unknown.
+const clockOutColor = early => (early == null ? '#111827' : early ? '#dc2626' : '#16a34a');
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 const MyAttendanceScreen = () => {
@@ -80,9 +100,9 @@ const MyAttendanceScreen = () => {
             {isLoading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : (
               <>
                 <View style={styles.timeRow}>
-                  <View style={styles.timeBox}><Text style={styles.timeLabel}>Clock In</Text><Text style={styles.timeValue}>{fmtTime(today?.clockIn)}</Text></View>
-                  <View style={styles.timeBox}><Text style={styles.timeLabel}>Clock Out</Text><Text style={styles.timeValue}>{fmtTime(today?.clockOut)}</Text></View>
-                  <View style={styles.timeBox}><Text style={styles.timeLabel}>Hours</Text><Text style={styles.timeValue}>{today?.hoursWorked != null ? `${today.hoursWorked}h` : '—'}</Text></View>
+                  <View style={styles.timeBox}><Text style={styles.timeLabel}>Clock In</Text><Text style={[styles.timeValue, { color: clockInColor(today?.lateClockIn) }]}>{fmtTime(today?.clockIn)}</Text></View>
+                  <View style={styles.timeBox}><Text style={styles.timeLabel}>Clock Out</Text><Text style={[styles.timeValue, { color: clockOutColor(today?.earlyClockOut) }]}>{fmtTime(today?.clockOut)}</Text></View>
+                  <View style={styles.timeBox}><Text style={styles.timeLabel}>Time</Text><Text style={[styles.timeValue, { color: timeColor(today?.hoursWorked, today?.scheduledHours) }]}>{fmtHours(today?.hoursWorked)}</Text></View>
                 </View>
 
                 {(isClockedIn || isCompleted) && (
@@ -96,7 +116,7 @@ const MyAttendanceScreen = () => {
                         <View style={styles.breakBarTrack}>
                           <View style={[styles.breakBarFill, { width: `${Math.min(100, (usedBreakMinutes / breakAllowance) * 100)}%` }, breakAllowanceUsedUp && styles.breakBarFillOver]} />
                         </View>
-                        <Text style={[styles.breakAllowanceText, breakAllowanceUsedUp && styles.breakAllowanceTextOver]}>
+                        <Text style={[styles.breakAllowanceText, breakAllowanceUsedUp ? styles.breakAllowanceTextOver : styles.breakAllowanceTextOk]}>
                           {Math.round(usedBreakMinutes)} / {breakAllowance} min used{breakAllowanceUsedUp ? ' — daily allowance used up' : ''}
                         </Text>
                       </>
@@ -111,7 +131,7 @@ const MyAttendanceScreen = () => {
                 )}
 
                 {isCompleted ? (
-                  <View style={styles.completedBanner}><Text style={styles.completedText}>Shift complete — {today.hoursWorked}h worked</Text></View>
+                  <View style={styles.completedBanner}><Text style={styles.completedText}>Shift complete — {fmtHours(today.hoursWorked)} worked</Text></View>
                 ) : isClockedIn ? (
                   <View style={styles.actionRow}>
                     <TouchableOpacity style={[styles.actionBtn, styles.clockOutBtn]} onPress={handleClockOut} disabled={actionLoading}>
@@ -159,8 +179,8 @@ const MyAttendanceScreen = () => {
           <View style={styles.row}>
             <View style={styles.rowInfo}>
               <Text style={styles.rowDate}>{fmtDate(item.date)}</Text>
-              <Text style={styles.rowTime}>In: {fmtTime(item.clockIn)}  ·  Out: {fmtTime(item.clockOut)}</Text>
-              {item.hoursWorked != null && <Text style={styles.rowMeta}>{Number(item.hoursWorked).toFixed(1)} hrs</Text>}
+              <Text style={styles.rowTime}>In: <Text style={{ color: clockInColor(item.lateClockIn), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(item.clockIn)}</Text>  ·  Out: <Text style={{ color: clockOutColor(item.earlyClockOut), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(item.clockOut)}</Text></Text>
+              {item.hoursWorked != null && <Text style={[styles.rowMeta, { color: timeColor(item.hoursWorked, item.scheduledHours), fontFamily: 'Outfit-SemiBold' }]}>{fmtHours(item.hoursWorked)}</Text>}
             </View>
             <View style={[styles.historyBadge, { backgroundColor: (STATUS_COLOR[item.status] ?? '#9CA3AF') + '20' }]}>
               <Text style={[styles.historyBadgeText, { color: STATUS_COLOR[item.status] ?? '#9CA3AF' }]}>{item.status ?? 'Present'}</Text>
@@ -196,6 +216,7 @@ const styles = StyleSheet.create({
   breakBarFillOver: { backgroundColor: '#ef4444' },
   breakAllowanceText: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginBottom: 8 },
   breakAllowanceTextOver: { color: '#ef4444', fontFamily: 'Outfit-Medium' },
+  breakAllowanceTextOk: { color: '#16a34a', fontFamily: 'Outfit-Medium' },
   noBreaksText: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#d1d5db' },
   breakRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#fffbeb', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginTop: 4 },
   breakRowTime: { fontSize: 11, fontFamily: 'Outfit-Medium', color: '#b45309' },
