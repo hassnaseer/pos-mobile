@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
-  Modal, ActivityIndicator, Alert, RefreshControl, ScrollView, Switch,
+  Modal, ActivityIndicator, Alert, RefreshControl, ScrollView,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../../../services/api/globalApi';
-import { useProjectMarketplaces } from '../../../../services/api/posApi';
+import { useProjectMarketplaces, useStaffList } from '../../../../services/api/posApi';
 import { useAuth } from '../../../../context/AuthContext';
 import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import { compactAmt } from '../../../../utils/currency';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
+import MultiSelectPicker from '../../../../components/InlinePicker/MultiSelectPicker';
+import { PROJECT_CATEGORIES, getCategoryDef } from '../../../../config/projectCategories';
 import colors from '../../../../theme/colors';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
@@ -29,6 +32,7 @@ const EMPTY = {
   name: '', description: '', status: 'Active', startDate: '', endDate: '',
   estimatedBudget: '', projectClientId: '', marketplace: '', accountCode: '',
   monthlyRevenuePlan: '', monthlyProfitPlan: '', isMilestone: false, serviceCharge: '',
+  category: 'ecommerce', incomeMode: '', assigneeIds: [],
 };
 
 const useProjects = () =>
@@ -65,9 +69,12 @@ const ProjectsScreen = () => {
   const { data: raw = [], isLoading, refetch } = useProjects();
   const { data: clientRaw = [] } = useClients();
   const { data: mktRaw = [] } = useProjectMarketplaces();
+  const { data: staffRaw = [] } = useStaffList();
   const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
   const clients = Array.isArray(clientRaw) ? clientRaw : (clientRaw?.data ?? []);
   const marketplaces = Array.isArray(mktRaw) ? mktRaw : (mktRaw?.data ?? []);
+  const staffList = Array.isArray(staffRaw) ? staffRaw : (staffRaw?.data ?? []);
+  const staffOptions = staffList.map(st => ({ id: st.id, name: st.fullName ?? st.name }));
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -121,6 +128,9 @@ const ProjectsScreen = () => {
       monthlyProfitPlan: p.monthlyProfitPlan ? String(parseFloat(p.monthlyProfitPlan)) : '',
       isMilestone: p.isMilestone ?? false,
       serviceCharge: p.serviceCharge != null ? String(p.serviceCharge) : '',
+      category: p.category ?? 'ecommerce',
+      incomeMode: p.incomeMode ?? '',
+      assigneeIds: p.assignees?.map(a => a.id) ?? [],
     });
     setShowModal(true);
   };
@@ -136,6 +146,9 @@ const ProjectsScreen = () => {
       monthlyProfitPlan: form.monthlyProfitPlan ? parseFloat(form.monthlyProfitPlan) : undefined,
       isMilestone: form.isMilestone,
       serviceCharge: form.serviceCharge ? parseFloat(form.serviceCharge) : undefined,
+      category: form.category,
+      incomeMode: form.incomeMode || undefined,
+      assigneeIds: form.assigneeIds,
     });
   };
   const handleAddClient = () => {
@@ -146,6 +159,9 @@ const ProjectsScreen = () => {
     { text: 'Cancel', style: 'cancel' },
     { text: 'Delete', style: 'destructive', onPress: () => remove.mutate(p.id) },
   ]);
+
+  const formCategoryDef = getCategoryDef(form.category);
+  const formEffectiveMode = form.incomeMode || formCategoryDef.incomeMode;
 
   return (
     <View style={s.root}>
@@ -197,7 +213,10 @@ const ProjectsScreen = () => {
             <View style={s.card}>
               <View style={s.cardTop}>
                 <View style={s.cardLeft}>
-                  <Text style={s.cardTitle}>{item.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Text style={s.cardTitle}>{item.name}</Text>
+                    <View style={s.categoryBadge}><Text style={s.categoryBadgeText}>{getCategoryDef(item.category).label}</Text></View>
+                  </View>
                   <Text style={s.cardSub}>
                     {item.accountCode ? `#${item.accountCode} · ` : ''}
                     {item.projectClient?.name ?? 'No client'}{item.marketplace ? ` · ${item.marketplace}` : ''}
@@ -248,19 +267,58 @@ const ProjectsScreen = () => {
                 ))}
               </View>
 
-              <Text style={s.label}>Marketplace / Channel</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity style={[s.chip, !form.marketplace && s.chipActive]} onPress={() => set('marketplace')('')}>
-                    <Text style={[s.chipText, !form.marketplace && s.chipTextActive]}>None</Text>
-                  </TouchableOpacity>
-                  {marketplaces.map(m => (
-                    <TouchableOpacity key={m.id} style={[s.chip, form.marketplace === m.name && s.chipActive]} onPress={() => set('marketplace')(m.name)}>
-                      <Text style={[s.chipText, form.marketplace === m.name && s.chipTextActive]}>{m.name}</Text>
+              <InlinePicker
+                label="Category *"
+                options={PROJECT_CATEGORIES.map(c => ({ id: c.key, name: c.label }))}
+                value={form.category}
+                onSelect={v => setForm(f => ({ ...f, category: v, incomeMode: '' }))}
+                placeholder="Select category"
+                allowNone={false}
+              />
+
+              {formCategoryDef.incomeMode !== 'recurring' && (
+                <>
+                  <Text style={s.label}>Income Type</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                    <TouchableOpacity
+                      style={[s.incomeTypeOption, formEffectiveMode === 'fixed' && s.incomeTypeOptionActive]}
+                      onPress={() => set('incomeMode')('fixed')}
+                    >
+                      <View style={[s.checkbox, formEffectiveMode === 'fixed' && s.checkboxChecked]}>
+                        {formEffectiveMode === 'fixed' && <Text style={s.checkmark}>✓</Text>}
+                      </View>
+                      <Text style={s.incomeTypeText}>Fixed Amount</Text>
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
+                    <TouchableOpacity
+                      style={[s.incomeTypeOption, formEffectiveMode === 'milestone' && s.incomeTypeOptionActive]}
+                      onPress={() => set('incomeMode')('milestone')}
+                    >
+                      <View style={[s.checkbox, formEffectiveMode === 'milestone' && s.checkboxChecked]}>
+                        {formEffectiveMode === 'milestone' && <Text style={s.checkmark}>✓</Text>}
+                      </View>
+                      <Text style={s.incomeTypeText}>Milestone Based</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {form.category === 'ecommerce' && (
+                <>
+                  <Text style={s.label}>Marketplace / Channel</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity style={[s.chip, !form.marketplace && s.chipActive]} onPress={() => set('marketplace')('')}>
+                        <Text style={[s.chipText, !form.marketplace && s.chipTextActive]}>None</Text>
+                      </TouchableOpacity>
+                      {marketplaces.map(m => (
+                        <TouchableOpacity key={m.id} style={[s.chip, form.marketplace === m.name && s.chipActive]} onPress={() => set('marketplace')(m.name)}>
+                          <Text style={[s.chipText, form.marketplace === m.name && s.chipTextActive]}>{m.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </>
+              )}
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                 <Text style={[s.label, { marginTop: 0 }]}>Client</Text>
@@ -279,27 +337,40 @@ const ProjectsScreen = () => {
                 </View>
               </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.label}>Account Code</Text>
-                  <TextInput style={s.input} value={form.accountCode} onChangeText={set('accountCode')} placeholder="e.g. ACC-001" placeholderTextColor="#999" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.label}>Service Charge %</Text>
-                  <TextInput style={s.input} value={form.serviceCharge} onChangeText={set('serviceCharge')} placeholder="e.g. 15" placeholderTextColor="#999" keyboardType="decimal-pad" />
-                </View>
-              </View>
+              <MultiSelectPicker
+                label="Assigned Team"
+                options={staffOptions}
+                selected={form.assigneeIds}
+                onChange={ids => setForm(f => ({ ...f, assigneeIds: ids }))}
+                placeholder="Select team members…"
+              />
+              <Text style={s.helperText}>Everyone assigned is equal — no lead/role distinction.</Text>
 
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.label}>Monthly Sales Plan</Text>
-                  <TextInput style={s.input} value={form.monthlyRevenuePlan} onChangeText={set('monthlyRevenuePlan')} placeholder="Target sales" placeholderTextColor="#999" keyboardType="decimal-pad" />
+              {form.category === 'ecommerce' && (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.label}>Account Code</Text>
+                    <TextInput style={s.input} value={form.accountCode} onChangeText={set('accountCode')} placeholder="e.g. ACC-001" placeholderTextColor="#999" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.label}>Service Charge %</Text>
+                    <TextInput style={s.input} value={form.serviceCharge} onChangeText={set('serviceCharge')} placeholder="e.g. 15" placeholderTextColor="#999" keyboardType="decimal-pad" />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.label}>Monthly Profit Plan</Text>
-                  <TextInput style={s.input} value={form.monthlyProfitPlan} onChangeText={set('monthlyProfitPlan')} placeholder="Optional" placeholderTextColor="#999" keyboardType="decimal-pad" />
+              )}
+
+              {form.category === 'ecommerce' && (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.label}>Monthly Sales Plan</Text>
+                    <TextInput style={s.input} value={form.monthlyRevenuePlan} onChangeText={set('monthlyRevenuePlan')} placeholder="Target sales" placeholderTextColor="#999" keyboardType="decimal-pad" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.label}>Monthly Profit Plan</Text>
+                    <TextInput style={s.input} value={form.monthlyProfitPlan} onChangeText={set('monthlyProfitPlan')} placeholder="Optional" placeholderTextColor="#999" keyboardType="decimal-pad" />
+                  </View>
                 </View>
-              </View>
+              )}
 
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <DatePicker
@@ -319,24 +390,18 @@ const ProjectsScreen = () => {
                 />
               </View>
 
-              <Text style={s.label}>Estimated Budget</Text>
-              <TextInput style={s.input} value={form.estimatedBudget} onChangeText={set('estimatedBudget')} placeholder="Optional" placeholderTextColor="#999" keyboardType="decimal-pad" />
+              <Text style={s.label}>{formEffectiveMode === 'fixed' ? 'Project Amount' : 'Estimated Budget'}</Text>
+              <TextInput
+                style={s.input}
+                value={form.estimatedBudget}
+                onChangeText={set('estimatedBudget')}
+                placeholder={formEffectiveMode === 'fixed' ? 'Total charge for this project' : 'Optional'}
+                placeholderTextColor="#999"
+                keyboardType="decimal-pad"
+              />
 
               <Text style={s.label}>Description</Text>
               <TextInput style={s.input} value={form.description} onChangeText={set('description')} placeholder="Optional description" placeholderTextColor="#999" />
-
-              <View style={s.milestoneRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.milestoneTitle}>Milestone-based project</Text>
-                  <Text style={s.milestoneSub}>Enables the Milestones tab in project detail</Text>
-                </View>
-                <Switch
-                  value={form.isMilestone}
-                  onValueChange={set('isMilestone')}
-                  trackColor={{ false: '#e5e7eb', true: colors.primary + '80' }}
-                  thumbColor={form.isMilestone ? colors.primary : '#fff'}
-                />
-              </View>
             </ScrollView>
             <View style={s.modalActions}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => setShowModal(false)}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity>
@@ -393,6 +458,8 @@ const s = StyleSheet.create({
   cardSub: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#64748b', marginTop: 2 },
   badge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   badgeText: { fontSize: 10, fontFamily: 'Outfit-SemiBold' },
+  categoryBadge: { backgroundColor: '#f3f4f6', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1.5 },
+  categoryBadgeText: { fontSize: 9, fontFamily: 'Outfit-SemiBold', color: '#6b7280' },
   milestoneBadge: { backgroundColor: '#f5f3ff', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   milestoneBadgeText: { fontSize: 9, fontFamily: 'Outfit-SemiBold', color: '#7c3aed' },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderColor: '#f3f4f6' },
@@ -419,9 +486,13 @@ const s = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#555' },
   chipTextActive: { color: '#fff' },
-  milestoneRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, backgroundColor: '#f9fafb', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' },
-  milestoneTitle: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#111827' },
-  milestoneSub: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 1 },
+  helperText: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: -6, marginBottom: 10 },
+  incomeTypeOption: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: '#f9fafb' },
+  incomeTypeOptionActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+  incomeTypeText: { fontSize: 13, fontFamily: 'Outfit-Medium', color: '#374151' },
+  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: '#D0D5DD', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkmark: { color: '#fff', fontSize: 11, fontFamily: 'Outfit-Bold' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
   cancelBtn: { flex: 1, borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   cancelText: { fontFamily: 'Outfit-Medium', color: '#64748b' },

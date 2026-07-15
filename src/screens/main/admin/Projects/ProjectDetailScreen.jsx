@@ -10,6 +10,9 @@ import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyConte
 import { compactAmt } from '../../../../utils/currency';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import { getCategoryDef } from '../../../../config/projectCategories';
+import CallCenterEntriesTab from './CallCenterEntriesTab';
+import CategoryEntriesTab from './CategoryEntriesTab';
 import colors from '../../../../theme/colors';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
@@ -72,7 +75,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
   const isMilestone = !!pl?.project?.isMilestone;
   const { data: milestones = [] } = useMilestones(projectId, isMilestone);
-  const TABS = ['Overview', 'Sales', 'Expenses', ...(isMilestone ? ['Milestones'] : [])];
+  // category's entryTable ('ecommerce' | 'call_center' | 'universal' | null) drives which
+  // Sales/Entries UI (if any) shows — null/unset category always resolves to 'ecommerce'
+  // (getCategoryDef), so existing e-commerce projects are completely unaffected.
+  const categoryDef = getCategoryDef(pl?.project?.category);
+  const entryKind = categoryDef.entryTable;
+  const salesTabLabel = entryKind === 'call_center' ? 'Call Center' : entryKind === 'universal' ? 'Entries' : 'Sales';
+  const TABS = ['Overview', ...(entryKind ? [salesTabLabel] : []), 'Expenses', ...(isMilestone ? ['Milestones'] : [])];
 
   const reload = () => qc.invalidateQueries({ queryKey: ['project-pl', projectId] });
   const reloadMilestones = () => qc.invalidateQueries({ queryKey: ['project-milestones', projectId] });
@@ -204,6 +213,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const { project, totalIncome, totalExpense, netProfit, companyEarning } = pl;
   const incomes = pl.incomes ?? [];
   const expenses = pl.expenses ?? [];
+  const callCenterEntries = pl.callCenterEntries ?? [];
+  const categoryEntries = pl.categoryEntries ?? [];
+  const assignees = project.assignees ?? [];
   const outstanding = incomes.reduce((s, i) => {
     const amt = parseFloat(i.amount ?? 0);
     const recv = parseFloat(i.receivedAmount ?? 0) || (i.status === 'Paid' || i.status === 'Received' ? amt : 0);
@@ -298,6 +310,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         </View>
         <View style={styles.headerMeta}>
           <View style={[styles.statusBadge, { backgroundColor: statusBadge.bg }]}><Text style={[styles.statusBadgeText, { color: statusBadge.text }]}>{project.status}</Text></View>
+          <View style={styles.categoryBadge}><Text style={styles.categoryBadgeText}>{categoryDef.label}</Text></View>
           {project.accountCode ? <Text style={styles.metaText}>#{project.accountCode}</Text> : null}
           {(project.projectClient?.name || project.customer?.name) ? <Text style={styles.metaText}>{project.projectClient?.name ?? project.customer?.name}</Text> : null}
         </View>
@@ -354,6 +367,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
             </View>
           )}
 
+          {assignees.length > 0 && (
+            <View style={styles.breakdownCard}>
+              <Text style={styles.breakdownTitle}>Assigned Team</Text>
+              <Text style={styles.descText}>{assignees.map(a => a.fullName).join(', ')}</Text>
+            </View>
+          )}
+
           {project.description ? (
             <View style={styles.breakdownCard}>
               <Text style={styles.breakdownTitle}>Description</Text>
@@ -363,7 +383,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         </ScrollView>
       )}
 
-      {tab === 'Sales' && (
+      {tab === 'Sales' && entryKind === 'ecommerce' && (
         <View style={{ flex: 1 }}>
           <TouchableOpacity style={styles.addBtn} onPress={openAddIncome}><Text style={styles.addBtnText}>+ Add Income Entry</Text></TouchableOpacity>
           <ScrollView
@@ -387,6 +407,14 @@ export default function ProjectDetailScreen({ route, navigation }) {
             ))}
           </ScrollView>
         </View>
+      )}
+
+      {tab === 'Call Center' && entryKind === 'call_center' && (
+        <CallCenterEntriesTab projectId={projectId} entries={callCenterEntries} />
+      )}
+
+      {tab === 'Entries' && entryKind === 'universal' && (
+        <CategoryEntriesTab projectId={projectId} categoryKey={project.category} entries={categoryEntries} />
       )}
 
       {tab === 'Expenses' && (
@@ -745,6 +773,8 @@ const styles = StyleSheet.create({
   headerMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   statusBadge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
   statusBadgeText: { fontSize: 11, fontFamily: 'Outfit-SemiBold' },
+  categoryBadge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, backgroundColor: '#f3f4f6' },
+  categoryBadgeText: { fontSize: 11, fontFamily: 'Outfit-SemiBold', color: '#6b7280' },
   metaText: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280' },
   tabRow: { flexDirection: 'row', backgroundColor: '#f3f4f6', borderRadius: 8, padding: 3, alignSelf: 'flex-start' },
   tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 },
