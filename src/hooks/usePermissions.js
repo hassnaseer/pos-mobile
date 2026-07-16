@@ -78,6 +78,7 @@ export const usePermissions = () => {
       canManageSnookerSessions: () => check(PERMISSIONS.MANAGE_SNOOKER_SESSIONS),
       canManageSnookerTables:   () => check(PERMISSIONS.MANAGE_SNOOKER_TABLES),
       hasAnySnooker:            () => checkAny(SNOOKER_PERMISSIONS),
+      canManageGamingTickets:   () => check(PERMISSIONS.MANAGE_GAMING_TICKETS),
     };
   }, [userRole, permissionCodesKey]);
 

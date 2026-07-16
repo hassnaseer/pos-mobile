@@ -3125,3 +3125,47 @@ export const useDeleteSABankAccount = () => {
   });
 };
 
+// ─── Gaming Tickets ───────────────────────────────────────────────────────────
+// Rate presets are mainly configured on web Settings, but can also be added inline
+// from the mobile create-ticket form (mirrors the same "add new" pattern web has).
+export const useGamingTicketRates = () =>
+  useQuery({
+    queryKey: ['gaming-ticket-rates'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/gaming-ticket-rates');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useCreateGamingTicketRate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/gaming-ticket-rates', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['gaming-ticket-rates'] }),
+    meta: { successMessage: 'Rate added' },
+  });
+};
+
+export const useGamingTickets = (params = {}) =>
+  useQuery({
+    queryKey: ['gaming-tickets', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''))
+      ).toString();
+      const res = await apiClient.get(`/admin/gaming-tickets${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 10_000,
+  });
+
+export const useCreateGamingTicket = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/gaming-tickets', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['gaming-tickets'] }),
+    meta: { successMessage: 'Gaming ticket created' },
+  });
+};
+

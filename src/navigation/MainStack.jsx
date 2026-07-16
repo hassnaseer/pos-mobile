@@ -166,6 +166,9 @@ import SnookerDashboardScreen    from '../screens/main/admin/Snooker/SnookerDash
 import SnookerSessionsScreen     from '../screens/main/admin/Snooker/SnookerSessionsScreen';
 import SnookerSessionDetailScreen from '../screens/main/admin/Snooker/SnookerSessionDetailScreen';
 
+// Gaming Tickets
+import GamingTicketsScreen from '../screens/main/admin/GamingTickets/GamingTicketsScreen';
+
 // Medical — prescriptions (sub-screen opened from PatientsScreen)
 import PatientPrescriptionsScreen from '../screens/main/admin/Medical/PatientPrescriptionsScreen';
 
@@ -325,6 +328,9 @@ const ADMIN_SCREENS = [
   { name: 'SnookerSessions',     component: SnookerSessionsScreen },
   { name: 'SnookerTables',       component: SnookerTablesScreen },
   { name: 'SnookerSessionTypes', component: SnookerSessionTypesScreen },
+
+  // Gaming Tickets
+  { name: 'GamingTickets', component: GamingTicketsScreen },
 
   // Social Media
   { name: 'SocialAccounts',  component: SocialAccountsScreen },

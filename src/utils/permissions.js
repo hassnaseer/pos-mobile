@@ -115,6 +115,9 @@ export const PERMISSIONS = {
   // ── Snooker ───────────────────────────────────────────────────────────────────
   MANAGE_SNOOKER_SESSIONS:    'manage_snooker_sessions',
   MANAGE_SNOOKER_TABLES:      'manage_snooker_tables',
+
+  // ── Gaming Tickets ───────────────────────────────────────────────────────────
+  MANAGE_GAMING_TICKETS:      'manage_gaming_tickets',
 };
 
 export const isSuperAdmin    = role => role === ROLES.SUPER_ADMIN;
