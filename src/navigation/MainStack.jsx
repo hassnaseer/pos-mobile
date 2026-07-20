@@ -169,6 +169,15 @@ import SnookerSessionDetailScreen from '../screens/main/admin/Snooker/SnookerSes
 // Gaming Tickets
 import GamingTicketsScreen from '../screens/main/admin/GamingTickets/GamingTicketsScreen';
 
+// Real Estate
+import PropertiesScreen from '../screens/main/admin/RealEstate/PropertiesScreen';
+import LeadsScreen from '../screens/main/admin/RealEstate/LeadsScreen';
+import DealsScreen from '../screens/main/admin/RealEstate/DealsScreen';
+import LeasesScreen from '../screens/main/admin/RealEstate/LeasesScreen';
+import RentInvoicesScreen from '../screens/main/admin/RealEstate/RentInvoicesScreen';
+import MaintenanceScreen from '../screens/main/admin/RealEstate/MaintenanceScreen';
+import ViewingsScreen from '../screens/main/admin/RealEstate/ViewingsScreen';
+
 // Medical — prescriptions (sub-screen opened from PatientsScreen)
 import PatientPrescriptionsScreen from '../screens/main/admin/Medical/PatientPrescriptionsScreen';
 
@@ -331,6 +340,15 @@ const ADMIN_SCREENS = [
 
   // Gaming Tickets
   { name: 'GamingTickets', component: GamingTicketsScreen },
+
+  // Real Estate
+  { name: 'REProperties', component: PropertiesScreen },
+  { name: 'RELeads', component: LeadsScreen },
+  { name: 'REDeals', component: DealsScreen },
+  { name: 'RELeases', component: LeasesScreen },
+  { name: 'RERentInvoices', component: RentInvoicesScreen },
+  { name: 'REMaintenance', component: MaintenanceScreen },
+  { name: 'REViewings', component: ViewingsScreen },
 
   // Social Media
   { name: 'SocialAccounts',  component: SocialAccountsScreen },

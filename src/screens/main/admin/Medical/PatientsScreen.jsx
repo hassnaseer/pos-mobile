@@ -9,6 +9,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { pick, types, isCancel } from '@react-native-documents/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient, { BASE_URL } from '../../../../services/api/globalApi';
+import { useMedicalPatientsInfinite, flattenPages } from '../../../../services/api/posApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
@@ -284,17 +285,6 @@ function MedicalInvoicesSheet({ patient, onClose }) {
   );
 }
 
-const usePatients = search =>
-  useQuery({
-    queryKey: ['medical-patients', search],
-    queryFn: async () => {
-      const qs = search ? `?search=${encodeURIComponent(search)}` : '';
-      const res = await apiClient.get(`/admin/medical/patients${qs}`);
-      return res?.data ?? res ?? [];
-    },
-    staleTime: 30_000,
-  });
-
 const useCreatePatient = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -337,8 +327,10 @@ const PatientsScreen = () => {
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const set = k => v => setForm(p => ({ ...p, [k]: v }));
 
-  const { data: raw = [], isLoading, refetch } = usePatients(search);
-  const patients = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const {
+    data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch,
+  } = useMedicalPatientsInfinite(search ? { search } : {});
+  const patients = flattenPages(data);
   const { mutateAsync: create, isPending: creating } = useCreatePatient();
   const { mutateAsync: update, isPending: updating } = useUpdatePatient();
   const { mutate: remove } = useDeletePatient();
@@ -433,6 +425,9 @@ const PatientsScreen = () => {
         data={patients}
         keyExtractor={p => String(p.id)}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={!isLoading && <Text style={styles.empty}>No patients yet.</Text>}
         renderItem={({ item }) => (

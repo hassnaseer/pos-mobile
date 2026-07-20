@@ -174,7 +174,9 @@ const CreateTicketModal = ({ visible, onClose, onSave, isSaving, rates, bizCurre
       ...p,
       rateId: rate.id,
       amount: rate ? String(rate.price) : p.amount,
-      currency: rate?.currency ?? p.currency,
+      // Currency is fully derived from the selected rate — never independently editable here,
+      // so a ticket can never end up with an amount from one rate labeled in a different currency.
+      currency: rate ? (rate.currency ?? bizCurrency) : p.currency,
     }));
   };
 
@@ -303,30 +305,20 @@ const CreateTicketModal = ({ visible, onClose, onSave, isSaving, rates, bizCurre
               placeholder="Select duration"
               allowNone={false}
             />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={[styles.field, { flex: 2 }]}>
-                <Text style={styles.label}>Amount *</Text>
-                <View style={styles.amountInputWrap}>
-                  <Text style={styles.amountPrefix}>{CURRENCY_SYMBOLS[form.currency || bizCurrency] ?? (form.currency || bizCurrency) + ' '}</Text>
-                  <TextInput
-                    style={styles.amountInput}
-                    value={form.amount}
-                    onChangeText={set('amount')}
-                    placeholder="0.00"
-                    placeholderTextColor="#999"
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              </View>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>Currency</Text>
-                <InlinePicker
-                  options={CURRENCY_OPTIONS.map(c => ({ id: c, name: c }))}
-                  value={form.currency || bizCurrency}
-                  onSelect={set('currency')}
-                  allowNone={false}
+            <View style={styles.field}>
+              <Text style={styles.label}>Amount *</Text>
+              <View style={styles.amountInputWrap}>
+                <Text style={styles.amountPrefix}>{CURRENCY_SYMBOLS[form.currency || bizCurrency] ?? (form.currency || bizCurrency) + ' '}</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  value={form.amount}
+                  onChangeText={set('amount')}
+                  placeholder="0.00"
+                  placeholderTextColor="#999"
+                  keyboardType="decimal-pad"
                 />
               </View>
+              <Text style={styles.helperText}>Currency is set by the selected duration's rate.</Text>
             </View>
 
             <View style={styles.modalActions}>
@@ -538,6 +530,7 @@ const styles = StyleSheet.create({
   formSection: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: colors.primary, marginTop: 12, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   field: { marginBottom: 12 },
   label: { fontSize: 14, fontFamily: 'Outfit-Medium', color: '#374151', marginBottom: 5 },
+  helperText: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 4 },
   input: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111827', backgroundColor: '#fff' },
 
   selectedCustomer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', borderWidth: 1.5, borderColor: '#bfdbfe', borderRadius: 10, padding: 12, marginBottom: 14 },

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   ROLES, PERMISSIONS, SOCIAL_PERMISSIONS, HRMS_PERMISSIONS, FINANCE_PERMISSIONS, SNOOKER_PERMISSIONS,
+  REAL_ESTATE_PERMISSIONS,
   isSuperAdmin, isAdmin, isAdminOrSuperAdmin, isStaff,
   hasPermission, hasAnyPermission,
 } from '../utils/permissions';
@@ -79,6 +80,14 @@ export const usePermissions = () => {
       canManageSnookerTables:   () => check(PERMISSIONS.MANAGE_SNOOKER_TABLES),
       hasAnySnooker:            () => checkAny(SNOOKER_PERMISSIONS),
       canManageGamingTickets:   () => check(PERMISSIONS.MANAGE_GAMING_TICKETS),
+      canManageREProperties:    () => check(PERMISSIONS.MANAGE_RE_PROPERTIES),
+      canManageRELeads:         () => check(PERMISSIONS.MANAGE_RE_LEADS),
+      canManageREDeals:         () => check(PERMISSIONS.MANAGE_RE_DEALS),
+      canManageRELeases:        () => check(PERMISSIONS.MANAGE_RE_LEASES),
+      canManageRERent:          () => check(PERMISSIONS.MANAGE_RE_RENT),
+      canManageREMaintenance:   () => check(PERMISSIONS.MANAGE_RE_MAINTENANCE),
+      canManageREViewings:      () => check(PERMISSIONS.MANAGE_RE_VIEWINGS),
+      hasAnyRealEstate:         () => checkAny(REAL_ESTATE_PERMISSIONS),
     };
   }, [userRole, permissionCodesKey]);
 

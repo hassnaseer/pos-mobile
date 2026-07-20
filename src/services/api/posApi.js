@@ -1,7 +1,7 @@
 ﻿import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // ─── Pagination helpers ───────────────────────────────────────────────────────
-const getNextPage = (lastPage) => {
+export const getNextPage = (lastPage) => {
   try {
     if (!lastPage || typeof lastPage !== 'object' || Array.isArray(lastPage)) return undefined;
     if (lastPage.pagination && typeof lastPage.pagination === 'object') {
@@ -3062,6 +3062,32 @@ export const usePatientsList = () =>
     staleTime: 60_000,
   });
 
+export const useMedicalPatientsInfinite = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['medical-patients', 'infinite', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 20 }).toString();
+      const res = await apiClient.get(`/admin/medical/patients?${qs}`);
+      return res?.data ?? res ?? {};
+    },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
+    staleTime: 30_000,
+  });
+
+export const useMedicalAppointmentsInfinite = (params = {}) =>
+  useInfiniteQuery({
+    queryKey: ['medical-appointments', 'infinite', params],
+    queryFn: async ({ pageParam = 1 }) => {
+      const qs = new URLSearchParams({ ...params, page: pageParam, limit: 15 }).toString();
+      const res = await apiClient.get(`/admin/medical/appointments?${qs}`);
+      return res?.data ?? res ?? {};
+    },
+    getNextPageParam: getNextPage,
+    initialPageParam: 1,
+    staleTime: 30_000,
+  });
+
 // ─── Admin Medical: Patient Visits (Tracking) ─────────────────────────────────
 export const usePatientVisits = patientId =>
   useQuery({
@@ -3166,6 +3192,447 @@ export const useCreateGamingTicket = () => {
     mutationFn: data => apiClient.post('/admin/gaming-tickets', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['gaming-tickets'] }),
     meta: { successMessage: 'Gaming ticket created' },
+  });
+};
+
+// ─── Real Estate ───────────────────────────────────────────────────────────────
+// Permission-gated module (any business can enable it) — 7 sub-modules:
+// Properties/Units, Leads, Deals, Leases, Rent Invoices, Maintenance, Viewings.
+// Reuses useCustomers/useCreateCustomer (Customers section above) and
+// useStaff (Staff section above) rather than duplicating agent/tenant pickers.
+
+const cleanParams = params =>
+  Object.fromEntries(Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== ''));
+
+// ── Properties & Units ──────────────────────────────────────────────────────
+export const useREProperties = (params = {}) =>
+  useQuery({
+    queryKey: ['re-properties', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(cleanParams(params)).toString();
+      const res = await apiClient.get(`/admin/real-estate/properties${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useREProperty = id =>
+  useQuery({
+    queryKey: ['re-property', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/real-estate/properties/${id}`);
+      return res?.data ?? res ?? null;
+    },
+    staleTime: 15_000,
+    enabled: !!id,
+  });
+
+export const useCreateREProperty = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/real-estate/properties', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-properties'] }),
+    meta: { successMessage: 'Property created' },
+  });
+};
+
+export const useUpdateREProperty = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/properties/${id}`, data),
+    onSuccess: (_res, { id }) => {
+      qc.invalidateQueries({ queryKey: ['re-properties'] });
+      qc.invalidateQueries({ queryKey: ['re-property', id] });
+    },
+    meta: { successMessage: 'Property updated' },
+  });
+};
+
+export const useDeleteREProperty = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/real-estate/properties/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-properties'] }),
+    meta: { successMessage: 'Property deleted' },
+  });
+};
+
+export const useREPropertyUnits = propertyId =>
+  useQuery({
+    queryKey: ['re-property-units', propertyId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/real-estate/properties/${propertyId}/units`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+    enabled: !!propertyId,
+  });
+
+export const useCreateREUnit = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ propertyId, ...data }) => apiClient.post(`/admin/real-estate/properties/${propertyId}/units`, data),
+    onSuccess: (_res, { propertyId }) => {
+      qc.invalidateQueries({ queryKey: ['re-property-units', propertyId] });
+      qc.invalidateQueries({ queryKey: ['re-property', propertyId] });
+      qc.invalidateQueries({ queryKey: ['re-properties'] });
+    },
+    meta: { successMessage: 'Unit added' },
+  });
+};
+
+export const useUpdateREUnit = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/units/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['re-property-units'] });
+      qc.invalidateQueries({ queryKey: ['re-properties'] });
+    },
+    meta: { successMessage: 'Unit updated' },
+  });
+};
+
+export const useDeleteREUnit = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/real-estate/units/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['re-property-units'] });
+      qc.invalidateQueries({ queryKey: ['re-properties'] });
+    },
+    meta: { successMessage: 'Unit deleted' },
+  });
+};
+
+export const useAddREPropertyImage = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ propertyId, ...data }) => apiClient.post(`/admin/real-estate/properties/${propertyId}/images`, data),
+    onSuccess: (_res, { propertyId }) => qc.invalidateQueries({ queryKey: ['re-property', propertyId] }),
+    meta: { successMessage: 'Image added' },
+  });
+};
+
+// Lightweight picker used by Deals/Leases/Viewings/Maintenance screens.
+export const useREUnitLookup = (search = '') =>
+  useQuery({
+    queryKey: ['re-unit-lookup', search],
+    queryFn: async () => {
+      const qs = new URLSearchParams(cleanParams({ search })).toString();
+      const res = await apiClient.get(`/admin/real-estate/unit-lookup${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+// ── Leads / CRM ──────────────────────────────────────────────────────────────
+export const useRELeads = (params = {}) =>
+  useQuery({
+    queryKey: ['re-leads', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(cleanParams(params)).toString();
+      const res = await apiClient.get(`/admin/real-estate/leads${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useRELead = id =>
+  useQuery({
+    queryKey: ['re-lead', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/real-estate/leads/${id}`);
+      return res?.data ?? res ?? null;
+    },
+    staleTime: 15_000,
+    enabled: !!id,
+  });
+
+export const useCreateRELead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/real-estate/leads', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-leads'] }),
+    meta: { successMessage: 'Lead created' },
+  });
+};
+
+export const useUpdateRELead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/leads/${id}`, data),
+    onSuccess: (_res, { id }) => {
+      qc.invalidateQueries({ queryKey: ['re-leads'] });
+      qc.invalidateQueries({ queryKey: ['re-lead', id] });
+    },
+    meta: { successMessage: 'Lead updated' },
+  });
+};
+
+export const useConvertRELead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.post(`/admin/real-estate/leads/${id}/convert`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['re-leads'] });
+      qc.invalidateQueries({ queryKey: ['customers'] });
+    },
+    meta: { successMessage: 'Lead converted to customer' },
+  });
+};
+
+// ── Deals & Pipeline ─────────────────────────────────────────────────────────
+export const useREDealColumns = () =>
+  useQuery({
+    queryKey: ['re-deal-columns'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/real-estate/deal-columns');
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useREDeals = (params = {}) =>
+  useQuery({
+    queryKey: ['re-deals', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(cleanParams(params)).toString();
+      const res = await apiClient.get(`/admin/real-estate/deals${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useCreateREDeal = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/real-estate/deals', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-deals'] }),
+    meta: { successMessage: 'Deal created' },
+  });
+};
+
+export const useMoveREDeal = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/deals/${id}/move`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-deals'] }),
+    meta: { successMessage: 'Deal moved' },
+  });
+};
+
+export const useCreateLeaseFromDeal = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.post(`/admin/real-estate/deals/${id}/create-lease`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['re-deals'] });
+      qc.invalidateQueries({ queryKey: ['re-leases'] });
+    },
+    meta: { successMessage: 'Lease finalized' },
+  });
+};
+
+// ── Leases ───────────────────────────────────────────────────────────────────
+export const useRELeases = (params = {}) =>
+  useQuery({
+    queryKey: ['re-leases', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(cleanParams(params)).toString();
+      const res = await apiClient.get(`/admin/real-estate/leases${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useRELease = id =>
+  useQuery({
+    queryKey: ['re-lease', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/real-estate/leases/${id}`);
+      return res?.data ?? res ?? null;
+    },
+    staleTime: 15_000,
+    enabled: !!id,
+  });
+
+export const useCreateRELease = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/real-estate/leases', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-leases'] }),
+    meta: { successMessage: 'Lease created' },
+  });
+};
+
+export const useRenewRELease = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.post(`/admin/real-estate/leases/${id}/renew`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-leases'] }),
+    meta: { successMessage: 'Lease renewed' },
+  });
+};
+
+export const useTerminateRELease = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.post(`/admin/real-estate/leases/${id}/terminate`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-leases'] }),
+    meta: { successMessage: 'Lease terminated' },
+  });
+};
+
+// Sub-action off the Leases screen only (not its own permission) — gated server-side
+// by manage_re_leases OR manage_re_deals.
+export const useCreateRESignatureRequest = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/real-estate/signature-requests', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-leases'] }),
+    meta: { successMessage: 'Signature request sent' },
+  });
+};
+
+// ── Rent Collection ──────────────────────────────────────────────────────────
+export const useRERentInvoices = (params = {}) =>
+  useQuery({
+    queryKey: ['re-rent-invoices', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(cleanParams(params)).toString();
+      const res = await apiClient.get(`/admin/real-estate/rent-invoices${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useRERentInvoice = id =>
+  useQuery({
+    queryKey: ['re-rent-invoice', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/real-estate/rent-invoices/${id}`);
+      return res?.data ?? res ?? null;
+    },
+    staleTime: 15_000,
+    enabled: !!id,
+  });
+
+export const useMarkRERentInvoicePaid = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/rent-invoices/${id}/mark-paid`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-rent-invoices'] }),
+    meta: { successMessage: 'Invoice marked as paid' },
+  });
+};
+
+export const useCancelRERentInvoice = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.patch(`/admin/real-estate/rent-invoices/${id}/cancel`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-rent-invoices'] }),
+    meta: { successMessage: 'Invoice cancelled' },
+  });
+};
+
+// ── Maintenance Requests ─────────────────────────────────────────────────────
+export const useREMaintenanceRequests = (params = {}) =>
+  useQuery({
+    queryKey: ['re-maintenance', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(cleanParams(params)).toString();
+      const res = await apiClient.get(`/admin/real-estate/maintenance-requests${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useREMaintenanceRequest = id =>
+  useQuery({
+    queryKey: ['re-maintenance-detail', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/real-estate/maintenance-requests/${id}`);
+      return res?.data ?? res ?? null;
+    },
+    staleTime: 15_000,
+    enabled: !!id,
+  });
+
+export const useCreateREMaintenanceRequest = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/real-estate/maintenance-requests', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-maintenance'] }),
+    meta: { successMessage: 'Maintenance request logged' },
+  });
+};
+
+export const useUpdateREMaintenanceRequest = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/maintenance-requests/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-maintenance'] }),
+    meta: { successMessage: 'Maintenance request updated' },
+  });
+};
+
+export const useAssignREMaintenanceRequest = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/maintenance-requests/${id}/assign`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-maintenance'] }),
+    meta: { successMessage: 'Request assigned' },
+  });
+};
+
+export const useResolveREMaintenanceRequest = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/maintenance-requests/${id}/resolve`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-maintenance'] }),
+    meta: { successMessage: 'Request resolved' },
+  });
+};
+
+// ── Property Viewings ────────────────────────────────────────────────────────
+export const useREViewings = (params = {}) =>
+  useQuery({
+    queryKey: ['re-viewings', params],
+    queryFn: async () => {
+      const qs = new URLSearchParams(cleanParams(params)).toString();
+      const res = await apiClient.get(`/admin/real-estate/viewings${qs ? `?${qs}` : ''}`);
+      return res?.data ?? res ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useREViewing = id =>
+  useQuery({
+    queryKey: ['re-viewing', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/real-estate/viewings/${id}`);
+      return res?.data ?? res ?? null;
+    },
+    staleTime: 15_000,
+    enabled: !!id,
+  });
+
+export const useCreateREViewing = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/real-estate/viewings', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-viewings'] }),
+    meta: { successMessage: 'Viewing scheduled' },
+  });
+};
+
+export const useCompleteREViewing = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/real-estate/viewings/${id}/complete`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-viewings'] }),
+    meta: { successMessage: 'Viewing updated' },
   });
 };
 

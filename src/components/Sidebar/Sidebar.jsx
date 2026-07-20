@@ -181,6 +181,21 @@ const ADMIN_MENU = [
   // ── Specialty: Gaming Tickets — prepaid time-based session tickets ───────────
   { id: 'gaming-tickets', title: 'Gaming Tickets', route: 'GamingTickets', icon: ticketsIcon, permission: PERMISSIONS.MANAGE_GAMING_TICKETS, adminOnly: true },
 
+  // ── Real Estate (expandable group) — 7 permission-gated sub-modules ──────────
+  {
+    id: 'real-estate', title: 'Real Estate', icon: suppliersIcon, isGroup: true,
+    canShow: p => p.hasAnyRealEstate(),
+    subItems: [
+      { id: 're-properties',   title: 'Properties',       route: 'REProperties',    icon: suppliersIcon, permission: PERMISSIONS.MANAGE_RE_PROPERTIES, adminOnly: true },
+      { id: 're-leads',        title: 'Leads',             route: 'RELeads',         icon: customersIcon, permission: PERMISSIONS.MANAGE_RE_LEADS,      adminOnly: true },
+      { id: 're-deals',        title: 'Deals',             route: 'REDeals',         icon: rolesIcon,     permission: PERMISSIONS.MANAGE_RE_DEALS,      adminOnly: true },
+      { id: 're-leases',       title: 'Leases',            route: 'RELeases',        icon: ordersIcon,    permission: PERMISSIONS.MANAGE_RE_LEASES,     adminOnly: true },
+      { id: 're-rent',         title: 'Rent Collection',   route: 'RERentInvoices',  icon: reportsIcon,   permission: PERMISSIONS.MANAGE_RE_RENT,       adminOnly: true },
+      { id: 're-maintenance',  title: 'Maintenance',       route: 'REMaintenance',   icon: ticketsIcon,   permission: PERMISSIONS.MANAGE_RE_MAINTENANCE, adminOnly: true },
+      { id: 're-viewings',     title: 'Viewings',          route: 'REViewings',      icon: dashIcon,      permission: PERMISSIONS.MANAGE_RE_VIEWINGS,   adminOnly: true },
+    ],
+  },
+
   // ── Social Media (expandable group) ──────────────────────────────────────────
   {
     id: 'social', title: 'Social Media', icon: chatIcon, isGroup: true,

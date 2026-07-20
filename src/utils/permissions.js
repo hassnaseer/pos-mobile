@@ -118,6 +118,15 @@ export const PERMISSIONS = {
 
   // ── Gaming Tickets ───────────────────────────────────────────────────────────
   MANAGE_GAMING_TICKETS:      'manage_gaming_tickets',
+
+  // ── Real Estate ──────────────────────────────────────────────────────────────
+  MANAGE_RE_PROPERTIES:       'manage_re_properties',
+  MANAGE_RE_LEADS:            'manage_re_leads',
+  MANAGE_RE_DEALS:            'manage_re_deals',
+  MANAGE_RE_LEASES:           'manage_re_leases',
+  MANAGE_RE_RENT:             'manage_re_rent',
+  MANAGE_RE_MAINTENANCE:      'manage_re_maintenance',
+  MANAGE_RE_VIEWINGS:         'manage_re_viewings',
 };
 
 export const isSuperAdmin    = role => role === ROLES.SUPER_ADMIN;
@@ -167,6 +176,17 @@ export const FINANCE_PERMISSIONS = [
 export const SNOOKER_PERMISSIONS = [
   PERMISSIONS.MANAGE_SNOOKER_SESSIONS,
   PERMISSIONS.MANAGE_SNOOKER_TABLES,
+];
+
+// Real Estate module permission codes (any one grants access to the module as a whole)
+export const REAL_ESTATE_PERMISSIONS = [
+  PERMISSIONS.MANAGE_RE_PROPERTIES,
+  PERMISSIONS.MANAGE_RE_LEADS,
+  PERMISSIONS.MANAGE_RE_DEALS,
+  PERMISSIONS.MANAGE_RE_LEASES,
+  PERMISSIONS.MANAGE_RE_RENT,
+  PERMISSIONS.MANAGE_RE_MAINTENANCE,
+  PERMISSIONS.MANAGE_RE_VIEWINGS,
 ];
 
 // HRMS management permission codes (any one grants HRMS Dashboard access)
