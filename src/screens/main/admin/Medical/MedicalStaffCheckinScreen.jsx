@@ -8,6 +8,7 @@ import {
   useUpdateMedicalCheckin, useDeleteMedicalCheckin, useStaffList,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import { parseDateOnly } from '../../../../utils/formatDate';
 
 const fmtTime = ts => {
   if (!ts) return '—';
@@ -16,7 +17,7 @@ const fmtTime = ts => {
 
 const fmtDate = d => {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  return parseDateOnly(d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
 const EMPTY_FORM = { userId: '', date: '', clockIn: '', clockOut: '', notes: '' };

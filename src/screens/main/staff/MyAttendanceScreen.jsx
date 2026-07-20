@@ -6,6 +6,7 @@ import {
 import { useMyAttendance, useClockIn, useClockOut, useBreakStart, useBreakEnd } from '../../../services/api/posApi';
 import DateRangePicker from '../../../components/Ui/DateRangePicker';
 import colors from '../../../theme/colors';
+import { parseDateOnly } from '../../../utils/formatDate';
 
 const STATUS_COLOR = {
   Present: '#10B981', Late: '#EF4444', Absent: '#9CA3AF', 'Half Day': '#F59E0B',
@@ -13,7 +14,7 @@ const STATUS_COLOR = {
 };
 
 const fmtTime = ts => (ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
-const fmtDate = ts => (ts ? new Date(ts).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '—');
+const fmtDate = ts => (ts ? parseDateOnly(ts).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '—');
 const fmtBreakDuration = minutes => {
   if (!minutes) return '—';
   const h = Math.floor(minutes / 60);

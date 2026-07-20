@@ -13,6 +13,7 @@ import {
 import { usePermissions } from '../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../utils/permissions';
 import colors from '../../../theme/colors';
+import { parseDateOnly } from '../../../utils/formatDate';
 
 const screenWidth = Dimensions.get('window').width;
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316'];
@@ -224,7 +225,7 @@ function PersonalTrendChart() {
   return (
     <LineChart
       data={{
-        labels: trend.map((t, i) => (i % 2 === 0 ? new Date(t.date).toLocaleDateString([], { day: 'numeric' }) : '')),
+        labels: trend.map((t, i) => (i % 2 === 0 ? parseDateOnly(t.date).toLocaleDateString([], { day: 'numeric' }) : '')),
         datasets: [
           { data: trend.map(t => t.present), color: () => '#16a34a', strokeWidth: 2 },
           { data: trend.map(t => t.late), color: () => '#f59e0b', strokeWidth: 2 },
@@ -316,7 +317,7 @@ function RecentAttendanceWidget() {
         <View key={r.id} style={styles.listRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.listPrimary}>
-              {new Date(r.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+              {parseDateOnly(r.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
             </Text>
             <Text style={styles.listSub}>{fmtTime(r.clockIn)} → {fmtTime(r.clockOut)}</Text>
           </View>

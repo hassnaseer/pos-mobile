@@ -9,6 +9,7 @@ import { useStaffList } from '../../../../services/api/posApi';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import { parseDateOnly } from '../../../../utils/formatDate';
 
 const fmtTime = dateStr => {
   if (!dateStr) return '—';
@@ -16,7 +17,7 @@ const fmtTime = dateStr => {
 };
 
 const fmtDate = dateStr => {
-  return new Date(dateStr).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  return parseDateOnly(dateStr).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 // Show decimal hours (e.g. 9.5) as "9 hrs 30 mins".

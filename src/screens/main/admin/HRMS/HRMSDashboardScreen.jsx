@@ -8,6 +8,7 @@ import { useHRMSDashboard, useHRMSAttendanceTrend } from '../../../../services/a
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import { parseDateOnly } from '../../../../utils/formatDate';
 
 const MODULE_CARDS = [
   { route: 'HRMSAttendance',    label: 'Attendance',      perm: PERMISSIONS.MANAGE_ATTENDANCE,    color: '#3B82F6' },
@@ -56,7 +57,7 @@ const HRMSDashboardScreen = () => {
   ];
 
   const chartData = {
-    labels: trend.map(t => new Date(t.date).toLocaleDateString([], { day: 'numeric' })).filter((_, i) => i % 2 === 0 || i === trend.length - 1),
+    labels: trend.map(t => parseDateOnly(t.date).toLocaleDateString([], { day: 'numeric' })).filter((_, i) => i % 2 === 0 || i === trend.length - 1),
     datasets: [
       { data: trend.map(t => t.present ?? 0), color: () => '#16a34a', strokeWidth: 2 },
       { data: trend.map(t => t.late ?? 0), color: () => '#f59e0b', strokeWidth: 2 },

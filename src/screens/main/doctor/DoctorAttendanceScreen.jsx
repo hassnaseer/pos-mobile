@@ -5,8 +5,10 @@ import {
 } from 'react-native';
 import apiClient from '../../../services/api/globalApi';
 import colors from '../../../theme/colors';
+import { parseDateOnly } from '../../../utils/formatDate';
 
 const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '—';
+const fmtRecordDate = d => d ? parseDateOnly(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '—';
 const fmtTime = d => d ? new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
 
 const DoctorAttendanceScreen = () => {
@@ -75,7 +77,7 @@ const DoctorAttendanceScreen = () => {
         renderItem={({ item }) => (
           <View style={s.row}>
             <View>
-              <Text style={s.rowDate}>{fmt(item.date)}</Text>
+              <Text style={s.rowDate}>{fmtRecordDate(item.date)}</Text>
               <Text style={s.rowSub}>
                 In: {fmtTime(item.clockIn)}  ·  Out: {fmtTime(item.clockOut) ?? '—'}
               </Text>

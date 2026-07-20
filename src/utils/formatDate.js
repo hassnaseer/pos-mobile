@@ -1,3 +1,17 @@
+/**
+ * Parses a date-only value (e.g. "2026-07-20", or a UTC-midnight timestamp like
+ * "2026-07-20T00:00:00.000Z" that a date-only DB column can serialize into) into a Date
+ * constructed in the LOCAL timezone. `new Date("2026-07-20")` is parsed as UTC midnight,
+ * so any local-timezone formatting applied afterwards (toLocaleDateString, getMonth/getFullYear)
+ * shows the previous calendar day for a user in a timezone behind UTC. Splitting the string
+ * and using the local-time Date constructor avoids that shift entirely.
+ */
+export const parseDateOnly = (value) => {
+  if (!value) return new Date(NaN);
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export const formatDate = (timestamp) => {
   if (!timestamp) return "";
   
