@@ -6,8 +6,8 @@ const FONT_SIZES = { small: '12px', medium: '13px', large: '15px' };
 
 export function generateSlipHtml(s, period, businessName, symbol, template = {}, business = {}) {
   const fmtAmt = n => `${symbol}${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  // Commission is always PKR-denominated (per the commission structure's own dollar rate),
-  // regardless of the business's display currency — kept separate from fmtAmt on purpose.
+  // Historical Commission figures are always PKR-denominated (per the old, now-removed
+  // commission structure's own dollar rate), regardless of the business's display currency.
   const fmtPKR = n => `PKR ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const color = template.primaryColor || '#2563eb';
@@ -38,25 +38,6 @@ export function generateSlipHtml(s, period, businessName, symbol, template = {},
   const lineItemsHtml = lineItems.map(li => `
     <tr><td class="${li.cls}">${li.label}</td><td class="${li.cls}">${li.amount < 0 ? '-' : '+'}${li.label === 'Commission' ? fmtPKR(li.amount) : fmtAmt(Math.abs(li.amount))}</td></tr>
   `).join('');
-
-  const commissionBoxHtml = s.commissionEntries?.length ? `
-    <div class="section">
-      <div class="section-title">Commission Breakdown</div>
-      <table>
-        <thead><tr><th style="text-align:left;padding:6px 12px;font-size:11px;color:#6b7280;text-transform:uppercase">Date</th><th style="text-align:right;padding:6px 12px;font-size:11px;color:#6b7280;text-transform:uppercase">Sale ($)</th><th style="text-align:right;padding:6px 12px;font-size:11px;color:#6b7280;text-transform:uppercase">Rate</th><th style="text-align:right;padding:6px 12px;font-size:11px;color:#6b7280;text-transform:uppercase">Commission</th></tr></thead>
-        <tbody>
-          ${s.commissionEntries.map(e => `
-            <tr>
-              <td style="text-align:left">${new Date(e.entryDate).toLocaleDateString()}</td>
-              <td>$${Number(e.saleAmountUSD).toFixed(2)}</td>
-              <td>${e.matchedTierPercentSnapshot != null ? `${e.matchedTierPercentSnapshot}%` : '—'}</td>
-              <td class="pos">${fmtPKR(e.commissionAmountPKR)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  ` : '';
 
   const headerStyle = isModern
     ? `background:${color};color:#fff;padding:24px 32px;margin:-48px -48px 28px -48px;border-bottom:none`
@@ -115,7 +96,6 @@ export function generateSlipHtml(s, period, businessName, symbol, template = {},
     </table>
     <div class="net"><div class="lbl">Net Pay</div><div class="amt">${fmtAmt(s.netPay)}</div></div>
   </div>
-  ${commissionBoxHtml}
   <div class="footer">${template.footerText ?? ''}<br/>Generated on ${new Date().toLocaleDateString()}</div>
   </body></html>`;
 }

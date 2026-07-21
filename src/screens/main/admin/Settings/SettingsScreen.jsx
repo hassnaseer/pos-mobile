@@ -326,8 +326,6 @@ const CONFIG_ITEMS = [
   { label: 'Manufacturers',      desc: 'Manage device manufacturers and their models',        route: 'Manufacturers',    permission: PERMISSIONS.MANAGE_MANUFACTURERS },
   { label: 'Device Conditions',  desc: 'Manage condition options (New, Used, Refurbished…)', route: 'DeviceConditions', permission: PERMISSIONS.MANAGE_CONDITIONS },
   { label: 'Taxes',              desc: 'Configure tax rates and types for your business',     route: 'Taxes',            permission: PERMISSIONS.MANAGE_TAXES },
-  { label: 'Commission Structures', desc: 'Configure tiered dollar-bracket sales commission brackets', route: 'HRMSCommissionStructures', permission: PERMISSIONS.MANAGE_COMMISSIONS },
-  { label: 'Commission Entries', desc: 'Log sale amounts against employees to calculate their commission', route: 'HRMSCommissionEntries', permission: PERMISSIONS.MANAGE_COMMISSIONS },
   { label: 'Categories',         desc: 'Organise products with a nested category tree',       route: 'Categories',       permission: PERMISSIONS.MANAGE_CATEGORIES },
   { label: 'Roles & Permissions',desc: 'Define staff roles and their access levels',          route: 'Roles',            permission: PERMISSIONS.MANAGE_STAFF },
   { label: 'Departments',        desc: 'Manage departments and organisational structure',     route: 'Departments',      permission: PERMISSIONS.MANAGE_DEPARTMENTS },
@@ -342,6 +340,12 @@ const CONFIG_ITEMS = [
   { label: 'Marketplaces',       desc: 'Manage your sales channels — TikTok, Daraz, Amazon, eBay, etc.', route: 'ProjectMarketplaces', permission: PERMISSIONS.MANAGE_MARKETPLACES },
   { label: 'Supplier Bills',     desc: 'Track supplier invoices, record payments and view AP aging', route: 'SupplierBills', permission: PERMISSIONS.MANAGE_SUPPLIER_BILLS },
   { label: 'Snooker Session Types', desc: 'Define billing methods and rates for snooker sessions', route: 'SnookerSessionTypes', permission: PERMISSIONS.MANAGE_SNOOKER_TABLES },
+  { label: 'Gaming Ticket Rates', desc: 'Define duration presets and prices shown when creating a gaming ticket', route: 'GamingTicketRates', permission: PERMISSIONS.MANAGE_GAMING_TICKETS },
+  { label: 'Gaming Ticket Template', desc: 'Customize the printed gaming tickets given to customers', route: 'GamingTicketTemplate', permission: PERMISSIONS.MANAGE_GAMING_TICKETS },
+  { label: 'Property Options',   desc: 'Manage the Property Type, Purpose, and Furnishing dropdowns used when adding properties', route: 'PropertyOptions', permission: PERMISSIONS.MANAGE_RE_PROPERTIES },
+  { label: 'Rent Invoice Template', desc: 'Customize the printed rent invoices sent to tenants', route: 'RentInvoiceTemplate', permission: PERMISSIONS.MANAGE_RE_RENT },
+  { label: 'Email Accounts',     desc: 'Connect Gmail, Outlook, or SMTP accounts to send from your own address', route: 'EmailAccounts', permission: PERMISSIONS.MANAGE_EMAIL_ACCOUNTS },
+  { label: 'Email Templates',    desc: 'Create reusable email templates for leads and customers', route: 'EmailTemplates', permission: PERMISSIONS.MANAGE_EMAIL_ACCOUNTS },
   { label: 'Misc Charges',       desc: 'Extra fees added at checkout (delivery, service…)',  route: 'MiscCharges',      permission: PERMISSIONS.MANAGE_MISC },
 ];
 

@@ -17,6 +17,10 @@ const DASHBOARD_OPTIONS = [
   { value: 'restaurant', label: 'Restaurant' },
   { value: 'factory', label: 'Factory' },
   { value: 'pharmacy', label: 'Pharmacy' },
+  { value: 'finance', label: 'Finance & Projects' },
+  { value: 'snooker', label: 'Snooker Club' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'leads', label: 'Lead Management' },
 ];
 
 const SABusinessTypesScreen = ({ navigation }) => {

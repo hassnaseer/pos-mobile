@@ -4,6 +4,7 @@ import {
   Platform, StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useSupportChatUnreadCount } from '../../hooks/useSupportChatUnreadCount';
@@ -48,6 +49,12 @@ const ADMIN_MENU = [
   { id: 'dashboard',  title: 'Dashboard', route: 'Dashboard', icon: dashIcon, adminOnly: true,
     hideFor: [PERMISSIONS.ACCESS_MEDICAL, PERMISSIONS.ACCESS_RESTAURANT, PERMISSIONS.MANAGE_ATTENDANCE] },
   { id: 'my-biz',     title: 'My Businesses',  route: 'MyBusinesses', icon: suppliersIcon, permission: PERMISSIONS.MANAGE_BUSINESSES },
+
+  // ── Doctor portal (role: doctor) — mirrors the web doctor portal exactly ──────
+  { id: 'doctor-dashboard',    title: 'Dashboard',    route: 'DoctorDashboard',    icon: dashIcon,      doctorOnly: true },
+  { id: 'doctor-appointments', title: 'Appointments', route: 'DoctorAppointments', icon: ordersIcon,    doctorOnly: true },
+  { id: 'doctor-patients',     title: 'My Patients',  route: 'DoctorPatients',     icon: customersIcon, doctorOnly: true },
+  { id: 'doctor-attendance',   title: 'Attendance',   route: 'DoctorAttendance',   icon: reportsIcon,   doctorOnly: true },
   { id: 'pos',        title: 'POS',            route: 'POS',          icon: posIcon,       permission: PERMISSIONS.POS_SALES },
 
   // ── Inventory (expandable group) ──────────────────────────────────────────────
@@ -71,6 +78,8 @@ const ADMIN_MENU = [
   // ── Reports & Logs ────────────────────────────────────────────────────────────
   { id: 'reports',       title: 'Reports',       route: 'Reports',      icon: reportsIcon, canShow: p => p.canAny(PERMISSIONS.VIEW_REPORTS, PERMISSIONS.VIEW_FINANCE_REPORTS) },
   { id: 'multi-branch-view', title: 'Multi-Branch View', route: 'MultiBranchView', icon: reportsIcon, permission: PERMISSIONS.ACCESS_MULTI_BRANCH_VIEW },
+  { id: 'advanced-analytics', title: 'Advanced Analytics', route: 'AdvancedAnalytics', icon: reportsIcon, permission: PERMISSIONS.ACCESS_ADVANCED_ANALYTICS, adminOnly: true },
+  { id: 'bulk-operations', title: 'Bulk Operations', route: 'BulkOperations', icon: reportsIcon, permission: PERMISSIONS.ACCESS_BULK_OPERATIONS, adminOnly: true },
   { id: 'activity-logs', title: 'Activity Logs', route: 'ActivityLogs', icon: reportsIcon, permission: PERMISSIONS.VIEW_ACTIVITY_LOGS },
 
   // ── Integrations ─────────────────────────────────────────────────────────────
@@ -181,18 +190,33 @@ const ADMIN_MENU = [
   // ── Specialty: Gaming Tickets — prepaid time-based session tickets ───────────
   { id: 'gaming-tickets', title: 'Gaming Tickets', route: 'GamingTickets', icon: ticketsIcon, permission: PERMISSIONS.MANAGE_GAMING_TICKETS, adminOnly: true },
 
+  // ── Lead Management (standalone CRM business — leads without the real-estate module) ──
+  {
+    id: 'lead-management', title: 'Lead Management', icon: customersIcon, isGroup: true,
+    canShow: p => p.can(PERMISSIONS.MANAGE_RE_LEADS) && !p.can(PERMISSIONS.MANAGE_RE_PROPERTIES),
+    subItems: [
+      { id: 'leads-dashboard', title: 'Dashboard',  route: 'LeadsDashboard', icon: dashIcon,      permission: PERMISSIONS.MANAGE_RE_LEADS, adminOnly: true },
+      { id: 'leads-crm',       title: 'Leads / CRM', route: 'RELeads',        icon: customersIcon, permission: PERMISSIONS.MANAGE_RE_LEADS, adminOnly: true },
+      { id: 'leads-inbox',     title: 'Inbox',       route: 'EmailInbox',     icon: chatIcon,      permission: PERMISSIONS.MANAGE_RE_LEADS, adminOnly: true },
+    ],
+  },
+
   // ── Real Estate (expandable group) — 7 permission-gated sub-modules ──────────
   {
     id: 'real-estate', title: 'Real Estate', icon: suppliersIcon, isGroup: true,
-    canShow: p => p.hasAnyRealEstate(),
+    // Only for actual real-estate businesses (have the Properties module); a leads-only
+    // business shows the neutral "Lead Management" group above instead.
+    canShow: p => p.hasAnyRealEstate() && p.can(PERMISSIONS.MANAGE_RE_PROPERTIES),
     subItems: [
-      { id: 're-properties',   title: 'Properties',       route: 'REProperties',    icon: suppliersIcon, permission: PERMISSIONS.MANAGE_RE_PROPERTIES, adminOnly: true },
-      { id: 're-leads',        title: 'Leads',             route: 'RELeads',         icon: customersIcon, permission: PERMISSIONS.MANAGE_RE_LEADS,      adminOnly: true },
-      { id: 're-deals',        title: 'Deals',             route: 'REDeals',         icon: rolesIcon,     permission: PERMISSIONS.MANAGE_RE_DEALS,      adminOnly: true },
-      { id: 're-leases',       title: 'Leases',            route: 'RELeases',        icon: ordersIcon,    permission: PERMISSIONS.MANAGE_RE_LEASES,     adminOnly: true },
-      { id: 're-rent',         title: 'Rent Collection',   route: 'RERentInvoices',  icon: reportsIcon,   permission: PERMISSIONS.MANAGE_RE_RENT,       adminOnly: true },
-      { id: 're-maintenance',  title: 'Maintenance',       route: 'REMaintenance',   icon: ticketsIcon,   permission: PERMISSIONS.MANAGE_RE_MAINTENANCE, adminOnly: true },
-      { id: 're-viewings',     title: 'Viewings',          route: 'REViewings',      icon: dashIcon,      permission: PERMISSIONS.MANAGE_RE_VIEWINGS,   adminOnly: true },
+      { id: 're-dashboard',    title: 'Dashboard',            route: 'REDashboard',     icon: dashIcon,      permission: PERMISSIONS.MANAGE_RE_PROPERTIES, adminOnly: true },
+      { id: 're-properties',   title: 'Properties & Units',   route: 'REProperties',    icon: suppliersIcon, permission: PERMISSIONS.MANAGE_RE_PROPERTIES, adminOnly: true },
+      { id: 're-leads',        title: 'Leads / CRM',           route: 'RELeads',         icon: customersIcon, permission: PERMISSIONS.MANAGE_RE_LEADS,      adminOnly: true },
+      { id: 're-inbox',        title: 'Inbox',                 route: 'EmailInbox',      icon: chatIcon,      permission: PERMISSIONS.MANAGE_RE_LEADS,      adminOnly: true },
+      { id: 're-deals',        title: 'Deals & Pipeline',      route: 'REDeals',         icon: rolesIcon,     permission: PERMISSIONS.MANAGE_RE_DEALS,      adminOnly: true },
+      { id: 're-leases',       title: 'Leases',                route: 'RELeases',        icon: ordersIcon,    permission: PERMISSIONS.MANAGE_RE_LEASES,     adminOnly: true },
+      { id: 're-rent',         title: 'Rent Collection',       route: 'RERentInvoices',  icon: reportsIcon,   permission: PERMISSIONS.MANAGE_RE_RENT,       adminOnly: true },
+      { id: 're-maintenance',  title: 'Maintenance Requests',  route: 'REMaintenance',   icon: ticketsIcon,   permission: PERMISSIONS.MANAGE_RE_MAINTENANCE, adminOnly: true },
+      { id: 're-viewings',     title: 'Property Viewings',     route: 'REViewings',      icon: dashIcon,      permission: PERMISSIONS.MANAGE_RE_VIEWINGS,   adminOnly: true },
     ],
   },
 
@@ -256,17 +280,29 @@ const SUPER_ADMIN_MENU = [
 
 const SUPPORT_STAFF_MENU = SUPER_ADMIN_MENU;
 
+// Client portal (role: project-client) — a minimal, fixed menu (matches web client layout).
+const CLIENT_MENU = [
+  { id: 'client-dashboard', title: 'Dashboard',   route: 'ClientDashboard', icon: dashIcon },
+  { id: 'client-projects',  title: 'My Projects',  route: 'ClientProjects',  icon: suppliersIcon },
+  { id: 'client-invoices',  title: 'Invoices',     route: 'ClientInvoices',  icon: reportsIcon },
+];
+
 const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
 const Sidebar = ({ onClose }) => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { userRole, user } = useAuth();
   const perms = usePermissions();
   const [activeRoute, setActiveRoute] = useState(null);
-  const [expandedGroups, setExpandedGroups] = useState({});
   const supportUnread = useSupportChatUnreadCount(user);
 
+  const isDoctorRole = userRole === ROLES.DOCTOR;
+
   const filterItem = (item, isStaff, isAdmin, permCodes, bizPermCodes) => {
+    // A doctor sees ONLY the doctor-portal items; everyone else never sees them.
+    if (isDoctorRole) return !!item.doctorOnly;
+    if (item.doctorOnly) return false;
     if (isStaff && item.adminOnly)   return false;
     if (isAdmin && item.staffOnly)   return false;
     if (item.canShow && !item.canShow(perms)) return false;
@@ -281,6 +317,7 @@ const Sidebar = ({ onClose }) => {
     // account isn't restricted by sa_* permission codes). Support-staff share the same
     // item list but only see what their granted sa_* permission codes allow.
     if (userRole === ROLES.SUPER_ADMIN) return SUPER_ADMIN_MENU;
+    if (userRole === ROLES.PROJECT_CLIENT) return CLIENT_MENU;
     if (userRole === ROLES.SUPPORT_STAFF) {
       return SUPPORT_STAFF_MENU.filter(item => filterItem(item, false, false, user?.permissionCodes ?? [], undefined));
     }
@@ -312,13 +349,10 @@ const Sidebar = ({ onClose }) => {
     onClose?.();
   };
 
-  const toggleGroup = id =>
-    setExpandedGroups(prev => ({ ...prev, [id]: !prev[id] }));
-
   const businessInitial = (user?.businessName ?? user?.name ?? 'B')[0].toUpperCase();
 
   return (
-    <View style={[styles.container, { paddingTop: STATUS_BAR_HEIGHT }]}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, STATUS_BAR_HEIGHT) }]}>
       {/* ── Business header ── */}
       <View style={styles.bizHeader}>
         <View style={styles.bizLogoWrap}>
@@ -344,30 +378,22 @@ const Sidebar = ({ onClose }) => {
       >
         {menuItems.map(item => {
           if (item.isGroup) {
-            const expanded = !!expandedGroups[item.id];
-            const anySubActive = item.subItems.some(s => s.route === activeRoute);
+            // Flat section (matches web): a non-interactive header label with the
+            // items always visible beneath it — no expand/collapse.
             return (
               <View key={item.id}>
-                <TouchableOpacity
-                  style={[styles.menuItem, anySubActive && styles.menuItemActive]}
-                  onPress={() => toggleGroup(item.id)}
-                  activeOpacity={0.7}
-                >
-                  <Image source={item.icon} style={[styles.menuIcon, { tintColor: anySubActive ? colors.primary : '#666' }]} />
-                  <Text style={[styles.menuText, anySubActive && styles.menuTextActive]}>{item.title}</Text>
-                  <Text style={[styles.chevron, expanded && styles.chevronOpen]}>›</Text>
-                </TouchableOpacity>
-                {expanded && item.subItems.map(sub => {
+                <Text style={styles.sectionLabel}>{item.title}</Text>
+                {item.subItems.map(sub => {
                   const subActive = activeRoute === sub.route;
                   return (
                     <TouchableOpacity
                       key={sub.id}
-                      style={[styles.menuItem, styles.subItem, subActive && styles.menuItemActive]}
+                      style={[styles.menuItem, subActive && styles.menuItemActive]}
                       onPress={() => handlePress(sub.route)}
                       activeOpacity={0.7}
                     >
-                      <Image source={sub.icon} style={[styles.menuIcon, { tintColor: subActive ? colors.primary : '#999' }]} />
-                      <Text style={[styles.menuText, styles.subItemText, subActive && styles.menuTextActive]}>{sub.title}</Text>
+                      <Image source={sub.icon} style={[styles.menuIcon, { tintColor: subActive ? colors.primary : '#666' }]} />
+                      <Text style={[styles.menuText, subActive && styles.menuTextActive]}>{sub.title}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -414,6 +440,7 @@ const styles = StyleSheet.create({
 
   menuScroll: { flex: 1 },
   menuContent: { paddingVertical: 8, paddingBottom: 20 },
+  sectionLabel: { fontSize: 11, fontFamily: 'Outfit-SemiBold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 14, marginBottom: 4, marginHorizontal: 22 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, marginHorizontal: 10, marginVertical: 1, paddingVertical: 12, borderRadius: 8, gap: 12 },
   menuItemActive: { backgroundColor: colors.primary + '15' },
   menuBadge: { backgroundColor: colors.warning, borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },

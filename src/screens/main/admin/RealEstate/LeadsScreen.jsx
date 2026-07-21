@@ -15,8 +15,10 @@ import colors from '../../../../theme/colors';
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 const SOURCE_OPTIONS = ['Walk-in', 'Website', 'Referral', 'Phone', 'Social Media', 'Portal', 'Other'];
 const INTEREST_OPTIONS = [{ id: 'buy', name: 'Buy' }, { id: 'rent', name: 'Rent' }];
-const STAGES = ['New', 'Contacted', 'Qualified', 'Viewing Scheduled', 'Negotiating', 'Converted', 'Lost'];
-const STAGE_FILTERS = ['All', ...STAGES];
+// Real-estate businesses get the property-oriented pipeline; a generic lead-management
+// business (no real-estate module) gets a neutral sales pipeline.
+const RE_STAGES = ['New', 'Contacted', 'Qualified', 'Viewing Scheduled', 'Negotiating', 'Converted', 'Lost'];
+const GENERIC_STAGES = ['New', 'Contacted', 'Qualified', 'Negotiating', 'Converted', 'Lost'];
 const STAGE_COLORS = {
   New: '#3b82f6', Contacted: '#8b5cf6', Qualified: '#0ea5e9', 'Viewing Scheduled': '#f59e0b',
   Negotiating: '#f97316', Converted: '#22c55e', Lost: '#ef4444',
@@ -30,7 +32,7 @@ const EMPTY_FORM = {
 };
 
 // ─── Create Lead Modal ──────────────────────────────────────────────────────────
-const CreateLeadModal = ({ visible, onClose, onSave, isSaving, agents, bizCurrency }) => {
+const CreateLeadModal = ({ visible, onClose, onSave, isSaving, agents, bizCurrency, isRealEstate }) => {
   const [form, setForm] = useState(EMPTY_FORM);
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
 
@@ -39,16 +41,19 @@ const CreateLeadModal = ({ visible, onClose, onSave, isSaving, agents, bizCurren
   const handleSubmit = () => {
     if (!form.name.trim()) { Alert.alert('Required', 'Lead name is required'); return; }
     if (!form.source) { Alert.alert('Required', 'Please select a source'); return; }
-    if (!form.interestType) { Alert.alert('Required', 'Please select buy or rent'); return; }
+    if (isRealEstate && !form.interestType) { Alert.alert('Required', 'Please select buy or rent'); return; }
     onSave({
       name: form.name.trim(),
       phone: form.phone.trim() || undefined,
       email: form.email.trim() || undefined,
       source: form.source,
-      interestType: form.interestType,
-      budgetMin: form.budgetMin ? parseFloat(form.budgetMin) : undefined,
-      budgetMax: form.budgetMax ? parseFloat(form.budgetMax) : undefined,
-      currency: form.currency || bizCurrency,
+      // Real-estate-only fields — omitted for a generic lead-management business.
+      ...(isRealEstate ? {
+        interestType: form.interestType,
+        budgetMin: form.budgetMin ? parseFloat(form.budgetMin) : undefined,
+        budgetMax: form.budgetMax ? parseFloat(form.budgetMax) : undefined,
+        currency: form.currency || bizCurrency,
+      } : {}),
       assignedAgentId: form.assignedAgentId || undefined,
       notes: form.notes.trim() || undefined,
     });
@@ -77,20 +82,24 @@ const CreateLeadModal = ({ visible, onClose, onSave, isSaving, agents, bizCurren
               <TextInput style={styles.input} value={form.email} onChangeText={set('email')} placeholder="lead@example.com" placeholderTextColor="#999" keyboardType="email-address" autoCapitalize="none" />
             </View>
 
-            <Text style={styles.formSection}>Interest</Text>
+            <Text style={styles.formSection}>{isRealEstate ? 'Interest' : 'Details'}</Text>
             <InlinePicker label="Source *" options={SOURCE_OPTIONS.map(s => ({ id: s, name: s }))} value={form.source} onSelect={set('source')} placeholder="Select source" allowNone={false} />
-            <InlinePicker label="Interested In *" options={INTEREST_OPTIONS} value={form.interestType} onSelect={set('interestType')} placeholder="Buy or Rent" allowNone={false} />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>Budget Min</Text>
-                <TextInput style={styles.input} value={form.budgetMin} onChangeText={set('budgetMin')} placeholder="0" placeholderTextColor="#999" keyboardType="decimal-pad" />
-              </View>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>Budget Max</Text>
-                <TextInput style={styles.input} value={form.budgetMax} onChangeText={set('budgetMax')} placeholder="0" placeholderTextColor="#999" keyboardType="decimal-pad" />
-              </View>
-            </View>
-            <InlinePicker label="Currency" options={CURRENCY_OPTIONS.map(c => ({ id: c, name: c }))} value={form.currency || bizCurrency} onSelect={set('currency')} allowNone={false} />
+            {isRealEstate && (
+              <>
+                <InlinePicker label="Interested In *" options={INTEREST_OPTIONS} value={form.interestType} onSelect={set('interestType')} placeholder="Buy or Rent" allowNone={false} />
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Budget Min</Text>
+                    <TextInput style={styles.input} value={form.budgetMin} onChangeText={set('budgetMin')} placeholder="0" placeholderTextColor="#999" keyboardType="decimal-pad" />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Budget Max</Text>
+                    <TextInput style={styles.input} value={form.budgetMax} onChangeText={set('budgetMax')} placeholder="0" placeholderTextColor="#999" keyboardType="decimal-pad" />
+                  </View>
+                </View>
+                <InlinePicker label="Currency" options={CURRENCY_OPTIONS.map(c => ({ id: c, name: c }))} value={form.currency || bizCurrency} onSelect={set('currency')} allowNone={false} />
+              </>
+            )}
 
             <Text style={styles.formSection}>Assignment</Text>
             <InlinePicker label="Assign To Agent" options={agents.map(a => ({ id: a.id, name: a.name ?? a.fullName }))} value={form.assignedAgentId} onSelect={set('assignedAgentId')} placeholder="Select agent" />
@@ -113,12 +122,12 @@ const CreateLeadModal = ({ visible, onClose, onSave, isSaving, agents, bizCurren
 };
 
 // ─── Stage picker bottom sheet ──────────────────────────────────────────────────
-const StageModal = ({ visible, lead, onClose, onUpdate, isUpdating }) => (
+const StageModal = ({ visible, lead, onClose, onUpdate, isUpdating, stages }) => (
   <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
     <TouchableOpacity style={styles.pickerBackdrop} activeOpacity={1} onPress={onClose}>
       <View style={styles.pickerSheet}>
         <Text style={styles.pickerHeading}>Update Stage</Text>
-        {STAGES.map(s => (
+        {stages.map(s => (
           <TouchableOpacity
             key={s}
             style={[styles.pickerOption, lead?.stage === s && { backgroundColor: '#f0f0f0' }]}
@@ -137,6 +146,9 @@ const StageModal = ({ visible, lead, onClose, onUpdate, isUpdating }) => (
 const LeadsScreen = () => {
   const perms = usePermissions();
   const canManage = perms.can(PERMISSIONS.MANAGE_RE_LEADS);
+  const isRealEstate = perms.can(PERMISSIONS.MANAGE_RE_PROPERTIES);
+  const STAGES = isRealEstate ? RE_STAGES : GENERIC_STAGES;
+  const STAGE_FILTERS = ['All', ...STAGES];
   const { currency: bizCurrency } = useCurrency();
 
   const [search, setSearch] = useState('');
@@ -190,7 +202,7 @@ const LeadsScreen = () => {
       <View style={styles.topBar}>
         <View style={{ flex: 1 }}>
           <Text style={styles.heading}>Leads</Text>
-          <Text style={styles.subHeading}>Real estate CRM pipeline</Text>
+          <Text style={styles.subHeading}>{isRealEstate ? 'Real estate CRM pipeline' : 'Sales CRM pipeline'}</Text>
         </View>
         {canManage && (
           <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreate(true)}>
@@ -228,8 +240,8 @@ const LeadsScreen = () => {
                   <Text style={[styles.badgeText, { color: sc }]}>{item.stage}</Text>
                 </View>
               </View>
-              <Text style={styles.metaText}>{item.source} · {item.interestType === 'rent' ? 'Rent' : 'Buy'}</Text>
-              {(item.budgetMin || item.budgetMax) ? (
+              <Text style={styles.metaText}>{item.source}{isRealEstate ? ` · ${item.interestType === 'rent' ? 'Rent' : 'Buy'}` : ''}</Text>
+              {isRealEstate && (item.budgetMin || item.budgetMax) ? (
                 <Text style={styles.metaText}>Budget: {fmtCur(item.budgetMin ?? 0, item.currency ?? bizCurrency)} – {fmtCur(item.budgetMax ?? 0, item.currency ?? bizCurrency)}</Text>
               ) : null}
               {item.assignedAgent?.name ? <Text style={styles.metaText}>Agent: {item.assignedAgent.name}</Text> : null}
@@ -258,6 +270,7 @@ const LeadsScreen = () => {
         isSaving={creating}
         agents={agents}
         bizCurrency={bizCurrency}
+        isRealEstate={isRealEstate}
       />
       <StageModal
         visible={!!stageTarget}
@@ -265,6 +278,7 @@ const LeadsScreen = () => {
         onClose={() => setStageTarget(null)}
         onUpdate={handleStageUpdate}
         isUpdating={updating}
+        stages={STAGES}
       />
     </View>
   );
@@ -278,7 +292,7 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9 },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
 
-  filterRow: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#f0f0f0', paddingVertical: 10 },
+  filterRow: { flexGrow: 0, flexShrink: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#f0f0f0', paddingVertical: 10 },
   filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: '#f3f4f6' },
   filterChipActive: { backgroundColor: colors.primary },
   filterChipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#6b7280' },

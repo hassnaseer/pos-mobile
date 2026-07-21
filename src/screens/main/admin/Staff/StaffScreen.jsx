@@ -7,7 +7,6 @@ import {
   useStaffInfinite, useCreateStaff, useUpdateStaff, useDeleteStaff,
   useCustomRoles, useDepartments, useCreateDepartment, useStaffList,
   useHRMSStaffProfile, useUpdateHRMSStaffProfile, flattenPages,
-  useCommissionStructures,
 } from '../../../../services/api/posApi';
 import { useAuth } from '../../../../context/AuthContext';
 import { usePermissions } from '../../../../hooks/usePermissions';
@@ -33,7 +32,7 @@ const EMPTY_HRMS_FORM = {
   emergencyContact: '',
   shiftStartTime: '', shiftEndTime: '', reportsToId: '', employeeType: '', gender: '',
   usesCompanyTransport: false, transportPickupNote: '',
-  commissionStructureOverrideId: '', workingDaysPerWeek: '6',
+  workingDaysPerWeek: '6',
 };
 
 const WORKING_DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map(n => ({ id: String(n), name: `${n} day${n === 1 ? '' : 's'}/week` }));
@@ -58,9 +57,6 @@ const StaffScreen = () => {
   const canManage = perms.can(PERMISSIONS.MANAGE_STAFF);
   const isMedicalBusiness = perms.can(PERMISSIONS.ACCESS_MEDICAL);
   const ownerHasDeliveries = perms.can(PERMISSIONS.HANDLE_DELIVERIES);
-  // canManageCommissions mirrors web's "owner sees everything" gate — an empty permissionCodes
-  // array means an unrestricted owner account, not "no access".
-  const canManageCommissions = !user?.permissionCodes?.length || user.permissionCodes.includes(PERMISSIONS.MANAGE_COMMISSIONS);
   const canManageTransport = !user?.permissionCodes?.length || user.permissionCodes.includes(PERMISSIONS.MANAGE_TRANSPORT);
 
   const [modal, setModal]   = useState(null); // null | 'add' | 'edit'
@@ -83,12 +79,6 @@ const StaffScreen = () => {
   const { mutateAsync: createDepartment }            = useCreateDepartment();
   const { data: hrmsProfile, isLoading: hrmsLoading } = useHRMSStaffProfile(hrmsStaff?.id);
   const { mutateAsync: saveHrmsProfile, isPending: savingHrms } = useUpdateHRMSStaffProfile();
-  const { data: rawCommissionStructures = [] } = useCommissionStructures();
-  const commissionStructures = Array.isArray(rawCommissionStructures) ? rawCommissionStructures : (rawCommissionStructures?.data ?? []);
-  const commissionOverrideOptions = [
-    { id: '', name: 'Use default (by Employee Type)' },
-    ...commissionStructures.filter(s => s.isActive).map(s => ({ id: s.id, name: `${s.name} (${s.employeeType})` })),
-  ];
 
   const members     = flattenPages(staffData);
   const roles       = Array.isArray(rawRoles) ? rawRoles : (rawRoles?.data ?? []);
@@ -124,7 +114,6 @@ const StaffScreen = () => {
       gender:            hrmsProfile.gender ?? '',
       usesCompanyTransport: hrmsProfile.usesCompanyTransport ?? false,
       transportPickupNote:  hrmsProfile.transportPickupNote ?? '',
-      commissionStructureOverrideId: hrmsProfile.commissionStructureOverrideId ?? '',
       workingDaysPerWeek: hrmsProfile.workingDaysPerWeek != null ? String(hrmsProfile.workingDaysPerWeek) : '6',
     });
   }, [hrmsProfile]);
@@ -150,9 +139,6 @@ const StaffScreen = () => {
         ...(canManageTransport ? {
           usesCompanyTransport: hrmsForm.usesCompanyTransport,
           transportPickupNote:  hrmsForm.transportPickupNote || null,
-        } : {}),
-        ...(canManageCommissions ? {
-          commissionStructureOverrideId: hrmsForm.commissionStructureOverrideId || null,
         } : {}),
       });
       closeHrms();
@@ -579,38 +565,6 @@ const StaffScreen = () => {
                 />
                 <Text style={styles.statusHint}>Used with shift start/end time to compute this employee's daily pay rate</Text>
 
-                {canManageCommissions && (
-                  <>
-                    <Text style={styles.section}>Commission Structure Override</Text>
-                    <View style={styles.field}>
-                      <InlinePicker
-                        value={hrmsForm.commissionStructureOverrideId}
-                        options={commissionOverrideOptions}
-                        onSelect={setHrms('commissionStructureOverrideId')}
-                        allowNone={false}
-                      />
-                      {hrmsProfile?.commissionStructure ? (
-                        <View style={styles.structureBox}>
-                          <Text style={styles.structureName}>Effective: {hrmsProfile.commissionStructure.name}</Text>
-                          <Text style={styles.structureSub}>
-                            Dollar rate: {hrmsProfile.commissionStructure.dollarRate}
-                            {!hrmsForm.commissionStructureOverrideId && ' · default for this employee type'}
-                          </Text>
-                        </View>
-                      ) : (
-                        <View style={styles.structureBox}>
-                          <Text style={styles.structureEmpty}>
-                            No commission structure configured for "{hrmsForm.employeeType || 'this employee type'}".
-                          </Text>
-                        </View>
-                      )}
-                      <Text style={styles.statusHint}>
-                        Defaults to the structure matching this employee's Employee Type — pick a specific one to override it. Manage brackets under Settings; log sales under Commission Entries.
-                      </Text>
-                    </View>
-                  </>
-                )}
-
                 <Text style={styles.section}>Emergency Contact</Text>
                 <View style={styles.field}>
                   <TextInput style={styles.input} value={hrmsForm.emergencyContact} onChangeText={setHrms('emergencyContact')} placeholder="Name, relation, phone number" placeholderTextColor="#999" multiline />
@@ -682,10 +636,6 @@ const styles = StyleSheet.create({
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   statusToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f9fafb', borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb' },
   statusHint: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 2 },
-  structureBox: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 },
-  structureName: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#111827' },
-  structureSub: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#6b7280', marginTop: 2 },
-  structureEmpty: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#6b7280' },
   statusRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statusLabel: { fontSize: 13, fontFamily: 'Outfit-SemiBold' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 16, paddingBottom: 20 },

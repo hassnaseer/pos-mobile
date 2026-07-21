@@ -7,7 +7,8 @@ import apiClient from '../../../services/api/globalApi';
 import DatePicker from '../../../components/Ui/DatePicker';
 import colors from '../../../theme/colors';
 
-const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '—';
+// Parse plain 'YYYY-MM-DD' as LOCAL (new Date('YYYY-MM-DD') is UTC → wrong weekday/day in -UTC zones).
+const fmtDate = d => d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '—';
 const fmtTime = t => t ? t.slice(0, 5) : '—';
 
 const STATUSES = ['All', 'Scheduled', 'Completed', 'Cancelled', 'No-Show'];
@@ -22,20 +23,22 @@ const DoctorAppointmentsScreen = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('All');
-  const [date, setDate] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (date) params.set('date', date);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
       if (status !== 'All') params.set('status', status);
       const res = await apiClient.get(`/doctor/appointments?${params}`);
       setAppointments(res?.data ?? res ?? []);
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  }, [date, status]);
+  }, [from, to, status]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -47,7 +50,15 @@ const DoctorAppointmentsScreen = () => {
     <View style={s.root}>
       <View style={s.topBar}>
         <TextInput style={s.search} placeholder="Search patient..." placeholderTextColor="#999" value={search} onChangeText={setSearch} />
-        <DatePicker value={date} onDateChange={setDate} placeholder="Filter by date" style={{ flex: 1, marginBottom: 0 }} />
+      </View>
+      <View style={s.dateRow}>
+        <DatePicker value={from} onDateChange={setFrom} placeholder="From" style={{ flex: 1, marginBottom: 0 }} />
+        <DatePicker value={to} onDateChange={setTo} placeholder="To" style={{ flex: 1, marginBottom: 0 }} />
+        {(from || to) ? (
+          <TouchableOpacity onPress={() => { setFrom(''); setTo(''); }} style={s.clearBtn}>
+            <Text style={s.clearText}>Clear</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipRow} contentContainerStyle={s.chipContent}>
@@ -96,7 +107,10 @@ import { ScrollView } from 'react-native';
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
-  topBar: { flexDirection: 'row', gap: 8, padding: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
+  topBar: { flexDirection: 'row', gap: 8, padding: 12, paddingBottom: 8, backgroundColor: '#fff' },
+  dateRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 12, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
+  clearBtn: { paddingHorizontal: 8, paddingVertical: 8 },
+  clearText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary },
   search: { flex: 1, borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, fontFamily: 'Outfit-Regular' },
   dateInput: { width: 120, borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, fontFamily: 'Outfit-Regular' },
   chipRow: { maxHeight: 46, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },

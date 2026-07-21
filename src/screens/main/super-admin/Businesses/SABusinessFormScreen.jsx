@@ -65,6 +65,15 @@ const SABusinessFormScreen = ({ route, navigation }) => {
     if (!isEdit && (!form.ownerName.trim() || !form.email.trim())) {
       Alert.alert('Error', 'Owner name and email are required'); return;
     }
+    if (!isEdit && form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      Alert.alert('Error', 'Please enter a valid email address'); return;
+    }
+    // Phone is required on create; on edit, validate only if provided.
+    const phoneDigits = (form.phone || '').replace(/\D/g, '');
+    if (!isEdit && !form.phone.trim()) { Alert.alert('Error', 'Phone number is required'); return; }
+    if (form.phone.trim() && phoneDigits.length < 7) {
+      Alert.alert('Error', 'Please enter a valid phone number'); return;
+    }
     setSaving(true);
     try {
       if (isEdit) {

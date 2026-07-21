@@ -1061,6 +1061,204 @@ export const useUpdatePayslipTemplate = () => {
   });
 };
 
+// ─── Rent Invoice Template (Real Estate) ───────────────────────────────────────
+export const useRentInvoiceTemplate = () =>
+  useQuery({
+    queryKey: ['rent-invoice-template'],
+    queryFn: async () => {
+      const r = await apiClient.get('/admin/real-estate/rent-invoice-template');
+      return r?.data?.config ?? r?.config ?? {};
+    },
+    staleTime: 60_000,
+  });
+
+export const useUpdateRentInvoiceTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: cfg => apiClient.put('/admin/real-estate/rent-invoice-template', cfg),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rent-invoice-template'] }),
+  });
+};
+
+// ─── Gaming Ticket Template ─────────────────────────────────────────────────────
+export const useGamingTicketTemplate = () =>
+  useQuery({
+    queryKey: ['gaming-ticket-template'],
+    queryFn: async () => {
+      const r = await apiClient.get('/admin/gaming-ticket-template');
+      return r?.data?.config ?? r?.config ?? {};
+    },
+    staleTime: 60_000,
+  });
+
+export const useUpdateGamingTicketTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: cfg => apiClient.put('/admin/gaming-ticket-template', cfg),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['gaming-ticket-template'] }),
+  });
+};
+
+// ─── Email Templates ────────────────────────────────────────────────────────────
+export const useEmailTemplates = () =>
+  useQuery({
+    queryKey: ['email-templates'],
+    queryFn: async () => {
+      const r = await apiClient.get('/admin/email-templates');
+      return r?.data ?? r ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useCreateEmailTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/email-templates', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['email-templates'] }),
+    meta: { successMessage: 'Template created' },
+  });
+};
+
+export const useUpdateEmailTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/email-templates/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['email-templates'] }),
+    meta: { successMessage: 'Template updated' },
+  });
+};
+
+export const useDeleteEmailTemplate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/email-templates/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['email-templates'] }),
+    meta: { successMessage: 'Template deleted' },
+  });
+};
+
+// ─── Email Accounts ─────────────────────────────────────────────────────────────
+export const useEmailAccounts = () =>
+  useQuery({
+    queryKey: ['email-accounts'],
+    queryFn: async () => {
+      const r = await apiClient.get('/admin/email-accounts');
+      return r?.data ?? r ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useConnectSmtpAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/email-accounts/smtp', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['email-accounts'] }),
+    meta: { successMessage: 'Email account connected' },
+  });
+};
+
+export const useDeleteEmailAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/email-accounts/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['email-accounts'] }),
+    meta: { successMessage: 'Account removed' },
+  });
+};
+
+export const useSetDefaultEmailAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.post(`/admin/email-accounts/${id}/set-default`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['email-accounts'] }),
+    meta: { successMessage: 'Default account set' },
+  });
+};
+
+// ─── Email Inbox (threads / messages / reply) ────────────────────────────────────
+export const useEmailThreads = () =>
+  useQuery({
+    queryKey: ['email-threads'],
+    queryFn: async () => {
+      const r = await apiClient.get('/admin/email-inbox/threads');
+      return r?.data ?? r ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+export const useThreadMessages = threadKey =>
+  useQuery({
+    queryKey: ['email-thread', threadKey],
+    enabled: !!threadKey,
+    queryFn: async () => {
+      const r = await apiClient.get(`/admin/email-inbox/threads/${encodeURIComponent(threadKey)}`);
+      return r?.data ?? r ?? [];
+    },
+  });
+
+export const useSendThreadReply = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ threadKey, ...data }) =>
+      apiClient.post(`/admin/email-inbox/threads/${encodeURIComponent(threadKey)}/reply`, data),
+    onSuccess: (_r, { threadKey }) => {
+      qc.invalidateQueries({ queryKey: ['email-thread', threadKey] });
+      qc.invalidateQueries({ queryKey: ['email-threads'] });
+    },
+    meta: { successMessage: 'Reply sent' },
+  });
+};
+
+// ─── Client Portal (role: project-client) ────────────────────────────────────────
+export const useClientDashboard = () =>
+  useQuery({
+    queryKey: ['client-dashboard'],
+    queryFn: async () => {
+      const r = await apiClient.get('/client/dashboard');
+      return r?.data ?? r ?? null;
+    },
+    staleTime: 30_000,
+  });
+
+export const useClientProjects = () =>
+  useQuery({
+    queryKey: ['client-projects'],
+    queryFn: async () => {
+      const r = await apiClient.get('/client/projects');
+      return r?.data ?? r ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+export const useClientProject = id =>
+  useQuery({
+    queryKey: ['client-project', id],
+    enabled: !!id,
+    queryFn: async () => {
+      const r = await apiClient.get(`/client/projects/${id}`);
+      return r?.data ?? r ?? null;
+    },
+  });
+
+export const useClientInvoices = () =>
+  useQuery({
+    queryKey: ['client-invoices'],
+    queryFn: async () => {
+      const r = await apiClient.get('/client/invoices');
+      return r?.data ?? r ?? [];
+    },
+    staleTime: 20_000,
+  });
+
+export const useSubmitClientProof = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, proofUrl }) => apiClient.patch(`/client/invoices/${invoiceId}/submit-proof`, { proofUrl }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['client-invoices'] }),
+    meta: { successMessage: 'Payment proof submitted' },
+  });
+};
+
 // ─── SA Business Detail ───────────────────────────────────────────────────────
 export const useSABusinessDetail = id =>
   useQuery({
@@ -1523,93 +1721,6 @@ export const useDeleteFine = () => {
     mutationFn: id => apiClient.delete(`/admin/fines/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['fines'] }),
     meta: { successMessage: 'Fine deleted' },
-  });
-};
-
-// ─── Commission Structures ─────────────────────────────────────────────────────
-export const useCommissionStructures = () =>
-  useQuery({
-    queryKey: ['commission-structures'],
-    queryFn: async () => {
-      const res = await apiClient.get('/admin/commission-structures');
-      return res?.data ?? res ?? [];
-    },
-    staleTime: 60_000,
-  });
-
-export const useCommissionStructureForEmployee = employeeId =>
-  useQuery({
-    queryKey: ['commission-structure-for-employee', employeeId],
-    queryFn: async () => {
-      const res = await apiClient.get(`/admin/commission-structures/for-employee/${employeeId}`);
-      return res?.data ?? res ?? null;
-    },
-    enabled: !!employeeId,
-  });
-
-export const useCreateCommissionStructure = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: data => apiClient.post('/admin/commission-structures', data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-structures'] }),
-    meta: { successMessage: 'Commission structure created' },
-  });
-};
-
-export const useUpdateCommissionStructure = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/commission-structures/${id}`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-structures'] }),
-    meta: { successMessage: 'Commission structure updated' },
-  });
-};
-
-export const useDeleteCommissionStructure = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: id => apiClient.delete(`/admin/commission-structures/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-structures'] }),
-    meta: { successMessage: 'Commission structure deleted' },
-  });
-};
-
-// ─── Commission Entries ─────────────────────────────────────────────────────────
-export const useCommissionEntries = (params = {}) =>
-  useQuery({
-    queryKey: ['commission-entries', params],
-    queryFn: async () => {
-      const qs = new URLSearchParams(params).toString();
-      const res = await apiClient.get(`/admin/commission-entries${qs ? `?${qs}` : ''}`);
-      return res?.data ?? res ?? [];
-    },
-    staleTime: 30_000,
-  });
-
-export const useCreateCommissionEntry = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: data => apiClient.post('/admin/commission-entries', data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-entries'] }),
-    meta: { successMessage: 'Commission entry added' },
-  });
-};
-
-export const useUpdateCommissionEntry = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, ...data }) => apiClient.patch(`/admin/commission-entries/${id}`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-entries'] }),
-    meta: { successMessage: 'Commission entry updated' },
-  });
-};
-
-export const useDeleteCommissionEntry = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: id => apiClient.delete(`/admin/commission-entries/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['commission-entries'] }),
-    meta: { successMessage: 'Commission entry deleted' },
   });
 };
 
@@ -3173,6 +3284,45 @@ export const useCreateGamingTicketRate = () => {
   });
 };
 
+export const useDeleteGamingTicketRate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/gaming-ticket-rates/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['gaming-ticket-rates'] }),
+    meta: { successMessage: 'Rate deleted' },
+  });
+};
+
+// ─── Real Estate: Property Options (property_type | purpose | furnishing) ────────
+export const usePropertyOptions = listType =>
+  useQuery({
+    queryKey: ['re-property-options', listType],
+    queryFn: async () => {
+      const res = await apiClient.get(`/admin/real-estate/property-options?listType=${listType}`);
+      return res?.data ?? res ?? [];
+    },
+    enabled: !!listType,
+    staleTime: 30_000,
+  });
+
+export const useCreatePropertyOption = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: data => apiClient.post('/admin/real-estate/property-options', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-property-options'] }),
+    meta: { successMessage: 'Option added' },
+  });
+};
+
+export const useDeletePropertyOption = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: id => apiClient.delete(`/admin/real-estate/property-options/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['re-property-options'] }),
+    meta: { successMessage: 'Option deleted' },
+  });
+};
+
 export const useGamingTickets = (params = {}) =>
   useQuery({
     queryKey: ['gaming-tickets', params],
@@ -3347,6 +3497,16 @@ export const useRELead = id =>
     },
     staleTime: 15_000,
     enabled: !!id,
+  });
+
+export const useRELeadsDashboard = () =>
+  useQuery({
+    queryKey: ['re-leads-dashboard'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/real-estate/leads/dashboard');
+      return res?.data ?? res ?? null;
+    },
+    staleTime: 15_000,
   });
 
 export const useCreateRELead = () => {

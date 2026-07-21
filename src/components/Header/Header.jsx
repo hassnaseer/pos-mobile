@@ -27,7 +27,6 @@ const SCREEN_TITLES = {
   Settings: 'Settings', SupportChat: 'Support Chat',
   HRMSDashboard: 'HRMS', HRMSLeave: 'Leave', HRMSClaims: 'Claims',
   HRMSAnnouncements: 'Announcements', HRMSPayroll: 'Payroll', HRMSTasks: 'Tasks',
-  HRMSCommissionStructures: 'Commission Structures', HRMSCommissionEntries: 'Commission Entries',
   Marketplace: 'Marketplace', VendorOrders: 'Vendor Orders', VendorProfile: 'Vendor Profile',
   VendorListings: 'Listings', IncomingOrders: 'Incoming Orders',
   MedicalDashboard: 'Medical', Appointments: 'Appointments', Patients: 'Patients',

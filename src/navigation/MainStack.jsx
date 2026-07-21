@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../services/api/posApi';
-import { ROLES, PERMISSIONS, isStaff } from '../utils/permissions';
+import { ROLES, PERMISSIONS, isStaff, isDoctor } from '../utils/permissions';
 import { useSidebarStore } from '../store/sidebarStore';
 import { useActiveRouteStore } from '../store/activeRouteStore';
 import SidebarOverlay from '../components/Sidebar/SidebarOverlay';
@@ -56,8 +56,6 @@ import TrainingsScreen from '../screens/main/admin/HRMS/TrainingsScreen';
 import OrgChartScreen from '../screens/main/admin/HRMS/OrgChartScreen';
 import FinesScreen from '../screens/main/admin/HRMS/FinesScreen';
 import SalaryAdvancesScreen from '../screens/main/admin/HRMS/SalaryAdvancesScreen';
-import CommissionStructuresScreen from '../screens/main/admin/HRMS/CommissionStructuresScreen';
-import CommissionEntriesScreen from '../screens/main/admin/HRMS/CommissionEntriesScreen';
 
 // Team Chat
 import TeamChatListScreen from '../screens/main/admin/TeamChat/TeamChatListScreen';
@@ -75,6 +73,15 @@ import SettingsScreen from '../screens/main/admin/Settings/SettingsScreen';
 import BillingScreen from '../screens/main/admin/Billing/BillingScreen';
 import AwaitingPaymentScreen from '../screens/main/admin/Billing/AwaitingPaymentScreen';
 import InvoiceTemplateScreen from '../screens/main/admin/Settings/InvoiceTemplateScreen';
+import GamingTicketRatesScreen from '../screens/main/admin/GamingTickets/GamingTicketRatesScreen';
+import GamingTicketTemplateScreen from '../screens/main/admin/GamingTickets/GamingTicketTemplateScreen';
+import PropertyOptionsScreen from '../screens/main/admin/RealEstate/PropertyOptionsScreen';
+import RealEstateDashboardScreen from '../screens/main/admin/RealEstate/RealEstateDashboardScreen';
+import BulkOperationsScreen from '../screens/main/admin/BulkOperations/BulkOperationsScreen';
+import RentInvoiceTemplateScreen from '../screens/main/admin/RealEstate/RentInvoiceTemplateScreen';
+import EmailTemplatesScreen from '../screens/main/admin/Email/EmailTemplatesScreen';
+import EmailAccountsScreen from '../screens/main/admin/Email/EmailAccountsScreen';
+import EmailInboxScreen from '../screens/main/admin/Email/EmailInboxScreen';
 import PayslipTemplateScreen from '../screens/main/admin/Settings/PayslipTemplateScreen';
 
 // Medical
@@ -172,6 +179,18 @@ import GamingTicketsScreen from '../screens/main/admin/GamingTickets/GamingTicke
 // Real Estate
 import PropertiesScreen from '../screens/main/admin/RealEstate/PropertiesScreen';
 import LeadsScreen from '../screens/main/admin/RealEstate/LeadsScreen';
+import LeadsDashboardScreen from '../screens/main/admin/Leads/LeadsDashboardScreen';
+// Doctor portal
+import DoctorDashboardScreen from '../screens/main/doctor/DoctorDashboardScreen';
+import DoctorAppointmentsScreen from '../screens/main/doctor/DoctorAppointmentsScreen';
+import DoctorPatientsScreen from '../screens/main/doctor/DoctorPatientsScreen';
+import DoctorAttendanceScreen from '../screens/main/doctor/DoctorAttendanceScreen';
+import DoctorPatientPrescriptionsScreen from '../screens/main/doctor/DoctorPatientPrescriptionsScreen';
+// Client portal
+import ClientDashboardScreen from '../screens/main/client/ClientDashboardScreen';
+import ClientProjectsScreen from '../screens/main/client/ClientProjectsScreen';
+import ClientProjectDetailScreen from '../screens/main/client/ClientProjectDetailScreen';
+import ClientInvoicesScreen from '../screens/main/client/ClientInvoicesScreen';
 import DealsScreen from '../screens/main/admin/RealEstate/DealsScreen';
 import LeasesScreen from '../screens/main/admin/RealEstate/LeasesScreen';
 import RentInvoicesScreen from '../screens/main/admin/RealEstate/RentInvoicesScreen';
@@ -263,8 +282,6 @@ const ADMIN_SCREENS = [
   { name: 'HRMSPayroll',       component: PayrollScreen },
   { name: 'HRMSSalaryAdvances', component: SalaryAdvancesScreen },
   { name: 'HRMSFines',          component: FinesScreen },
-  { name: 'HRMSCommissionStructures', component: CommissionStructuresScreen },
-  { name: 'HRMSCommissionEntries',    component: CommissionEntriesScreen },
   { name: 'HRMSTasks',         component: TasksScreen },
   { name: 'HRMSReviews',       component: ReviewsScreen },
   { name: 'HRMSJobBoard',      component: JobBoardScreen },
@@ -342,8 +359,19 @@ const ADMIN_SCREENS = [
   { name: 'GamingTickets', component: GamingTicketsScreen },
 
   // Real Estate
+  { name: 'REDashboard', component: RealEstateDashboardScreen },
   { name: 'REProperties', component: PropertiesScreen },
   { name: 'RELeads', component: LeadsScreen },
+  { name: 'LeadsDashboard', component: LeadsDashboardScreen },
+
+  { name: 'EmailInbox',   component: EmailInboxScreen },
+  { name: 'BulkOperations', component: BulkOperationsScreen },
+
+  // Doctor portal
+  { name: 'DoctorDashboard',    component: DoctorDashboardScreen },
+  { name: 'DoctorAppointments', component: DoctorAppointmentsScreen },
+  { name: 'DoctorPatients',     component: DoctorPatientsScreen },
+  { name: 'DoctorAttendance',   component: DoctorAttendanceScreen },
   { name: 'REDeals', component: DealsScreen },
   { name: 'RELeases', component: LeasesScreen },
   { name: 'RERentInvoices', component: RentInvoicesScreen },
@@ -384,6 +412,12 @@ const SETTINGS_SCREENS = [
   { name: 'AwaitingPayment',    component: AwaitingPaymentScreen },
   { name: 'InvoiceTemplate',    component: InvoiceTemplateScreen },
   { name: 'PayslipTemplate',    component: PayslipTemplateScreen },
+  { name: 'GamingTicketRates',  component: GamingTicketRatesScreen },
+  { name: 'GamingTicketTemplate', component: GamingTicketTemplateScreen },
+  { name: 'PropertyOptions',    component: PropertyOptionsScreen },
+  { name: 'RentInvoiceTemplate', component: RentInvoiceTemplateScreen },
+  { name: 'EmailTemplates',     component: EmailTemplatesScreen },
+  { name: 'EmailAccounts',      component: EmailAccountsScreen },
 ];
 
 // Mirrors the web admin's dashboard-selection logic exactly (ProtectedRoute's
@@ -397,6 +431,8 @@ const DASHBOARD_ROUTE_BY_PRIMARY = {
   hrms: 'HRMSDashboard',
   finance: 'FinanceDashboard',
   snooker: 'SnookerDashboard',
+  leads: 'LeadsDashboard',
+  real_estate: 'REDashboard',
 };
 
 const adminInitialRoute = user => {
@@ -409,7 +445,9 @@ const AdminNavigator = ({ unreadCount, userRole, user }) => {
   const setActiveRoute = useActiveRouteStore(s => s.setActiveRoute);
   const menuHdr = makeMenuHeader(openSidebar, unreadCount);
   const backHdr = makeBackHeader(unreadCount);
-  const initialRoute = isStaff(userRole) ? 'StaffDashboard' : adminInitialRoute(user);
+  const initialRoute = isDoctor(userRole)
+    ? 'DoctorDashboard'
+    : isStaff(userRole) ? 'StaffDashboard' : adminInitialRoute(user);
 
   React.useEffect(() => {
     setActiveRoute(initialRoute);
@@ -444,6 +482,7 @@ const AdminNavigator = ({ unreadCount, userRole, user }) => {
         <Stack.Screen name="LearnPage"              component={LearnPageScreen}             options={{ header: backHdr }} />
         <Stack.Screen name="SnookerSessionDetail"   component={SnookerSessionDetailScreen}   options={{ header: backHdr }} />
         <Stack.Screen name="ProjectDetail"          component={ProjectDetailScreen}          options={{ header: backHdr }} />
+        <Stack.Screen name="DoctorPatientPrescriptions" component={DoctorPatientPrescriptionsScreen} options={{ header: backHdr }} />
       </Stack.Navigator>
       <SidebarOverlay />
       <ChatFAB />
@@ -515,6 +554,32 @@ const SupportNavigator = ({ unreadCount }) => {
   );
 };
 
+// ─── Client Portal (role: project-client) ─────────────────────────────────────
+const ClientNavigator = ({ unreadCount }) => {
+  const openSidebar = useSidebarStore(s => s.open);
+  const setActiveRoute = useActiveRouteStore(s => s.setActiveRoute);
+  const menuHdr = makeMenuHeader(openSidebar, unreadCount);
+  const backHdr = makeBackHeader(unreadCount);
+  React.useEffect(() => { setActiveRoute('ClientDashboard'); }, [setActiveRoute]);
+  return (
+    <View style={{ flex: 1 }}>
+      <Stack.Navigator
+        initialRouteName="ClientDashboard"
+        screenOptions={{ headerShown: true }}
+        screenListeners={{ state: e => { const st = e.data.state; const cur = st?.routes?.[st.index]; if (cur) setActiveRoute(cur.name); } }}
+      >
+        <Stack.Screen name="ClientDashboard"     component={ClientDashboardScreen}     options={{ header: menuHdr }} />
+        <Stack.Screen name="ClientProjects"      component={ClientProjectsScreen}      options={{ header: menuHdr }} />
+        <Stack.Screen name="ClientInvoices"      component={ClientInvoicesScreen}      options={{ header: menuHdr }} />
+        <Stack.Screen name="ClientProjectDetail" component={ClientProjectDetailScreen} options={{ header: backHdr }} />
+        <Stack.Screen name="Notifications"       component={NotificationsScreen}       options={{ header: backHdr }} />
+        <Stack.Screen name="Profile"             component={ProfileScreen}             options={{ header: backHdr }} />
+      </Stack.Navigator>
+      <SidebarOverlay />
+    </View>
+  );
+};
+
 // ─── Main Stack — role switch ─────────────────────────────────────────────────
 export default function MainStack() {
   const { userRole, user } = useAuth();
@@ -528,7 +593,8 @@ export default function MainStack() {
   // flashing AdminNavigator before the navigation resets to Auth.
   if (!userRole) return null;
 
-  if (userRole === ROLES.SUPER_ADMIN)   return <SuperAdminNavigator unreadCount={unreadCount} />;
-  if (userRole === ROLES.SUPPORT_STAFF) return <SupportNavigator    unreadCount={unreadCount} />;
+  if (userRole === ROLES.SUPER_ADMIN)    return <SuperAdminNavigator unreadCount={unreadCount} />;
+  if (userRole === ROLES.SUPPORT_STAFF)  return <SupportNavigator    unreadCount={unreadCount} />;
+  if (userRole === ROLES.PROJECT_CLIENT) return <ClientNavigator     unreadCount={unreadCount} />;
   return <AdminNavigator unreadCount={unreadCount} userRole={userRole} user={user} />;
 }

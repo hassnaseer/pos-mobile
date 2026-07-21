@@ -9,6 +9,7 @@ import {
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import Toast from 'react-native-toast-message';
 
+import { toastConfig } from './src/components/Toast/toastConfig';
 import { AuthProvider } from './src/context/AuthContext';
 import { CurrencyProvider } from './src/context/CurrencyContext';
 import { queryClient } from './src/utils/reactQueryClient';
@@ -93,7 +94,7 @@ const App = () => {
               <CurrencyProvider>
                 <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
                 <Navigation />
-                <Toast />
+                <Toast config={toastConfig} />
               </CurrencyProvider>
             </AuthProvider>
           </QueryClientProvider>

@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9 },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
 
-  filterRow: { backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#f0f0f0', paddingVertical: 10 },
+  filterRow: { flexGrow: 0, flexShrink: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#f0f0f0', paddingVertical: 10 },
   filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: '#f3f4f6' },
   filterChipActive: { backgroundColor: colors.primary },
   filterChipText: { fontSize: 12, fontFamily: 'Outfit-Medium', color: '#6b7280' },

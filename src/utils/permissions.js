@@ -6,6 +6,7 @@ export const ROLES = {
   SUPER_ADMIN: 'super-admin',
   SUPPORT_STAFF: 'support-staff',
   DOCTOR: 'doctor',
+  PROJECT_CLIENT: 'project-client',
 };
 
 // These codes MUST match the values stored in the database (from web frontend sidebarItems.ts)
@@ -127,6 +128,9 @@ export const PERMISSIONS = {
   MANAGE_RE_RENT:             'manage_re_rent',
   MANAGE_RE_MAINTENANCE:      'manage_re_maintenance',
   MANAGE_RE_VIEWINGS:         'manage_re_viewings',
+
+  // ── Email ────────────────────────────────────────────────────────────────────
+  MANAGE_EMAIL_ACCOUNTS:      'manage_email_accounts',
 };
 
 export const isSuperAdmin    = role => role === ROLES.SUPER_ADMIN;
@@ -138,6 +142,7 @@ export const isSupportStaff  = role => role === ROLES.SUPPORT_STAFF;
 // a single hardcoded value.
 export const isStaff         = role => role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN && role !== ROLES.SUPPORT_STAFF;
 export const isDoctor        = role => role === ROLES.DOCTOR;
+export const isProjectClient = role => role === ROLES.PROJECT_CLIENT;
 
 export const isAdminOrSuperAdmin = role =>
   role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN;

@@ -125,7 +125,10 @@ const AppointmentsScreen = () => {
 
   const fmtDate = (dateStr, timeStr) => {
     if (!dateStr) return '—';
-    const datePart = new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    // Parse the plain 'YYYY-MM-DD' as a LOCAL date — new Date('YYYY-MM-DD') is UTC and
+    // can render the previous day in timezones behind UTC.
+    const localDate = new Date(`${String(dateStr).slice(0, 10)}T00:00:00`);
+    const datePart = localDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     return timeStr ? `${datePart} · ${timeStr}` : datePart;
   };
 

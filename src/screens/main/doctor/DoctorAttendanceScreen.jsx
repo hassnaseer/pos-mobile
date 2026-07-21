@@ -20,12 +20,13 @@ const DoctorAttendanceScreen = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [attRes, todayRes] = await Promise.all([
-        apiClient.get('/doctor/attendance'),
-        apiClient.get('/doctor/attendance/today'),
-      ]);
-      setRecords(attRes?.data ?? attRes ?? []);
-      setToday(todayRes?.data ?? todayRes ?? null);
+      // Backend has no /attendance/today — derive today's record from the history list.
+      const attRes = await apiClient.get('/doctor/attendance');
+      const list = attRes?.data ?? attRes ?? [];
+      setRecords(list);
+      const d = new Date();
+      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      setToday(list.find(r => String(r.date).slice(0, 10) === todayStr) ?? null);
     } catch { /* ignore */ }
     finally { setLoading(false); }
   };
