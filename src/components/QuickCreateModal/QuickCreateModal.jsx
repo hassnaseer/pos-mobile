@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import colors from '../../theme/colors';
+import PhoneInput from '../PhoneInput/PhoneInput';
 
 /**
  * Small "+Add new" modal for quick-creating a related entity inline (Department,
  * Document Category, Leave Type, …) without leaving the parent form.
  *
- * `fields`: [{ key, label, placeholder, keyboardType }]
+ * `fields`: [{ key, label, placeholder, keyboardType, type: 'phone' }]
  * `onCreate(values)` must return the created entity (or throw on failure).
  */
 export default function QuickCreateModal({ visible, title, fields, onClose, onCreate, onCreated }) {
@@ -48,16 +49,22 @@ export default function QuickCreateModal({ visible, title, fields, onClose, onCr
           <Text style={styles.title}>{title}</Text>
           {fields.map(f => (
             <View key={f.key} style={styles.field}>
-              <Text style={styles.label}>{f.label}</Text>
-              <TextInput
-                style={styles.input}
-                value={String(values[f.key] ?? '')}
-                onChangeText={set(f.key)}
-                placeholder={f.placeholder}
-                placeholderTextColor="#999"
-                keyboardType={f.keyboardType ?? 'default'}
-                autoFocus={fields.indexOf(f) === 0}
-              />
+              {f.type === 'phone' ? (
+                <PhoneInput label={f.label} value={values[f.key] ?? ''} onChange={set(f.key)} placeholder="Phone number" />
+              ) : (
+                <>
+                  <Text style={styles.label}>{f.label}</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={String(values[f.key] ?? '')}
+                    onChangeText={set(f.key)}
+                    placeholder={f.placeholder}
+                    placeholderTextColor="#999"
+                    keyboardType={f.keyboardType ?? 'default'}
+                    autoFocus={fields.indexOf(f) === 0}
+                  />
+                </>
+              )}
             </View>
           ))}
           <View style={styles.actions}>

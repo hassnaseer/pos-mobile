@@ -42,7 +42,16 @@ const timeColor = (worked, scheduled) => {
 const clockInColor = late => (late == null ? '#111827' : late ? '#dc2626' : '#16a34a');
 // Clock-out: red if early (before shift end), green if on-time/overtime; neutral when unknown.
 const clockOutColor = early => (early == null ? '#111827' : early ? '#dc2626' : '#16a34a');
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// Local calendar day, not UTC — toISOString() rolls over to the previous day (relative to the
+// device's own clock) for anyone in a timezone ahead of UTC during early-morning hours, which
+// broke "today's" clock-in record matching below.
+const todayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const MyAttendanceScreen = () => {
   const [from, setFrom] = useState('');

@@ -6,6 +6,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const useDoctors = () =>
   useQuery({
@@ -129,16 +130,22 @@ const DoctorsScreen = () => {
                 { key: 'notes', label: 'Notes' },
               ].map(f => (
                 <View key={f.key} style={styles.field}>
-                  <Text style={styles.label}>{f.label}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={form[f.key]}
-                    onChangeText={set(f.key)}
-                    keyboardType={f.keyboard ?? 'default'}
-                    placeholder={f.label.replace(' *', '')}
-                    placeholderTextColor="#999"
-                    autoCapitalize="none"
-                  />
+                  {f.key === 'phone' ? (
+                    <PhoneInput label={f.label} value={form[f.key]} onChange={set(f.key)} placeholder="Phone number" />
+                  ) : (
+                    <>
+                      <Text style={styles.label}>{f.label}</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={form[f.key]}
+                        onChangeText={set(f.key)}
+                        keyboardType={f.keyboard ?? 'default'}
+                        placeholder={f.label.replace(' *', '')}
+                        placeholderTextColor="#999"
+                        autoCapitalize="none"
+                      />
+                    </>
+                  )}
                 </View>
               ))}
             </ScrollView>

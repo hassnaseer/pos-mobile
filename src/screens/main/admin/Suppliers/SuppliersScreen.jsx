@@ -7,6 +7,7 @@ import { useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier }
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const EMPTY_FORM = { name: '', email: '', phone: '', address: '', notes: '' };
 
@@ -114,17 +115,23 @@ const SuppliersScreen = () => {
             <Text style={styles.modalTitle}>{editing ? 'Edit Supplier' : 'New Supplier'}</Text>
             {FIELDS.map(f => (
               <View key={f.key} style={styles.field}>
-                <Text style={styles.label}>{f.label}</Text>
-                <TextInput
-                  style={[styles.input, f.multi && { height: 70, textAlignVertical: 'top' }]}
-                  value={form[f.key]}
-                  onChangeText={set(f.key)}
-                  keyboardType={f.keyboard ?? 'default'}
-                  autoCapitalize="none"
-                  placeholder={f.label.replace(' *', '')}
-                  placeholderTextColor="#999"
-                  multiline={f.multi}
-                />
+                {f.key === 'phone' ? (
+                  <PhoneInput label={f.label} value={form[f.key]} onChange={set(f.key)} placeholder="Phone number" />
+                ) : (
+                  <>
+                    <Text style={styles.label}>{f.label}</Text>
+                    <TextInput
+                      style={[styles.input, f.multi && { height: 70, textAlignVertical: 'top' }]}
+                      value={form[f.key]}
+                      onChangeText={set(f.key)}
+                      keyboardType={f.keyboard ?? 'default'}
+                      autoCapitalize="none"
+                      placeholder={f.label.replace(' *', '')}
+                      placeholderTextColor="#999"
+                      multiline={f.multi}
+                    />
+                  </>
+                )}
               </View>
             ))}
             <View style={styles.modalActions}>

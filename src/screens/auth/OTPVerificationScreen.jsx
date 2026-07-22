@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import colors from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { useVerifyOtpMutation, useResendCodeMutation } from '../../services/api/authApi';
+import { showErrorDialog } from '../../components/Modal/ErrorDialog';
+import { friendlyErrorMessage } from '../../utils/friendlyError';
+import { showToast } from '../../utils/toast';
 
 const RESEND_COOLDOWN = 60;
 
@@ -56,7 +59,7 @@ const OTPVerificationScreen = ({ navigation, route }) => {
 
   const handleVerify = async () => {
     const code = otp.join('');
-    if (code.length < 6) { Alert.alert('Error', 'Please enter the 6-digit code'); return; }
+    if (code.length < 6) { showErrorDialog('Error', 'Please enter the 6-digit code'); return; }
     try {
       const data = await verifyOtp({ email, otp: code, flow });
       if (flow === 'forgot-password') {
@@ -68,8 +71,7 @@ const OTPVerificationScreen = ({ navigation, route }) => {
       await login(data.user, data.access_token ?? data.accessToken, data.firebaseToken);
       navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (err) {
-      const msg = typeof err === 'string' ? err : err?.message ?? 'Invalid code. Please try again.';
-      Alert.alert('Verification Failed', msg);
+      showErrorDialog('Verification Failed', friendlyErrorMessage(err, 'Invalid code. Please try again.'));
     }
   };
 
@@ -77,9 +79,9 @@ const OTPVerificationScreen = ({ navigation, route }) => {
     try {
       await resendCode({ email, flow });
       startCountdown();
-      Alert.alert('Sent', 'A new verification code has been sent to your email.');
+      showToast.success('A new verification code has been sent to your email.', 'Sent');
     } catch {
-      Alert.alert('Error', 'Could not resend code. Please try again.');
+      showErrorDialog('Error', 'Could not resend code. Please try again.');
     }
   };
 

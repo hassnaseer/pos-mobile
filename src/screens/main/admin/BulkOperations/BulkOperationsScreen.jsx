@@ -1,31 +1,61 @@
 import React, { useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pick, types, isCancel } from '@react-native-documents/picker';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
-import apiClient, { BASE_URL } from '../../../../services/api/globalApi';
+import apiClient from '../../../../services/api/globalApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import { showToast } from '../../../../utils/toast';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import colors from '../../../../theme/colors';
 
+// Each entity maps to a real `POST /admin/<entity>/import` endpoint (JSON `{ rows }`).
+// There's no generic `/admin/bulk/*` controller, so CSV parsing and export are done
+// client-side. `exportFields` omits write-only columns (staff passwords are never exported).
 const ALL_ENTITIES = [
-  { value: 'patients',  label: 'Patients',  fields: ['name', 'phone', 'email', 'dateOfBirth', 'gender', 'address'], permission: PERMISSIONS.ACCESS_MEDICAL },
-  { value: 'staff',     label: 'Staff',     fields: ['name', 'email', 'phone', 'role', 'department'],               permission: PERMISSIONS.MANAGE_STAFF },
-  { value: 'products',  label: 'Products',  fields: ['name', 'sku', 'price', 'costPrice', 'category', 'stock'],     permission: PERMISSIONS.MANAGE_PRODUCTS },
-  { value: 'customers', label: 'Customers', fields: ['name', 'email', 'phone', 'address'],                          permission: PERMISSIONS.MANAGE_CUSTOMERS },
+  { value: 'products',  label: 'Products',  list: '/admin/products',         import: '/admin/products/import',         fields: ['name', 'sku', 'price', 'costPrice', 'category', 'stock'], permission: PERMISSIONS.MANAGE_PRODUCTS },
+  { value: 'customers', label: 'Customers', list: '/admin/customers',        import: '/admin/customers/import',        fields: ['name', 'email', 'phone', 'address'],                      permission: PERMISSIONS.MANAGE_CUSTOMERS },
+  { value: 'patients',  label: 'Patients',  list: '/admin/medical/patients', import: '/admin/medical/patients/import', fields: ['name', 'phone', 'email', 'dateOfBirth', 'gender', 'address'], permission: PERMISSIONS.ACCESS_MEDICAL },
+  { value: 'staff',     label: 'Staff',     list: '/admin/staff',            import: '/admin/staff/import',            fields: ['fullName', 'email', 'phone', 'role', 'password'], exportFields: ['fullName', 'email', 'phoneNumber', 'role'], permission: PERMISSIONS.MANAGE_STAFF },
 ];
+
+// Minimal CSV parser — handles quoted fields and embedded commas.
+const parseCsv = text => {
+  const lines = String(text).split(/\r?\n/).filter(l => l.trim().length);
+  if (!lines.length) return { headers: [], rows: [] };
+  const splitLine = line => {
+    const out = []; let cur = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+      else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out.map(v => v.trim());
+  };
+  const headers = splitLine(lines[0]);
+  const rows = lines.slice(1).map(l => {
+    const vals = splitLine(l);
+    return headers.reduce((o, h, i) => { o[h] = vals[i] ?? ''; return o; }, {});
+  });
+  return { headers, rows };
+};
+
+const toCsv = (fields, records) => {
+  const esc = v => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [fields.join(','), ...records.map(r => fields.map(f => esc(r[f])).join(','))].join('\n') + '\n';
+};
 
 export default function BulkOperationsScreen() {
   const perms = usePermissions();
-  const entities = useMemo(
-    () => ALL_ENTITIES.filter(e => !e.permission || perms.can(e.permission)),
-    [perms],
-  );
+  const entities = useMemo(() => ALL_ENTITIES.filter(e => perms.can(e.permission)), [perms]);
 
   const [entity, setEntity] = useState(entities[0]?.value ?? 'products');
   const [importing, setImporting] = useState(false);
@@ -45,13 +75,15 @@ export default function BulkOperationsScreen() {
     catch { showToast.error('Could not create template'); }
   };
 
+  // No backend export endpoint exists — build the CSV from the entity list instead.
   const handleExport = async () => {
     setExporting(true);
     try {
-      const csv = await apiClient.get(`/admin/bulk/${entity}/export`);
-      const text = typeof csv === 'string' ? csv : (csv?.data ?? '');
-      if (!text) { showToast.error('Export failed'); return; }
-      await shareCsv(`${entity}-export-${new Date().toISOString().slice(0, 10)}.csv`, text);
+      const r = await apiClient.get(info.list);
+      const raw = r?.data ?? r ?? [];
+      const list = Array.isArray(raw) ? raw : (raw.data ?? raw.items ?? []);
+      if (!list.length) { showToast.error(`No ${info.label.toLowerCase()} to export`); return; }
+      await shareCsv(`${entity}-export-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(info.exportFields ?? info.fields, list));
       showToast.success(`${info.label} exported`);
     } catch { showToast.error('Export failed'); }
     finally { setExporting(false); }
@@ -66,20 +98,24 @@ export default function BulkOperationsScreen() {
 
     setImporting(true); setResult(null);
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const body = new FormData();
-      body.append('file', { uri: picked.uri, type: picked.type ?? 'text/csv', name: picked.name ?? `${entity}.csv` });
-      const res = await fetch(`${BASE_URL}/admin/bulk/${entity}/import`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body,
+      const text = await RNFS.readFile(picked.uri, 'utf8');
+      const { rows } = parseCsv(text);
+      if (!rows.length) { showToast.error('CSV has no data rows'); return; }
+      const res = await apiClient.post(info.import, { rows });
+      const data = res?.data ?? res ?? {};
+      setResult({
+        success: data.success ?? data.imported ?? rows.length,
+        failed: data.failed ?? 0,
+        errors: data.errors ?? [],
       });
-      const j = await res.json();
-      const data = j.data ?? j;
-      setResult(data);
-      if (data.success > 0) showToast.success(`${data.success} records imported`);
-      if (data.failed > 0) showToast.error(`${data.failed} records failed`);
-    } catch { showToast.error('Import failed'); }
-    finally { setImporting(false); }
+    } catch (e) {
+      showToast.error(typeof e === 'string' ? e : 'Import failed');
+    } finally { setImporting(false); }
   };
+
+  if (!entities.length) {
+    return <View style={s.center}><Text style={s.muted}>You don't have permission to import or export data.</Text></View>;
+  }
 
   return (
     <ScrollView style={s.root} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -100,10 +136,9 @@ export default function BulkOperationsScreen() {
         </View>
       </View>
 
-      {/* Import */}
       <View style={s.card}>
         <Text style={s.cardTitle}>⬆️  Import</Text>
-        <Text style={s.cardDesc}>Upload a CSV file to create or update records in bulk.</Text>
+        <Text style={s.cardDesc}>Upload a CSV file to create records in bulk.</Text>
         <TouchableOpacity onPress={downloadTemplate}><Text style={s.link}>Download template CSV</Text></TouchableOpacity>
         <TouchableOpacity style={s.primaryBtn} onPress={handleImport} disabled={importing}>
           {importing ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.primaryBtnText}>Choose CSV File</Text>}
@@ -111,19 +146,18 @@ export default function BulkOperationsScreen() {
 
         {result && (
           <View style={s.resultBox}>
-            <Text style={s.resultOk}>✓ {result.success ?? 0} records imported</Text>
+            <Text style={s.resultOk}>✓ {result.success} records imported</Text>
             {result.failed > 0 && (
               <View style={s.resultErr}>
                 <Text style={s.resultErrTitle}>⚠ {result.failed} records failed</Text>
-                {(result.errors ?? []).slice(0, 5).map((err, i) => <Text key={i} style={s.errLine}>{err}</Text>)}
-                {(result.errors ?? []).length > 5 && <Text style={s.errLine}>…and {result.errors.length - 5} more</Text>}
+                {result.errors.slice(0, 5).map((err, i) => <Text key={i} style={s.errLine}>{String(err)}</Text>)}
+                {result.errors.length > 5 && <Text style={s.errLine}>…and {result.errors.length - 5} more</Text>}
               </View>
             )}
           </View>
         )}
       </View>
 
-      {/* Export */}
       <View style={s.card}>
         <Text style={s.cardTitle}>⬇️  Export</Text>
         <Text style={s.cardDesc}>Download all {info.label.toLowerCase()} as a CSV you can edit and re-import.</Text>
@@ -137,6 +171,8 @@ export default function BulkOperationsScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#f4f6f9' },
+  muted: { color: '#94a3b8', fontFamily: 'Outfit-Regular', textAlign: 'center' },
   title: { fontSize: 20, fontFamily: 'Outfit-Bold', color: '#0f172a' },
   sub: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#64748b', marginTop: 2, marginBottom: 14 },
   card: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#eee', padding: 16, marginBottom: 14 },

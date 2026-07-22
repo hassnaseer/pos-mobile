@@ -12,6 +12,7 @@ import {
 import CascadingCategorySelect from '../../../../components/Ui/CascadingCategorySelect';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 const WARRANTY_UNITS = ['days', 'months', 'years'];
@@ -148,20 +149,29 @@ export default function CreateTicketScreen({ navigation }) {
 
   const set = key => val => setForm(p => ({ ...p, [key]: val }));
 
-  const F = ({ label, fkey, placeholder, keyboard, multi }) => (
-    <View style={s.field}>
-      <Text style={s.label}>{label}</Text>
-      <TextInput
-        style={[s.input, multi && { height: 80, textAlignVertical: 'top' }]}
-        value={form[fkey]}
-        onChangeText={set(fkey)}
-        placeholder={placeholder}
-        placeholderTextColor="#999"
-        keyboardType={keyboard}
-        multiline={multi}
-      />
-    </View>
-  );
+  const F = ({ label, fkey, placeholder, keyboard, multi }) => {
+    if (fkey === 'customerPhone') {
+      return (
+        <View style={s.field}>
+          <PhoneInput label={label} value={form[fkey]} onChange={set(fkey)} placeholder="Phone number" />
+        </View>
+      );
+    }
+    return (
+      <View style={s.field}>
+        <Text style={s.label}>{label}</Text>
+        <TextInput
+          style={[s.input, multi && { height: 80, textAlignVertical: 'top' }]}
+          value={form[fkey]}
+          onChangeText={set(fkey)}
+          placeholder={placeholder}
+          placeholderTextColor="#999"
+          keyboardType={keyboard}
+          multiline={multi}
+        />
+      </View>
+    );
+  };
 
   const updateLine = (i, field, val) =>
     setForm(p => ({ ...p, lines: p.lines.map((l, idx) => idx === i ? { ...l, [field]: val } : l) }));

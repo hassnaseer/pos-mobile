@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import colors from '../../theme/colors';
 import { useResetPasswordMutation } from '../../services/api/authApi';
+import { showErrorDialog } from '../../components/Modal/ErrorDialog';
+import { friendlyErrorMessage } from '../../utils/friendlyError';
+import { showToast } from '../../utils/toast';
 
 const schema = Yup.object({
   newPassword: Yup.string().min(8, 'Min 8 characters').required('Required'),
@@ -21,11 +24,10 @@ const ResetPasswordScreen = ({ navigation, route }) => {
   const handleSubmit = async ({ newPassword }) => {
     try {
       await mutateAsync({ email, otp: otpCode, newPassword });
-      Alert.alert('Success', 'Your password has been reset. Please log in.', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') },
-      ]);
+      showToast.success('Your password has been reset. Please log in.', 'Success');
+      navigation.navigate('Login');
     } catch (err) {
-      Alert.alert('Error', typeof err === 'string' ? err : err?.message ?? 'Failed to reset password.');
+      showErrorDialog('Error', friendlyErrorMessage(err, 'Failed to reset password.'));
     }
   };
 

@@ -21,7 +21,23 @@ const STATUS_STYLE = {
   rejected:  { bg: '#fee2e2', text: '#dc2626', label: 'Rejected' },
 };
 
-const EMPTY_FORM = { staffId: '', quotaId: '', leaveType: '', startDate: '', endDate: '', reason: '' };
+const DURATION_OPTIONS = [
+  { id: 'full_day', name: 'Full Day(s)' },
+  { id: 'half_day', name: 'Half Day' },
+  { id: 'custom_hours', name: 'Custom Hours' },
+];
+
+// Trusts the server's computed daysConsumed/hours instead of recomputing — the server is the
+// only place that knows the employee's shift length (Half Day / Custom Hours are measured
+// against each employee's own shift, not a fixed 8h).
+const formatLeaveDuration = item => {
+  if (item.durationType === 'half_day') return `Half Day${item.hours != null ? ` (${item.hours}h)` : ''}`;
+  if (item.durationType === 'custom_hours') return `${item.hours ?? '?'}h`;
+  const d = item.daysConsumed ?? Math.max(1, Math.round((new Date(item.endDate) - new Date(item.startDate)) / 86400000) + 1);
+  return `${d} day${d === 1 ? '' : 's'}`;
+};
+
+const EMPTY_FORM = { staffId: '', quotaId: '', leaveType: '', startDate: '', endDate: '', reason: '', durationType: 'full_day', hours: '' };
 
 const LeaveScreen = () => {
   const perms = usePermissions();
@@ -52,12 +68,19 @@ const LeaveScreen = () => {
   const staffOptions = staffList.map(s => ({ id: s.id, name: s.fullName ?? s.name }));
 
   const openAdd = () => { setForm(EMPTY_FORM); setShowModal(true); };
+  const isPartialDay = form.durationType !== 'full_day';
 
   const handleSave = async () => {
     if (!form.staffId) { Alert.alert('Error', 'Staff member is required'); return; }
     if (!form.quotaId) { Alert.alert('Error', 'Leave type is required'); return; }
-    if (!form.startDate || !form.endDate) { Alert.alert('Error', 'Start and end dates are required'); return; }
-    if (new Date(form.endDate) < new Date(form.startDate)) { Alert.alert('Error', 'End date cannot be before start date'); return; }
+    if (!form.startDate) { Alert.alert('Error', 'Date is required'); return; }
+    if (!isPartialDay) {
+      if (!form.endDate) { Alert.alert('Error', 'Start and end dates are required'); return; }
+      if (new Date(form.endDate) < new Date(form.startDate)) { Alert.alert('Error', 'End date cannot be before start date'); return; }
+    }
+    if (form.durationType === 'custom_hours' && (!form.hours || Number(form.hours) <= 0)) {
+      Alert.alert('Error', 'Enter how many hours'); return;
+    }
     const quota = quotas.find(q => q.id === form.quotaId);
     try {
       await create({
@@ -65,8 +88,10 @@ const LeaveScreen = () => {
         quotaId: form.quotaId,
         leaveType: quota?.title ?? form.leaveType,
         startDate: form.startDate,
-        endDate: form.endDate,
+        endDate: isPartialDay ? form.startDate : form.endDate,
         reason: form.reason || undefined,
+        durationType: form.durationType,
+        ...(form.durationType === 'custom_hours' ? { hours: Number(form.hours) } : {}),
       });
       setShowModal(false);
     } catch (e) { Alert.alert('Error', typeof e === 'string' ? e : 'Save failed'); }
@@ -100,7 +125,6 @@ const LeaveScreen = () => {
   };
 
   const fmtDate = d => d ? new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-  const daysBetween = (start, end) => Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1);
 
   return (
     <View style={styles.root}>
@@ -150,7 +174,10 @@ const LeaveScreen = () => {
               </View>
               <View style={styles.cardRow}>
                 <Text style={styles.leaveType}>{item.quota?.title ?? item.leaveType ?? '—'}</Text>
-                <Text style={styles.dates}>{fmtDate(item.startDate)} – {fmtDate(item.endDate)}</Text>
+                <Text style={styles.dates}>
+                  {item.durationType && item.durationType !== 'full_day' ? fmtDate(item.startDate) : `${fmtDate(item.startDate)} – ${fmtDate(item.endDate)}`}
+                  {'  ·  '}{formatLeaveDuration(item)}
+                </Text>
               </View>
               {item.reason ? <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text> : null}
               {(item.status ?? '').toLowerCase() === 'pending' && canManage && (
@@ -186,24 +213,50 @@ const LeaveScreen = () => {
               onAddNew={() => setQuotaQuickCreateOpen(true)}
             />
 
+            <InlinePicker
+              label="Duration"
+              value={form.durationType}
+              options={DURATION_OPTIONS}
+              onSelect={v => setForm(p => ({ ...p, durationType: v, endDate: v === 'full_day' ? p.endDate : '', hours: v === 'custom_hours' ? p.hours : '' }))}
+              allowNone={false}
+            />
+
             <View style={styles.dateRow}>
               <DatePicker
-                label="Start Date"
+                label={isPartialDay ? 'Date' : 'Start Date'}
                 value={form.startDate}
                 onDateChange={set('startDate')}
-                placeholder="Select start date"
+                placeholder="Select date"
                 style={{ flex: 1, marginBottom: 0 }}
               />
-              <View style={{ width: 12 }} />
-              <DatePicker
-                label="End Date"
-                value={form.endDate}
-                onDateChange={set('endDate')}
-                placeholder="Select end date"
-                minimumDate={form.startDate || undefined}
-                style={{ flex: 1, marginBottom: 0 }}
-              />
+              {!isPartialDay && (
+                <>
+                  <View style={{ width: 12 }} />
+                  <DatePicker
+                    label="End Date"
+                    value={form.endDate}
+                    onDateChange={set('endDate')}
+                    placeholder="Select end date"
+                    minimumDate={form.startDate || undefined}
+                    style={{ flex: 1, marginBottom: 0 }}
+                  />
+                </>
+              )}
             </View>
+
+            {form.durationType === 'custom_hours' && (
+              <>
+                <Text style={styles.fieldLabel}>Hours</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.hours}
+                  onChangeText={set('hours')}
+                  placeholder="e.g. 3"
+                  placeholderTextColor="#999"
+                  keyboardType="decimal-pad"
+                />
+              </>
+            )}
 
             <Text style={styles.fieldLabel}>Reason</Text>
             <TextInput
@@ -233,7 +286,7 @@ const LeaveScreen = () => {
         fields={[
           { key: 'fullName', label: 'Full Name *', placeholder: 'Jane Smith' },
           { key: 'email', label: 'Email *', placeholder: 'jane@example.com' },
-          { key: 'phoneNumber', label: 'Phone', placeholder: '+1 234 567 890', required: false },
+          { key: 'phoneNumber', label: 'Phone', type: 'phone', required: false },
           { key: 'password', label: 'Password *', placeholder: 'Min 6 characters' },
         ]}
         onClose={() => setStaffQuickCreateOpen(false)}
@@ -258,13 +311,15 @@ const LeaveScreen = () => {
             {reviewTarget && (
               <>
                 <View style={styles.reviewInfoBox}>
-                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Staff</Text><Text style={styles.reviewInfoValue}>{reviewTarget.user?.name ?? '—'}</Text></View>
+                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Employee Name</Text><Text style={styles.reviewInfoValue}>{reviewTarget.user?.name ?? '—'}</Text></View>
+                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Department</Text><Text style={styles.reviewInfoValue}>{reviewTarget.user?.department ?? '—'}</Text></View>
+                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Employee ID</Text><Text style={styles.reviewInfoValue}>{reviewTarget.user?.employeeId ?? '—'}</Text></View>
                   <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Type</Text><Text style={styles.reviewInfoValue}>{reviewTarget.quota?.title ?? reviewTarget.leaveType ?? '—'}</Text></View>
                   <View style={styles.reviewInfoRow}>
                     <Text style={styles.reviewInfoLabel}>Dates</Text>
                     <Text style={styles.reviewInfoValue}>{fmtDate(reviewTarget.startDate)} → {fmtDate(reviewTarget.endDate)}</Text>
                   </View>
-                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Days</Text><Text style={styles.reviewInfoValueBold}>{daysBetween(reviewTarget.startDate, reviewTarget.endDate)}</Text></View>
+                  <View style={styles.reviewInfoRow}><Text style={styles.reviewInfoLabel}>Duration</Text><Text style={styles.reviewInfoValueBold}>{formatLeaveDuration(reviewTarget)}</Text></View>
                   {reviewTarget.reason ? (
                     <View style={styles.reviewReasonBox}>
                       <Text style={styles.reviewInfoLabel}>Reason</Text>

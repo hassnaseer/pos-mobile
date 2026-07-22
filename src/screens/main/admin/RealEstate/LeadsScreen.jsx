@@ -10,6 +10,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import colors from '../../../../theme/colors';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
@@ -74,8 +75,7 @@ const CreateLeadModal = ({ visible, onClose, onSave, isSaving, agents, bizCurren
               <TextInput style={styles.input} value={form.name} onChangeText={set('name')} placeholder="Lead name" placeholderTextColor="#999" />
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Phone</Text>
-              <TextInput style={styles.input} value={form.phone} onChangeText={set('phone')} placeholder="+92 300 0000000" placeholderTextColor="#999" keyboardType="phone-pad" />
+              <PhoneInput label="Phone" value={form.phone} onChange={set('phone')} placeholder="Phone number" />
             </View>
             <View style={styles.field}>
               <Text style={styles.label}>Email</Text>

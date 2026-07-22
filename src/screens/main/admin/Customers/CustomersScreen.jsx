@@ -10,6 +10,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const EMPTY_FORM = { name: '', email: '', phone: '', address: '', notes: '' };
 
@@ -146,16 +147,22 @@ const CustomersScreen = () => {
               { key: 'address', label: 'Address',  placeholder: '123 Main St, City' },
             ].map(f => (
               <View key={f.key} style={styles.field}>
-                <Text style={styles.label}>{f.label}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder={f.placeholder}
-                  placeholderTextColor="#999"
-                  value={form[f.key]}
-                  onChangeText={set(f.key)}
-                  keyboardType={f.keyboard ?? 'default'}
-                  autoCapitalize="none"
-                />
+                {f.key === 'phone' ? (
+                  <PhoneInput label={f.label} value={form[f.key]} onChange={set(f.key)} placeholder="Phone number" />
+                ) : (
+                  <>
+                    <Text style={styles.label}>{f.label}</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={f.placeholder}
+                      placeholderTextColor="#999"
+                      value={form[f.key]}
+                      onChangeText={set(f.key)}
+                      keyboardType={f.keyboard ?? 'default'}
+                      autoCapitalize="none"
+                    />
+                  </>
+                )}
               </View>
             ))}
 

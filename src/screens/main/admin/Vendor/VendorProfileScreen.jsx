@@ -11,6 +11,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { BASE_URL } from '../../../../services/api/globalApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const EMPTY_FORM = {
   businessDescription: '', vendorCategory: '', website: '', phone: '', address: '',
@@ -207,11 +208,13 @@ const VendorProfileScreen = () => {
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Phone</Text>
         {editing ? (
-          <TextInput style={styles.input} value={form.phone} onChangeText={v => setForm(p => ({ ...p, phone: v }))} keyboardType="phone-pad" placeholder="+92 300 0000000" placeholderTextColor="#999" />
+          <PhoneInput label="Phone" value={form.phone} onChange={v => setForm(p => ({ ...p, phone: v }))} placeholder="Phone number" />
         ) : (
-          <Text style={styles.value}>{profile?.phone || settings?.phone || '—'}</Text>
+          <>
+            <Text style={styles.label}>Phone</Text>
+            <Text style={styles.value}>{profile?.phone || settings?.phone || '—'}</Text>
+          </>
         )}
       </View>
 

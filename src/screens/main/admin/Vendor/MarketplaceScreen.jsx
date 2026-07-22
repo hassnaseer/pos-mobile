@@ -10,6 +10,7 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import { useAuth } from '../../../../context/AuthContext';
 import apiClient from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 function getAppliedTier(listing, qty) {
   const sorted = [...(listing.priceTiers ?? [])].sort((a, b) => b.minQty - a.minQty);
@@ -255,7 +256,7 @@ const MarketplaceScreen = () => {
                 <View style={{ marginTop: 8 }}>
                   <Text style={styles.sectionLabel}>Delivery Details</Text>
                   <TextInput style={styles.input} value={contactName} onChangeText={setContactName} placeholder="Contact name" placeholderTextColor="#999" />
-                  <TextInput style={styles.input} value={contactPhone} onChangeText={setContactPhone} placeholder="+92 300 0000000" placeholderTextColor="#999" keyboardType="phone-pad" />
+                  <PhoneInput value={contactPhone} onChange={setContactPhone} placeholder="Phone number" />
                   <TextInput style={styles.input} value={deliveryAddress} onChangeText={setDeliveryAddress} placeholder="Delivery address" placeholderTextColor="#999" />
                   <TextInput style={[styles.input, { height: 70, textAlignVertical: 'top' }]} value={notes} onChangeText={setNotes} placeholder="Add any notes for the vendor(s)…" placeholderTextColor="#999" multiline />
                 </View>

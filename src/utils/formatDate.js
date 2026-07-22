@@ -12,6 +12,20 @@ export const parseDateOnly = (value) => {
   return new Date(year, month - 1, day);
 };
 
+/**
+ * Today's date as 'YYYY-MM-DD' in the device's LOCAL calendar day — never
+ * `new Date().toISOString().slice(0, 10)`, which is always UTC and rolls over to the previous
+ * day (relative to the device's own clock) for anyone in a timezone ahead of UTC during
+ * early-morning hours.
+ */
+export const todayDateOnly = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export const formatDate = (timestamp) => {
   if (!timestamp) return "";
   

@@ -295,7 +295,10 @@ const Sidebar = ({ onClose }) => {
   const { userRole, user } = useAuth();
   const perms = usePermissions();
   const [activeRoute, setActiveRoute] = useState(null);
+  const [expandedGroups, setExpandedGroups] = useState({});
   const supportUnread = useSupportChatUnreadCount(user);
+
+  const toggleGroup = id => setExpandedGroups(prev => ({ ...prev, [id]: !prev[id] }));
 
   const isDoctorRole = userRole === ROLES.DOCTOR;
 
@@ -378,17 +381,26 @@ const Sidebar = ({ onClose }) => {
       >
         {menuItems.map(item => {
           if (item.isGroup) {
-            // Flat section (matches web): a non-interactive header label with the
-            // items always visible beneath it — no expand/collapse.
+            // Expandable section (matches web's AppSidebar): header toggles, subItems
+            // only render while expanded, chevron rotates to indicate state.
+            const isExpanded = !!expandedGroups[item.id];
             return (
               <View key={item.id}>
-                <Text style={styles.sectionLabel}>{item.title}</Text>
-                {item.subItems.map(sub => {
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => toggleGroup(item.id)}
+                  activeOpacity={0.7}
+                >
+                  <Image source={item.icon} style={[styles.menuIcon, { tintColor: '#666' }]} />
+                  <Text style={styles.menuText}>{item.title}</Text>
+                  <Text style={[styles.chevron, isExpanded && styles.chevronOpen]}>›</Text>
+                </TouchableOpacity>
+                {isExpanded && item.subItems.map(sub => {
                   const subActive = activeRoute === sub.route;
                   return (
                     <TouchableOpacity
                       key={sub.id}
-                      style={[styles.menuItem, subActive && styles.menuItemActive]}
+                      style={[styles.menuItem, styles.subItem, subActive && styles.menuItemActive]}
                       onPress={() => handlePress(sub.route)}
                       activeOpacity={0.7}
                     >

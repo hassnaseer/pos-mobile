@@ -17,6 +17,13 @@ const DoctorAttendanceScreen = () => {
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
 
+  // Local calendar day, not UTC — used both to find today's record and to tell the backend
+  // which day this device considers "today" (see business-date.util.ts on the backend).
+  const todayDateOnly = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -24,8 +31,7 @@ const DoctorAttendanceScreen = () => {
       const attRes = await apiClient.get('/doctor/attendance');
       const list = attRes?.data ?? attRes ?? [];
       setRecords(list);
-      const d = new Date();
-      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const todayStr = todayDateOnly();
       setToday(list.find(r => String(r.date).slice(0, 10) === todayStr) ?? null);
     } catch { /* ignore */ }
     finally { setLoading(false); }
@@ -38,8 +44,9 @@ const DoctorAttendanceScreen = () => {
   const handleClock = async () => {
     setClockLoading(true);
     try {
-      if (isClockedIn) await apiClient.post('/doctor/attendance/clock-out');
-      else await apiClient.post('/doctor/attendance/clock-in');
+      const clientDate = todayDateOnly();
+      if (isClockedIn) await apiClient.post('/doctor/attendance/clock-out', { clientDate });
+      else await apiClient.post('/doctor/attendance/clock-in', { clientDate });
       await load();
     } catch (e) {
       Alert.alert('Error', e?.response?.data?.message ?? 'Failed to update attendance');

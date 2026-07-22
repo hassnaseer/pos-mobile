@@ -13,6 +13,7 @@ import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyConte
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 const STATUS_FILTERS = ['All', 'Active', 'Ended'];
@@ -72,8 +73,7 @@ const AddCustomerModal = ({ visible, onClose, onCreated, initialName }) => {
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Customer name" placeholderTextColor="#999" />
           </View>
           <View style={styles.field}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+92 300 0000000" placeholderTextColor="#999" keyboardType="phone-pad" />
+            <PhoneInput label="Phone" value={phone} onChange={setPhone} placeholder="Phone number" />
           </View>
           <View style={styles.modalActions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>

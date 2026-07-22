@@ -14,6 +14,7 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import CascadingCategorySelect from '../../../../components/Ui/CascadingCategorySelect';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const STATUS_COLORS = {
   New: '#6366f1', 'In Progress': '#3b82f6', 'Waiting for Parts': '#f59e0b',
@@ -300,20 +301,29 @@ const TicketForm = ({ visible, editing, onClose, onSave, isSaving }) => {
     onSave(payload);
   };
 
-  const F = ({ label, fkey, placeholder, keyboard, multi }) => (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[styles.input, multi && { height: 70, textAlignVertical: 'top' }]}
-        value={form[fkey]}
-        onChangeText={set(fkey)}
-        placeholder={placeholder}
-        placeholderTextColor="#999"
-        keyboardType={keyboard}
-        multiline={multi}
-      />
-    </View>
-  );
+  const F = ({ label, fkey, placeholder, keyboard, multi }) => {
+    if (fkey === 'customerPhone') {
+      return (
+        <View style={styles.field}>
+          <PhoneInput label={label} value={form[fkey]} onChange={set(fkey)} placeholder="Phone number" />
+        </View>
+      );
+    }
+    return (
+      <View style={styles.field}>
+        <Text style={styles.label}>{label}</Text>
+        <TextInput
+          style={[styles.input, multi && { height: 70, textAlignVertical: 'top' }]}
+          value={form[fkey]}
+          onChangeText={set(fkey)}
+          placeholder={placeholder}
+          placeholderTextColor="#999"
+          keyboardType={keyboard}
+          multiline={multi}
+        />
+      </View>
+    );
+  };
 
   const updateLine = (idx, field, val) =>
     setForm(p => ({ ...p, lines: p.lines.map((l, i) => i === idx ? { ...l, [field]: val } : l) }));

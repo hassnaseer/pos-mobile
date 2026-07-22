@@ -53,7 +53,20 @@ const clockInColor = late => (late == null ? '#6b7280' : late ? '#dc2626' : '#16
 // Clock-out: red if early (before shift end), green if on-time/overtime; neutral when unknown.
 const clockOutColor = early => (early == null ? '#6b7280' : early ? '#dc2626' : '#16a34a');
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// Local calendar day, not UTC — toISOString() rolls over to the previous day (relative to the
+// device's own clock) for anyone in a timezone ahead of UTC during early-morning hours.
+const todayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Synthesized client-side by the backend for staff with no attendance row on the selected day
+// (see attendance.service.ts::getStaffAttendance) — no real DB row exists yet, so Edit/Delete
+// don't apply; tapping one should start a fresh manual entry pre-filled to this staff member.
+const isSyntheticAbsent = id => typeof id === 'string' && id.startsWith('absent-');
 
 // ─── Company-wide attendance management (admin only) ─────────────────────────
 const useStaffAttendanceRange = (from, to) =>
@@ -131,6 +144,14 @@ function CompanyAttendanceSection() {
 
   const openAdd = () => { setEditing(null); setForm({ ...EMPTY_MANUAL_FORM, date: endDate }); setShowModal(true); };
   const openEdit = r => {
+    // A synthetic "Absent" placeholder has no real row to edit — start a fresh manual entry
+    // pre-filled to this staff member instead (see isSyntheticAbsent).
+    if (isSyntheticAbsent(r.id)) {
+      setEditing(null);
+      setForm({ ...EMPTY_MANUAL_FORM, userId: r.user?.id ?? '', date: r.date ? String(r.date).slice(0, 10) : endDate });
+      setShowModal(true);
+      return;
+    }
     setEditing(r);
     setForm({
       userId: r.user?.id ?? '',
@@ -210,16 +231,22 @@ function CompanyAttendanceSection() {
             <View style={{ flex: 1 }}>
               <Text style={styles.staffName}>{r.user?.fullName ?? r.user?.name ?? '—'}</Text>
               <Text style={styles.histTimes}>
-                {fmtDate(r.date)} · <Text style={{ color: clockInColor(r.lateClockIn), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockIn)}</Text> → <Text style={{ color: clockOutColor(r.earlyClockOut), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockOut)}</Text> · {r.status ?? '—'}
+                {fmtDate(r.date)} · <Text style={{ color: clockInColor(r.lateClockIn), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockIn)}</Text> → <Text style={{ color: clockOutColor(r.earlyClockOut), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockOut)}</Text> · {r.status ?? (!r.clockIn ? 'Absent' : '—')}
               </Text>
               <Text style={styles.histTimes}>
                 Time: <Text style={{ color: timeColor(r.hoursWorked, r.scheduledHours), fontFamily: 'Outfit-SemiBold' }}>{fmtHours(r.hoursWorked)}</Text>
                 {'   '}Break: <Text style={{ color: breakColor(r.totalBreakMinutes, r.breakMinutesAllowed), fontFamily: 'Outfit-SemiBold' }}>{fmtBreakDuration(r.totalBreakMinutes)}</Text>
               </Text>
             </View>
-            <TouchableOpacity onPress={() => handleDelete(r)} style={styles.staffDelBtn}>
-              <Text style={styles.staffDelText}>Del</Text>
-            </TouchableOpacity>
+            {isSyntheticAbsent(r.id) ? (
+              <View style={styles.staffAddBadge}>
+                <Text style={styles.staffAddBadgeText}>+ Add</Text>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => handleDelete(r)} style={styles.staffDelBtn}>
+                <Text style={styles.staffDelText}>Del</Text>
+              </TouchableOpacity>
+            )}
           </TouchableOpacity>
         ))
       )}
@@ -381,6 +408,8 @@ const styles = StyleSheet.create({
   staffName: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
   staffDelBtn: { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   staffDelText: { fontSize: 11, fontFamily: 'Outfit-SemiBold', color: '#DC2626' },
+  staffAddBadge: { backgroundColor: '#DBEAFE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  staffAddBadgeText: { fontSize: 11, fontFamily: 'Outfit-SemiBold', color: '#1D4ED8' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   modalTitle: { fontSize: 18, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginBottom: 14 },

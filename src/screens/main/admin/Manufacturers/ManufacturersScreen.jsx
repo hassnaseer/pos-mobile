@@ -10,6 +10,7 @@ import {
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const EMPTY_MFR = { name: '', phone: '', email: '', address: '' };
 const EMPTY_DEV = { name: '', model: '', deviceType: '' };
@@ -230,8 +231,7 @@ const ManufacturersScreen = () => {
               <TextInput style={styles.input} value={form.email} onChangeText={set('email')} placeholder="contact@apple.com" placeholderTextColor="#999" keyboardType="email-address" autoCapitalize="none" />
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Phone</Text>
-              <TextInput style={styles.input} value={form.phone} onChangeText={set('phone')} placeholder="+1 234 567 8900" placeholderTextColor="#999" keyboardType="phone-pad" />
+              <PhoneInput label="Phone" value={form.phone} onChange={set('phone')} placeholder="Phone number" />
             </View>
             <View style={styles.field}>
               <Text style={styles.label}>Address</Text>

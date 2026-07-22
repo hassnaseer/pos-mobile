@@ -13,6 +13,7 @@ import { compactAmt } from '../../../../utils/currency';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import MultiSelectPicker from '../../../../components/InlinePicker/MultiSelectPicker';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import { PROJECT_CATEGORIES, getCategoryDef } from '../../../../config/projectCategories';
 import colors from '../../../../theme/colors';
 
@@ -419,8 +420,7 @@ const ProjectsScreen = () => {
             <Text style={s.modalTitle}>Add New Client</Text>
             <Text style={s.label}>Client Name *</Text>
             <TextInput style={s.input} value={newClientName} onChangeText={setNewClientName} placeholder="e.g. ABC Retail Ltd" placeholderTextColor="#999" />
-            <Text style={s.label}>Phone</Text>
-            <TextInput style={s.input} value={newClientPhone} onChangeText={setNewClientPhone} placeholder="+92 300 0000000" placeholderTextColor="#999" keyboardType="phone-pad" />
+            <PhoneInput label="Phone" value={newClientPhone} onChange={setNewClientPhone} placeholder="Phone number" />
             <View style={s.modalActions}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => setAddClientOpen(false)}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity style={s.saveBtn} onPress={handleAddClient} disabled={addClient.isPending || !newClientName.trim()}>

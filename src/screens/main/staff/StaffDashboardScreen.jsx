@@ -31,7 +31,16 @@ const AttendanceCard = ({ navigation }) => {
   const { mutateAsync: breakStart, isPending: breakStarting } = useBreakStart();
   const { mutateAsync: breakEnd, isPending: breakEnding } = useBreakEnd();
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Local calendar day, not UTC — toISOString() rolls over to the previous day (relative to
+  // the device's own clock) for anyone in a timezone ahead of UTC during early-morning hours,
+  // which broke "today's" clock-in record matching below.
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
   const today = useMemo(
     () => records.find(r => r.date?.slice(0, 10) === todayStr) ?? null,
     [records, todayStr],
@@ -208,7 +217,8 @@ function PersonalTrendChart() {
     for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      // Local calendar day, not UTC — toISOString() would shift this for timezones ahead of UTC.
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const record = records.find(r => r.date?.slice(0, 10) === key);
       days.push({
         date: key,

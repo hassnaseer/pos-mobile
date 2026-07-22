@@ -10,6 +10,7 @@ import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyConte
 import { compactAmt } from '../../../../utils/currency';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import { getCategoryDef } from '../../../../config/projectCategories';
 import CallCenterEntriesTab from './CallCenterEntriesTab';
 import CategoryEntriesTab from './CategoryEntriesTab';
@@ -716,8 +717,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <Text style={styles.modalTitle}>Add New Customer</Text>
             <Text style={styles.label}>Name *</Text>
             <TextInput style={styles.input} value={newCustomerName} onChangeText={setNewCustomerName} placeholder="Customer name" placeholderTextColor="#999" />
-            <Text style={styles.label}>Phone</Text>
-            <TextInput style={styles.input} value={newCustomerPhone} onChangeText={setNewCustomerPhone} placeholder="+92 300 0000000" placeholderTextColor="#999" keyboardType="phone-pad" />
+            <PhoneInput label="Phone" value={newCustomerPhone} onChange={setNewCustomerPhone} placeholder="Phone number" />
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setNewCustomerModal(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleAddCustomer} disabled={creatingCustomer || !newCustomerName.trim()}>

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useProfile, useUpdateProfile, useChangePassword } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 const Field = ({ label, value, onChangeText, placeholder, keyboardType, secureTextEntry, editable = true }) => (
   <View style={styles.field}>
@@ -115,7 +116,7 @@ const ProfileScreen = () => {
 
             <Field label="Full Name" value={form.name} onChangeText={set('name')} placeholder="Your name" />
             <Field label="Email" value={profile?.email ?? ''} placeholder="Email" editable={false} />
-            <Field label="Phone Number" value={form.phoneNumber} onChangeText={set('phoneNumber')} placeholder="+1 234 567 890" keyboardType="phone-pad" />
+            <PhoneInput label="Phone Number" value={form.phoneNumber} onChange={set('phoneNumber')} placeholder="Phone number" />
             <Field label="Address" value={form.address} onChangeText={set('address')} placeholder="Your address" />
             <Field label="Bio" value={form.bio} onChangeText={set('bio')} placeholder="Tell us about yourself" />
 

@@ -16,6 +16,7 @@ import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import { BASE_URL } from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 
 // Matches the backend's settings.service.ts isSettingsAllowed check.
 const SETTINGS_PERMS = [
@@ -202,7 +203,7 @@ const BusinessTab = () => {
           <Text style={{ fontFamily: 'Outfit-Regular', fontSize: 14, color: '#6b7280' }}>{settings?.email || '—'}</Text>
         </View>
       </View>
-      <Field label="Phone" value={form.phone} onChangeText={set('phone')} placeholder="+1 234 567 890" keyboardType="phone-pad" />
+      <PhoneInput label="Phone" value={form.phone} onChange={set('phone')} placeholder="Phone number" />
       <Field label="Country" value={form.country} onChangeText={set('country')} placeholder="United States" />
       <Field label="Address" value={form.address} onChangeText={set('address')} placeholder="123 Main St, City" />
 

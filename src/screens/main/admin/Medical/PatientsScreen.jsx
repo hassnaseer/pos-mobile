@@ -12,6 +12,7 @@ import apiClient, { BASE_URL } from '../../../../services/api/globalApi';
 import { useMedicalPatientsInfinite, flattenPages } from '../../../../services/api/posApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import colors from '../../../../theme/colors';
 
 const uploadPatientFile = async (file, fallbackMime) => {
@@ -481,16 +482,22 @@ const PatientsScreen = () => {
                 { key: 'notes', label: 'Notes' },
               ].map(f => (
                 <View key={f.key} style={styles.field}>
-                  <Text style={styles.label}>{f.label}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={form[f.key]}
-                    onChangeText={set(f.key)}
-                    keyboardType={f.keyboard ?? 'default'}
-                    placeholder={f.label.replace(' *', '')}
-                    placeholderTextColor="#999"
-                    autoCapitalize="none"
-                  />
+                  {f.key === 'phone' ? (
+                    <PhoneInput label={f.label} value={form[f.key]} onChange={set(f.key)} placeholder="Phone number" />
+                  ) : (
+                    <>
+                      <Text style={styles.label}>{f.label}</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={form[f.key]}
+                        onChangeText={set(f.key)}
+                        keyboardType={f.keyboard ?? 'default'}
+                        placeholder={f.label.replace(' *', '')}
+                        placeholderTextColor="#999"
+                        autoCapitalize="none"
+                      />
+                    </>
+                  )}
                 </View>
               ))}
               <View style={styles.field}>

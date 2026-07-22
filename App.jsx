@@ -10,6 +10,7 @@ import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import Toast from 'react-native-toast-message';
 
 import { toastConfig } from './src/components/Toast/toastConfig';
+import ErrorDialog from './src/components/Modal/ErrorDialog';
 import { AuthProvider } from './src/context/AuthContext';
 import { CurrencyProvider } from './src/context/CurrencyContext';
 import { queryClient } from './src/utils/reactQueryClient';
@@ -95,6 +96,7 @@ const App = () => {
                 <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
                 <Navigation />
                 <Toast config={toastConfig} />
+                <ErrorDialog />
               </CurrencyProvider>
             </AuthProvider>
           </QueryClientProvider>

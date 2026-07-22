@@ -27,6 +27,7 @@ export const flattenPages = (data) =>
     []
   ) ?? [];
 import apiClient from './globalApi';
+import { todayDateOnly } from '../../utils/formatDate';
 
 // ─── Products ────────────────────────────────────────────────────────────────
 export const useProducts = (params = {}, { enabled = true } = {}) =>
@@ -2270,7 +2271,7 @@ export const useMyAttendance = (params = {}) =>
 export const useClockIn = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.post('/admin/attendance/clock-in', data ?? {}),
+    mutationFn: data => apiClient.post('/admin/attendance/clock-in', { ...data, clientDate: todayDateOnly() }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
   });
 };
@@ -2278,7 +2279,7 @@ export const useClockIn = () => {
 export const useClockOut = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: data => apiClient.post('/admin/attendance/clock-out', data ?? {}),
+    mutationFn: data => apiClient.post('/admin/attendance/clock-out', { ...data, clientDate: todayDateOnly() }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
   });
 };
@@ -2286,7 +2287,7 @@ export const useClockOut = () => {
 export const useBreakStart = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => apiClient.post('/admin/attendance/break-start', {}),
+    mutationFn: () => apiClient.post('/admin/attendance/break-start', { clientDate: todayDateOnly() }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
   });
 };
@@ -2294,7 +2295,7 @@ export const useBreakStart = () => {
 export const useBreakEnd = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => apiClient.post('/admin/attendance/break-end', {}),
+    mutationFn: () => apiClient.post('/admin/attendance/break-end', { clientDate: todayDateOnly() }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-attendance'] }),
   });
 };

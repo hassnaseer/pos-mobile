@@ -1,13 +1,15 @@
 import React from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import colors from '../../theme/colors';
 import logo from '../../assets/images/newLogo.png';
 import { useForgotPasswordMutation } from '../../services/api/authApi';
+import { showErrorDialog } from '../../components/Modal/ErrorDialog';
+import { friendlyErrorMessage } from '../../utils/friendlyError';
 
 const schema = Yup.object({ email: Yup.string().email('Invalid email').required('Required') });
 
@@ -19,7 +21,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
       await mutateAsync({ email });
       navigation.navigate('OTPVerification', { email, flow: 'forgot-password' });
     } catch (err) {
-      Alert.alert('Error', typeof err === 'string' ? err : 'Failed to send reset code.');
+      showErrorDialog('Error', friendlyErrorMessage(err, 'Failed to send reset code.'));
     }
   };
 

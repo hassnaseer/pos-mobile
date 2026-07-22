@@ -8,6 +8,7 @@ import apiClient from '../../../../services/api/globalApi';
 import { useAuth } from '../../../../context/AuthContext';
 import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import colors from '../../../../theme/colors';
 
 const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED', 'SAR', 'BDT', 'CAD', 'AUD', 'NZD', 'SGD', 'MYR', 'THB', 'JPY', 'CNY', 'KRW', 'TRY', 'ZAR', 'NGN'];
@@ -557,9 +558,15 @@ const ProjectClientsScreen = () => {
             <ScrollView showsVerticalScrollIndicator={false}>
               {[['name','Name *'],['company','Company'],['contactPerson','Contact Person'],['email','Email'],['phone','Phone'],['notes','Notes']].map(([k, lbl]) => (
                 <View key={k} style={s.field}>
-                  <Text style={s.label}>{lbl}</Text>
-                  <TextInput style={s.input} value={form[k]} onChangeText={set(k)} placeholder={lbl} placeholderTextColor="#999"
-                    keyboardType={k === 'email' ? 'email-address' : k === 'phone' ? 'phone-pad' : 'default'} autoCapitalize="none" />
+                  {k === 'phone' ? (
+                    <PhoneInput label={lbl} value={form[k]} onChange={set(k)} placeholder="Phone number" />
+                  ) : (
+                    <>
+                      <Text style={s.label}>{lbl}</Text>
+                      <TextInput style={s.input} value={form[k]} onChangeText={set(k)} placeholder={lbl} placeholderTextColor="#999"
+                        keyboardType={k === 'email' ? 'email-address' : 'default'} autoCapitalize="none" />
+                    </>
+                  )}
                 </View>
               ))}
             </ScrollView>

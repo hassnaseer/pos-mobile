@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import colors from '../../theme/colors';
 
-const CircularProgress = ({ size = 60, strokeWidth = 4, progress = 70,color = '#336699', backgroundColor = "#D6E0EB" }) => {
+const CircularProgress = ({ size = 60, strokeWidth = 4, progress = 70, color = colors.primary, backgroundColor = "#D6E0EB" }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (circumference * progress) / 100;
@@ -50,7 +51,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#336699',
+    color: colors.primary,
   },
 });
 

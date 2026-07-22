@@ -14,6 +14,7 @@ import { PERMISSIONS } from '../../../../utils/permissions';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import QuickCreateModal from '../../../../components/QuickCreateModal/QuickCreateModal';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import colors from '../../../../theme/colors';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -293,16 +294,22 @@ const StaffScreen = () => {
               { key: 'phoneNumber',label: 'Phone',        placeholder: '+1 234 567 890',  keyboard: 'phone-pad' },
             ].map(f => (
               <View key={f.key} style={styles.field}>
-                <Text style={styles.label}>{f.label}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form[f.key]}
-                  onChangeText={set(f.key)}
-                  placeholder={f.placeholder}
-                  placeholderTextColor="#999"
-                  keyboardType={f.keyboard ?? 'default'}
-                  autoCapitalize="none"
-                />
+                {f.key === 'phoneNumber' ? (
+                  <PhoneInput label={f.label} value={form[f.key]} onChange={set(f.key)} placeholder="Phone number" />
+                ) : (
+                  <>
+                    <Text style={styles.label}>{f.label}</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={form[f.key]}
+                      onChangeText={set(f.key)}
+                      placeholder={f.placeholder}
+                      placeholderTextColor="#999"
+                      keyboardType={f.keyboard ?? 'default'}
+                      autoCapitalize="none"
+                    />
+                  </>
+                )}
               </View>
             ))}
 

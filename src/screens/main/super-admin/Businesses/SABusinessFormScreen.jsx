@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useUpdateSABusiness, useCreateSABusiness, useSABusinessTypes, useSAPackagePlans } from '../../../../services/api/posApi';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import colors from '../../../../theme/colors';
 
 const STATUSES = ['Active', 'Trial', 'Expired', 'Blocked'];
@@ -123,17 +124,23 @@ const SABusinessFormScreen = ({ route, navigation }) => {
           ...(isEdit ? [] : [{ key: 'password', label: 'Owner Password', placeholder: 'Set initial login password', secure: true }]),
         ].map(f => (
           <View key={f.key} style={styles.field}>
-            <Text style={styles.label}>{f.label}</Text>
-            <TextInput
-              style={styles.input}
-              value={form[f.key]}
-              onChangeText={v => set({ [f.key]: v })}
-              placeholder={f.placeholder}
-              placeholderTextColor="#9ca3af"
-              keyboardType={f.kb ?? 'default'}
-              secureTextEntry={f.secure}
-              autoCapitalize="none"
-            />
+            {f.key === 'phone' ? (
+              <PhoneInput label={f.label} value={form[f.key]} onChange={v => set({ [f.key]: v })} placeholder="Phone number" />
+            ) : (
+              <>
+                <Text style={styles.label}>{f.label}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form[f.key]}
+                  onChangeText={v => set({ [f.key]: v })}
+                  placeholder={f.placeholder}
+                  placeholderTextColor="#9ca3af"
+                  keyboardType={f.kb ?? 'default'}
+                  secureTextEntry={f.secure}
+                  autoCapitalize="none"
+                />
+              </>
+            )}
           </View>
         ))}
 

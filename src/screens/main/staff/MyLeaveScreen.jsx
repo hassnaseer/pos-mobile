@@ -8,14 +8,24 @@ import InlinePicker from '../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../components/Ui/DatePicker';
 import colors from '../../../theme/colors';
 
-const EMPTY_FORM = { quotaId: '', leaveType: '', startDate: '', endDate: '', reason: '' };
+const EMPTY_FORM = { quotaId: '', leaveType: '', startDate: '', endDate: '', reason: '', durationType: 'full_day', hours: '' };
 const STATUS_COLOR = { pending: '#F59E0B', approved: '#10B981', rejected: '#EF4444', cancelled: '#9CA3AF' };
 const STATUS_FILTERS = ['', 'Pending', 'Approved', 'Rejected'];
 
-const daysBetween = (start, end) => {
-  if (!start) return 1;
-  const ms = new Date(end ?? start) - new Date(start);
-  return Math.max(1, Math.round(ms / 86400000) + 1);
+const DURATION_OPTIONS = [
+  { id: 'full_day', name: 'Full Day(s)' },
+  { id: 'half_day', name: 'Half Day' },
+  { id: 'custom_hours', name: 'Custom Hours' },
+];
+
+// Trusts the server's computed daysConsumed/hours instead of recomputing — the server is the
+// only place that knows the employee's shift length (Half Day / Custom Hours are measured
+// against each employee's own shift, not a fixed 8h).
+const formatLeaveDuration = item => {
+  if (item.durationType === 'half_day') return `Half Day${item.hours != null ? ` (${item.hours}h)` : ''}`;
+  if (item.durationType === 'custom_hours') return `${item.hours ?? '?'}h`;
+  const d = item.daysConsumed ?? Math.max(1, Math.round((new Date(item.endDate ?? item.startDate) - new Date(item.startDate)) / 86400000) + 1);
+  return `${d} day${d === 1 ? '' : 's'}`;
 };
 
 const MyLeaveScreen = () => {
@@ -40,19 +50,28 @@ const MyLeaveScreen = () => {
   const selectedQuota = myUsage.find(q => q.id === form.quotaId);
 
   const openApply = () => { setForm(EMPTY_FORM); setShowModal(true); };
+  const isPartialDay = form.durationType !== 'full_day';
 
   const handleApply = async () => {
     if (!form.quotaId) { Alert.alert('Error', 'Please select a leave type'); return; }
-    if (!form.startDate.trim() || !form.endDate.trim()) { Alert.alert('Error', 'Start and end dates are required'); return; }
-    if (new Date(form.endDate) < new Date(form.startDate)) { Alert.alert('Error', 'End date cannot be before start date'); return; }
+    if (!form.startDate.trim()) { Alert.alert('Error', 'Date is required'); return; }
+    if (!isPartialDay) {
+      if (!form.endDate.trim()) { Alert.alert('Error', 'Start and end dates are required'); return; }
+      if (new Date(form.endDate) < new Date(form.startDate)) { Alert.alert('Error', 'End date cannot be before start date'); return; }
+    }
+    if (form.durationType === 'custom_hours' && (!form.hours || Number(form.hours) <= 0)) {
+      Alert.alert('Error', 'Enter how many hours you need'); return;
+    }
     if (selectedQuota?.isFull) { Alert.alert('Error', `Your "${selectedQuota.title}" quota is full (${selectedQuota.totalDays}/${selectedQuota.totalDays} days used).`); return; }
     try {
       await apply({
         quotaId: form.quotaId,
         leaveType: selectedQuota?.title ?? form.leaveType,
         startDate: form.startDate,
-        endDate: form.endDate,
+        endDate: isPartialDay ? form.startDate : form.endDate,
         reason: form.reason,
+        durationType: form.durationType,
+        ...(form.durationType === 'custom_hours' ? { hours: Number(form.hours) } : {}),
       });
       setShowModal(false);
       setForm(EMPTY_FORM);
@@ -105,7 +124,10 @@ const MyLeaveScreen = () => {
           <View style={styles.row}>
             <View style={styles.rowInfo}>
               <Text style={styles.rowName}>{item.quota?.title ?? item.leaveType ?? 'Leave'}</Text>
-              <Text style={styles.rowSub}>{item.startDate} → {item.endDate ?? item.startDate} · {daysBetween(item.startDate, item.endDate)} day{daysBetween(item.startDate, item.endDate) !== 1 ? 's' : ''}</Text>
+              <Text style={styles.rowSub}>
+                {item.durationType && item.durationType !== 'full_day' ? item.startDate : `${item.startDate} → ${item.endDate ?? item.startDate}`}
+                {' · '}{formatLeaveDuration(item)}
+              </Text>
               {item.reason ? <Text style={styles.rowSub} numberOfLines={1}>{item.reason}</Text> : null}
             </View>
             <View style={styles.rowRight}>
@@ -136,24 +158,52 @@ const MyLeaveScreen = () => {
               <Text style={styles.noQuotaHint}>No leave quotas defined. Contact your HR admin.</Text>
             )}
 
-            <View style={styles.dateRow}>
-              <DatePicker
-                label="Start Date *"
-                value={form.startDate}
-                onDateChange={set('startDate')}
-                placeholder="Select start date"
-                style={{ flex: 1, marginBottom: 0 }}
-              />
-              <View style={{ width: 12 }} />
-              <DatePicker
-                label="End Date *"
-                value={form.endDate}
-                onDateChange={set('endDate')}
-                placeholder="Select end date"
-                minimumDate={form.startDate || undefined}
-                style={{ flex: 1, marginBottom: 0 }}
+            <View style={styles.field}>
+              <Text style={styles.label}>Duration *</Text>
+              <InlinePicker
+                options={DURATION_OPTIONS}
+                value={form.durationType}
+                onSelect={v => setForm(p => ({ ...p, durationType: v, endDate: v === 'full_day' ? p.endDate : '', hours: v === 'custom_hours' ? p.hours : '' }))}
+                allowNone={false}
               />
             </View>
+
+            <View style={styles.dateRow}>
+              <DatePicker
+                label={isPartialDay ? 'Date *' : 'Start Date *'}
+                value={form.startDate}
+                onDateChange={set('startDate')}
+                placeholder="Select date"
+                style={{ flex: 1, marginBottom: 0 }}
+              />
+              {!isPartialDay && (
+                <>
+                  <View style={{ width: 12 }} />
+                  <DatePicker
+                    label="End Date *"
+                    value={form.endDate}
+                    onDateChange={set('endDate')}
+                    placeholder="Select end date"
+                    minimumDate={form.startDate || undefined}
+                    style={{ flex: 1, marginBottom: 0 }}
+                  />
+                </>
+              )}
+            </View>
+
+            {form.durationType === 'custom_hours' && (
+              <View style={styles.field}>
+                <Text style={styles.label}>Hours *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.hours}
+                  onChangeText={set('hours')}
+                  placeholder="e.g. 3"
+                  placeholderTextColor="#999"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            )}
 
             <View style={styles.field}>
               <Text style={styles.label}>Reason</Text>

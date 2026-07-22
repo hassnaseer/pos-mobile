@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {  View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
@@ -10,6 +10,8 @@ import showIcon from '../../../assets/icons/eye-open.png';
 import hiddenIcon from '../../../assets/icons/eye-closed.png';
 import { useLoginMutation } from '../../../services/api/authApi';
 import { useAuth } from '../../../context/AuthContext';
+import { showErrorDialog } from '../../../components/Modal/ErrorDialog';
+import { friendlyErrorMessage } from '../../../utils/friendlyError';
 
 const schema = Yup.object({
   email: Yup.string().email('Invalid email').required('Email is required'),
@@ -36,8 +38,7 @@ const LoginScreen = ({ navigation }) => {
         });
       }
     } catch (err) {
-      const msg = typeof err === 'string' ? err : err?.message ?? 'Login failed. Please try again.';
-      Alert.alert('Login Error', msg);
+      showErrorDialog('Login Error', friendlyErrorMessage(err, 'Login failed. Please try again.'));
     }
   };
 
