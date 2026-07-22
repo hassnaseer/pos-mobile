@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useMyClaims, useSubmitClaim } from '../../../services/api/posApi';
 import colors from '../../../theme/colors';
+import HeaderAddButton from '../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { title: '', amount: '', description: '', receiptUrl: '' };
 const STATUS_COLOR = { Pending: '#F59E0B', Approved: '#10B981', Rejected: '#EF4444' };
@@ -33,9 +34,7 @@ const MyClaimsScreen = () => {
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>My Claims</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => { setForm(EMPTY_FORM); setShowModal(true); }}>
-          <Text style={styles.addBtnText}>+ Submit</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={() => { setForm(EMPTY_FORM); setShowModal(true); }} label="Submit" />
       </View>
 
       <FlatList

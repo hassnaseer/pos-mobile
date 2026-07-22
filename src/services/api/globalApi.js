@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {API_BASE_URL} from '@env';
 import { showToast } from '../../utils/toast';
-const BASE_URL = 'https://e0ae-182-181-162-125.ngrok-free.app/api/v1'; // your API URL
-// const BASE_URL = 'https://api.vendixs.com/api/v1'; // your API URL
+// const BASE_URL = 'https://e0ae-182-181-162-125.ngrok-free.app/api/v1'; // your API URL
+const BASE_URL = 'https://api.vendixs.com/api/v1'; // your API URL
 class ApiClient {
   constructor() {
     this.baseURL = BASE_URL;

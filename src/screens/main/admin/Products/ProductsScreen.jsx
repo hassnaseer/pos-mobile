@@ -14,6 +14,7 @@ import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import { exportProductsToCsv, readCsvFileToRows, shareCsvTemplate } from '../../../../utils/productCsv';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const STATUS_OPTIONS = [
   { id: '', name: 'All' }, { id: 'active', name: 'Active' },
@@ -147,7 +148,7 @@ const ProductsScreen = ({ navigation }) => {
             <Text style={styles.selectToggleBtnText}>{selectMode ? 'Cancel' : 'Select'}</Text>
           </TouchableOpacity>
         )}
-        {canManage && !selectMode && <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('ProductForm')}><Text style={styles.addBtnText}>+ Add</Text></TouchableOpacity>}
+        {canManage && !selectMode && <HeaderAddButton onPress={() => navigation.navigate('ProductForm')} label="Add" />}
       </View>
 
       {canManage && canBulkOps && (

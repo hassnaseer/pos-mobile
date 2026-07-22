@@ -10,6 +10,7 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import { getDateRange } from '../../../../utils/dateRangeFilter';
 import PeriodFilterRow from '../../../../components/PeriodFilterRow';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 import colors from '../../../../theme/colors';
 
 const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -127,7 +128,7 @@ const ExpensesScreen = () => {
         <Text style={s.heading}>Expenses</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity style={s.filterBtn} onPress={() => setShowFilters(f => !f)}><Text style={s.filterBtnText}>Filter</Text></TouchableOpacity>
-          <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         </View>
       </View>
 

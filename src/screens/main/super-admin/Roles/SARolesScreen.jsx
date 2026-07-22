@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSARoles, useCreateSARole, useUpdateSARole, useDeleteSARole, useSAPermissions } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const SARolesScreen = () => {
   const [search, setSearch] = useState('');
@@ -98,9 +99,7 @@ const SARolesScreen = () => {
           placeholder="Search roles…"
           placeholderTextColor="#9ca3af"
         />
-        <TouchableOpacity style={styles.addBtn} onPress={openCreate}>
-          <Text style={styles.addBtnText}>+ New</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openCreate} label="New" />
       </View>
 
       {isError && (

@@ -10,6 +10,7 @@ import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import QuickCreateModal from '../../../../components/QuickCreateModal/QuickCreateModal';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { title: '', department: '', description: '', deadline: '' };
 const STATUS_COLOR = { open: '#10B981', closed: '#EF4444', draft: '#9CA3AF' };
@@ -62,9 +63,7 @@ const JobBoardScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Job Board</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Post</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Post" />
         )}
       </View>
 

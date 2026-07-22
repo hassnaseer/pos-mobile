@@ -9,6 +9,7 @@ import {
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { name: '', amount: '', type: 'fixed', description: '', isActive: true };
 
@@ -78,9 +79,7 @@ const MiscChargesScreen = () => {
           onChangeText={setSearch}
         />
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         )}
       </View>
 

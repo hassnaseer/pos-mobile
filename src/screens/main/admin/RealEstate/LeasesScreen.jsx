@@ -13,6 +13,7 @@ import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyConte
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 const BILLING_CYCLES = ['Monthly', 'Quarterly', 'Annually'];
@@ -332,9 +333,7 @@ const LeasesScreen = () => {
           <Text style={styles.subHeading}>Tenant leases & renewals</Text>
         </View>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreate(true)}>
-            <Text style={styles.addBtnText}>+ New Lease</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => setShowCreate(true)} label="New Lease" />
         )}
       </View>
 

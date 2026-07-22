@@ -10,6 +10,7 @@ import DatePicker from '../../../../components/Ui/DatePicker';
 import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import { getCategoryDef } from '../../../../config/projectCategories';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 const STATUSES = ['Recorded', 'Paid', 'Pending'];
@@ -92,7 +93,7 @@ export default function CategoryEntriesTab({ projectId, categoryKey, entries }) 
 
   return (
     <View style={{ flex: 1 }}>
-      <TouchableOpacity style={styles.addBtn} onPress={openAdd}><Text style={styles.addBtnText}>+ Add {def.label} Entry</Text></TouchableOpacity>
+      <HeaderAddButton onPress={openAdd} label="Add {def.label} Entry" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {entries.length === 0 ? <Text style={styles.empty}>No {def.label.toLowerCase()} entries yet.</Text> : entries.map(e => (
           <View key={e.id} style={styles.entryCard}>

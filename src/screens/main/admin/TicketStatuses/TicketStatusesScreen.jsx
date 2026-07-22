@@ -10,6 +10,7 @@ import {
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const PRESET_COLORS = [
   '#6B7280', '#3B82F6', '#10B981', '#F59E0B',
@@ -111,9 +112,7 @@ const TicketStatusesScreen = () => {
           onChangeText={setSearch}
         />
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         )}
       </View>
 

@@ -7,6 +7,7 @@ import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory 
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 // ── Inline select picker ──────────────────────────────────────────────────────
 const InlineSelect = ({ label, value, options, onSelect, placeholder = 'None (root category)' }) => {
@@ -201,9 +202,7 @@ const CategoriesScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Categories ({allCats.length})</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => openAdd()}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => openAdd()} label="Add" />
         )}
       </View>
 

@@ -9,6 +9,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 import colors from '../../../../theme/colors';
 
 const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED', 'SAR', 'BDT', 'CAD', 'AUD', 'NZD', 'SGD', 'MYR', 'THB', 'JPY', 'CNY', 'KRW', 'TRY', 'ZAR', 'NGN'];
@@ -497,7 +498,7 @@ const ProjectClientsScreen = () => {
               <Text style={s.currencySelectText}>{displayCurrency} ▾</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         </View>
       </View>
 

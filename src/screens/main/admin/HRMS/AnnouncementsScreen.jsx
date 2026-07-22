@@ -7,6 +7,7 @@ import { useAnnouncements, useCreateAnnouncement, useUpdateAnnouncement, useDele
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { title: '', content: '', audience: 'all' };
 
@@ -52,9 +53,7 @@ const AnnouncementsScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Announcements</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         )}
       </View>
 

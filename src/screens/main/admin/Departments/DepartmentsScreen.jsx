@@ -7,6 +7,7 @@ import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepa
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { name: '', description: '' };
 
@@ -74,9 +75,7 @@ const DepartmentsScreen = () => {
       {canManage && (
         <View style={styles.topBar}>
           <Text style={styles.heading}>Departments</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         </View>
       )}
 

@@ -12,6 +12,7 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { employeeId: '', amount: '', advanceDate: new Date().toISOString().slice(0, 10), repaymentMode: 'one_time', installmentAmount: '', notes: '' };
 const REPAYMENT_OPTIONS = [
@@ -102,9 +103,7 @@ const SalaryAdvancesScreen = () => {
           <Text style={styles.subHeading}>Advances given to employees, deducted from payroll</Text>
         </View>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add Advance</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add Advance" />
         )}
       </View>
 

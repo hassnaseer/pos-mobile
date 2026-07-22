@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const useMenuItems = (category = '') =>
   useQuery({
@@ -95,9 +96,7 @@ const MenuScreen = () => {
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>Menu</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ Add Item</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add Item" />
       </View>
 
       <ScrollView

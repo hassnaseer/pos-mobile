@@ -8,6 +8,7 @@ import {
 } from '../../../../services/api/posApi';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const STATUSES = ['', 'pending', 'sent', 'acknowledged', 'cancelled'];
 const STATUS_STYLE = {
@@ -74,9 +75,7 @@ const RemindersScreen = () => {
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>Reminders</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ New</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="New" />
       </View>
 
       <ScrollView

@@ -7,6 +7,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 import colors from '../../../../theme/colors';
 
 const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
@@ -118,9 +119,7 @@ const PatientPrescriptionsScreen = () => {
           <Text style={s.backText}>← Back</Text>
         </TouchableOpacity>
         <Text style={s.title} numberOfLines={1}>Prescriptions — {patientName ?? 'Patient'}</Text>
-        <TouchableOpacity style={s.addBtn} onPress={openAdd}>
-          <Text style={s.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       <FlatList

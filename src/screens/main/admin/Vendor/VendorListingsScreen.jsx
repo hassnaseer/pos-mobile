@@ -10,6 +10,7 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import { BASE_URL } from '../../../../services/api/globalApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = {
   productName: '', description: '', basePrice: '', moq: '1', unit: 'piece',
@@ -128,9 +129,7 @@ const VendorListingsScreen = () => {
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>My Listings</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ List</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="List" />
       </View>
 
       <FlatList

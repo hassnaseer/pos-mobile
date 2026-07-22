@@ -43,6 +43,10 @@ const DatePicker = ({
   minimumDate,
   maximumDate,
   disabled,
+  // Renders just the date text (no border/box/icon) so multiple instances can be
+  // composed inside a caller-styled container — e.g. a single "22 Jul to 22 Jul" pill.
+  bare,
+  bareTextStyle,
 }) => {
   const [show, setShow] = useState(false);
   const today = new Date();
@@ -91,6 +95,139 @@ const DatePicker = ({
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const years = Array.from({ length: (maxYear ?? selectedYear + 50) - (minYear ?? selectedYear - 50) + 1 }, (_, i) => (minYear ?? selectedYear - 50) + i);
 
+  const renderModal = () => (
+    <Modal
+      visible={show}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={handleCancel}
+    >
+      <View style={styles.modalOverlay}>
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={handleCancel}
+        />
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={handleCancel}>
+              <Text style={styles.modalButton}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select Date</Text>
+            <TouchableOpacity onPress={handleDone}>
+              <Text style={[styles.modalButton, styles.doneButton]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.pickerContainer}>
+            {/* Day Picker */}
+            <View style={styles.pickerColumn}>
+              <Text style={styles.pickerLabel}>Day</Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.picker}
+                contentContainerStyle={styles.pickerContent}
+              >
+                {days.map((day) => (
+                  <TouchableOpacity
+                    key={day}
+                    style={[
+                      styles.pickerItem,
+                      selectedDay === day && styles.pickerItemSelected,
+                    ]}
+                    onPress={() => setSelectedDay(day)}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerItemText,
+                        selectedDay === day && styles.pickerItemTextSelected,
+                      ]}
+                    >
+                      {String(day).padStart(2, '0')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Month Picker */}
+            <View style={styles.pickerColumn}>
+              <Text style={styles.pickerLabel}>Month</Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.picker}
+                contentContainerStyle={styles.pickerContent}
+              >
+                {months.map((month) => (
+                  <TouchableOpacity
+                    key={month}
+                    style={[
+                      styles.pickerItem,
+                      selectedMonth === month && styles.pickerItemSelected,
+                    ]}
+                    onPress={() => setSelectedMonth(month)}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerItemText,
+                        selectedMonth === month && styles.pickerItemTextSelected,
+                      ]}
+                    >
+                      {MONTH_NAMES[month - 1]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Year Picker */}
+            <View style={styles.pickerColumn}>
+              <Text style={styles.pickerLabel}>Year</Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.picker}
+                contentContainerStyle={styles.pickerContent}
+              >
+                {years.map((year) => (
+                  <TouchableOpacity
+                    key={year}
+                    style={[
+                      styles.pickerItem,
+                      selectedYear === year && styles.pickerItemSelected,
+                    ]}
+                    onPress={() => setSelectedYear(year)}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerItemText,
+                        selectedYear === year && styles.pickerItemTextSelected,
+                      ]}
+                    >
+                      {year}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  if (bare) {
+    return (
+      <>
+        <TouchableOpacity onPress={handleOpen} activeOpacity={disabled ? 1 : 0.7} style={style}>
+          <Text style={[styles.bareText, !value && styles.placeholder, bareTextStyle]}>
+            {displayLabel}
+          </Text>
+        </TouchableOpacity>
+        {renderModal()}
+      </>
+    );
+  }
+
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -107,124 +244,7 @@ const DatePicker = ({
       </TouchableOpacity>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
-
-      <Modal
-        visible={show}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={handleCancel}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={handleCancel}
-          />
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={handleCancel}>
-                <Text style={styles.modalButton}>Cancel</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Select Date</Text>
-              <TouchableOpacity onPress={handleDone}>
-                <Text style={[styles.modalButton, styles.doneButton]}>Done</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.pickerContainer}>
-              {/* Day Picker */}
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Day</Text>
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  style={styles.picker}
-                  contentContainerStyle={styles.pickerContent}
-                >
-                  {days.map((day) => (
-                    <TouchableOpacity
-                      key={day}
-                      style={[
-                        styles.pickerItem,
-                        selectedDay === day && styles.pickerItemSelected,
-                      ]}
-                      onPress={() => setSelectedDay(day)}
-                    >
-                      <Text
-                        style={[
-                          styles.pickerItemText,
-                          selectedDay === day && styles.pickerItemTextSelected,
-                        ]}
-                      >
-                        {String(day).padStart(2, '0')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-
-              {/* Month Picker */}
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Month</Text>
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  style={styles.picker}
-                  contentContainerStyle={styles.pickerContent}
-                >
-                  {months.map((month) => (
-                    <TouchableOpacity
-                      key={month}
-                      style={[
-                        styles.pickerItem,
-                        selectedMonth === month && styles.pickerItemSelected,
-                      ]}
-                      onPress={() => setSelectedMonth(month)}
-                    >
-                      <Text
-                        style={[
-                          styles.pickerItemText,
-                          selectedMonth === month && styles.pickerItemTextSelected,
-                        ]}
-                      >
-                        {MONTH_NAMES[month - 1]}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-
-              {/* Year Picker */}
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Year</Text>
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  style={styles.picker}
-                  contentContainerStyle={styles.pickerContent}
-                >
-                  {years.map((year) => (
-                    <TouchableOpacity
-                      key={year}
-                      style={[
-                        styles.pickerItem,
-                        selectedYear === year && styles.pickerItemSelected,
-                      ]}
-                      onPress={() => setSelectedYear(year)}
-                    >
-                      <Text
-                        style={[
-                          styles.pickerItemText,
-                          selectedYear === year && styles.pickerItemTextSelected,
-                        ]}
-                      >
-                        {year}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {renderModal()}
     </View>
   );
 };
@@ -261,6 +281,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit-Regular',
     color: colors.defaultBlack,
     flex: 1,
+  },
+  bareText: {
+    fontSize: 13,
+    fontFamily: 'Outfit-SemiBold',
+    color: colors.defaultBlack,
   },
   placeholder: {
     color: '#98A2B3',

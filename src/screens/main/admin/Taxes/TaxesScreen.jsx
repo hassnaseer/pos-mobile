@@ -7,6 +7,7 @@ import { useTaxes, useCreateTax, useUpdateTax, useDeleteTax } from '../../../../
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { name: '', percentage: '', isActive: true };
 
@@ -129,9 +130,7 @@ export default function TaxesScreen() {
           <Text style={styles.title}>Taxes</Text>
           <Text style={styles.subtitle}>Manage tax rates applied to sales</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
-          <Text style={styles.addBtnText}>+ Add Tax</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add Tax" />
       </View>
 
       {/* List */}

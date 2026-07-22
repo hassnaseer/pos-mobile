@@ -15,6 +15,7 @@ import { PERMISSIONS } from '../../../../utils/permissions';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import QuickCreateModal from '../../../../components/QuickCreateModal/QuickCreateModal';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { title: '', category: '', description: '' };
 
@@ -104,9 +105,7 @@ const handlePickFile = async () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>HR Documents</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Upload</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Upload" />
         )}
       </View>
 

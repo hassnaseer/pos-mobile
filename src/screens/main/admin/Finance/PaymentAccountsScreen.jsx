@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 import colors from '../../../../theme/colors';
 
 const WALLET_NAMES = ['EasyPaisa', 'JazzCash', 'NayaPay', 'SadaPay', 'Raast'];
@@ -78,7 +79,7 @@ const PaymentAccountsScreen = () => {
           <Text style={s.heading}>Payment Accounts</Text>
           <Text style={s.subheading}>Bank accounts and wallets shown to customers for direct payment</Text>
         </View>
-        <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       <FlatList

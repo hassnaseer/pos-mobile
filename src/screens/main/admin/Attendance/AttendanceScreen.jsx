@@ -68,6 +68,40 @@ const todayStr = () => {
 // don't apply; tapping one should start a fresh manual entry pre-filled to this staff member.
 const isSyntheticAbsent = id => typeof id === 'string' && id.startsWith('absent-');
 
+// Mirrors web's STATUS_STYLES (frontend/src/app/pages/admin/attendance/AttendanceTable.tsx)
+// so the same status always reads the same color on both platforms.
+const STATUS_STYLES = {
+  Present:        { bg: '#f0fdf4', text: '#16a34a' },
+  Late:           { bg: '#fff7ed', text: '#ea580c' },
+  Absent:         { bg: '#fef2f2', text: '#dc2626' },
+  'Half Day':     { bg: '#fffbeb', text: '#d97706' },
+  'Short Leave':  { bg: '#f0f9ff', text: '#0284c7' },
+  'Paid Leave':   { bg: '#eff6ff', text: '#2563eb' },
+  'Unpaid Leave': { bg: '#f9fafb', text: '#4b5563' },
+  'Sick Leave':   { bg: '#faf5ff', text: '#9333ea' },
+  'Clocked In':   { bg: '#fefce8', text: '#ca8a04' },
+  Completed:      { bg: '#f0fdf4', text: '#16a34a' },
+};
+const FALLBACK_STATUS_STYLE = { bg: '#f9fafb', text: '#4b5563' };
+
+// Same fallback chain as web's StatusBadge: stored status wins; otherwise infer from
+// clock-in/out for legacy rows created before the attendance-policy engine existed.
+const resolveStatus = r => {
+  if (r.status) return r.status;
+  if (!r.clockIn) return 'Absent';
+  if (!r.clockOut) return 'Clocked In';
+  return 'Completed';
+};
+
+const StatusBadge = ({ status }) => {
+  const style = STATUS_STYLES[status] ?? FALLBACK_STATUS_STYLE;
+  return (
+    <View style={[styles.statusPill, { backgroundColor: style.bg }]}>
+      <Text style={[styles.statusPillText, { color: style.text }]}>{status}</Text>
+    </View>
+  );
+};
+
 // ─── Company-wide attendance management (admin only) ─────────────────────────
 const useStaffAttendanceRange = (from, to) =>
   useQuery({
@@ -207,9 +241,11 @@ function CompanyAttendanceSection() {
         <TouchableOpacity style={styles.rangeChevron} onPress={() => shiftRange(-1)}>
           <Text style={styles.rangeChevronText}>‹</Text>
         </TouchableOpacity>
-        <View style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
-          <DatePicker value={startDate} onDateChange={setStartDate} placeholder="Start" style={{ flex: 1, marginBottom: 0 }} />
-          <DatePicker value={endDate} onDateChange={setEndDate} placeholder="End" style={{ flex: 1, marginBottom: 0 }} />
+        <View style={styles.rangePill}>
+          <Text style={styles.rangePillIcon}>📅</Text>
+          <DatePicker bare value={startDate} onDateChange={setStartDate} maximumDate={endDate} />
+          <Text style={styles.rangePillTo}>to</Text>
+          <DatePicker bare value={endDate} onDateChange={setEndDate} minimumDate={startDate} maximumDate={todayStr()} />
         </View>
         <TouchableOpacity style={styles.rangeChevron} onPress={() => shiftRange(1)} disabled={endDate >= todayStr()}>
           <Text style={[styles.rangeChevronText, endDate >= todayStr() && { color: '#D0D5DD' }]}>›</Text>
@@ -229,9 +265,12 @@ function CompanyAttendanceSection() {
         records.map(r => (
           <TouchableOpacity key={r.id} style={styles.staffRow} onPress={() => openEdit(r)}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.staffName}>{r.user?.fullName ?? r.user?.name ?? '—'}</Text>
+              <View style={styles.staffNameRow}>
+                <Text style={styles.staffName}>{r.user?.fullName ?? r.user?.name ?? '—'}</Text>
+                <StatusBadge status={resolveStatus(r)} />
+              </View>
               <Text style={styles.histTimes}>
-                {fmtDate(r.date)} · <Text style={{ color: clockInColor(r.lateClockIn), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockIn)}</Text> → <Text style={{ color: clockOutColor(r.earlyClockOut), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockOut)}</Text> · {r.status ?? (!r.clockIn ? 'Absent' : '—')}
+                {fmtDate(r.date)} · <Text style={{ color: clockInColor(r.lateClockIn), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockIn)}</Text> → <Text style={{ color: clockOutColor(r.earlyClockOut), fontFamily: 'Outfit-SemiBold' }}>{fmtTime(r.clockOut)}</Text>
               </Text>
               <Text style={styles.histTimes}>
                 Time: <Text style={{ color: timeColor(r.hoursWorked, r.scheduledHours), fontFamily: 'Outfit-SemiBold' }}>{fmtHours(r.hoursWorked)}</Text>
@@ -403,7 +442,13 @@ const styles = StyleSheet.create({
   rangeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   rangeChevron: { width: 32, height: 32, borderRadius: 8, borderWidth: 1.5, borderColor: '#D0D5DD', alignItems: 'center', justifyContent: 'center' },
   rangeChevronText: { fontSize: 18, color: '#374151', fontFamily: 'Outfit-SemiBold' },
+  rangePill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: '#fff' },
+  rangePillIcon: { fontSize: 13 },
+  rangePillTo: { fontSize: 13, fontFamily: 'Outfit-Regular', color: colors.secondary },
   todayLink: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: colors.primary },
+  staffNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  statusPill: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3 },
+  statusPillText: { fontSize: 11, fontFamily: 'Outfit-SemiBold' },
   staffRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderColor: '#f5f5f5' },
   staffName: { fontSize: 14, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
   staffDelBtn: { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },

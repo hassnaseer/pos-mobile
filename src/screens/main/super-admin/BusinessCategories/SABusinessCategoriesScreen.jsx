@@ -8,6 +8,7 @@ import {
   useUpdateSABusinessCategory, useDeleteSABusinessCategory,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY = { name: '', description: '' };
 
@@ -44,9 +45,7 @@ const SABusinessCategoriesScreen = () => {
 
   return (
     <View style={styles.root}>
-      <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-        <Text style={styles.addBtnText}>+ Add Category</Text>
-      </TouchableOpacity>
+      <HeaderAddButton onPress={openAdd} label="Add Category" />
 
       <FlatList
         data={categories}

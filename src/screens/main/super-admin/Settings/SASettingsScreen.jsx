@@ -8,6 +8,7 @@ import {
   useSABankAccounts, useCreateSABankAccount, useUpdateSABankAccount, useDeleteSABankAccount,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 // ─── Setting key → label / description ───────────────────────────────────────
 const LABELS = {
@@ -451,9 +452,7 @@ const BankAccountsTab = () => {
     >
       <View style={styles.bankHeader}>
         <Text style={styles.bankHeaderSub}>Configure bank accounts shown to tenants for manual payment.</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ Add Account</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add Account" />
       </View>
 
       {isLoading ? (

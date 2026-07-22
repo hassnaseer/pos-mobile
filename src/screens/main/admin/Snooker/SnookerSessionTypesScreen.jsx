@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 import colors from '../../../../theme/colors';
 
 const BILLING_METHODS = ['per_hour', 'per_minute', 'per_game'];
@@ -53,7 +54,7 @@ const SnookerSessionTypesScreen = () => {
     <View style={s.root}>
       <View style={s.topBar}>
         <Text style={s.heading}>Session Types</Text>
-        <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       <FlatList

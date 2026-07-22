@@ -11,6 +11,7 @@ import {
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_DEVICE_FORM = { name: '', ipAddress: '', port: '4370', serialNumber: '' };
 const EMPTY_MAP_FORM    = { staffId: '', deviceUserId: '' };
@@ -191,9 +192,7 @@ const FingerprintDevicesScreen = () => {
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>Fingerprint Devices</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAddDevice}>
-          <Text style={styles.addBtnText}>+ Add Device</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAddDevice} label="Add Device" />
       </View>
 
       <FlatList

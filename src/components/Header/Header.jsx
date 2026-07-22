@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import SearchBar from '../Searchbar/SearchBar';
 import { useAuth } from '../../context/AuthContext';
 import { useLogout } from '../../services/api/authApi';
@@ -15,33 +15,6 @@ import colors from '../../theme/colors';
 import menuIcon from '../../assets/icons/menu-01.png';
 import bellIcon from '../../assets/icons/bell-01.png';
 import { useSearchStore } from '../../store/searchStore';
-
-const SCREEN_TITLES = {
-  // Admin
-  Dashboard: 'Dashboard', MyBusinesses: 'My Businesses', POS: 'Point of Sale',
-  Products: 'Products', Categories: 'Categories', Customers: 'Customers',
-  Orders: 'Orders', Tickets: 'Tickets', Staff: 'Staff', Reports: 'Reports',
-  Integrations: 'Integrations', ActivityLogs: 'Activity Logs', Attendance: 'Attendance',
-  Suppliers: 'Suppliers', Manufacturers: 'Manufacturers', Roles: 'Roles',
-  Departments: 'Departments', Taxes: 'Taxes', MiscCharges: 'Misc Charges',
-  Settings: 'Settings', SupportChat: 'Support Chat',
-  HRMSDashboard: 'HRMS', HRMSLeave: 'Leave', HRMSClaims: 'Claims',
-  HRMSAnnouncements: 'Announcements', HRMSPayroll: 'Payroll', HRMSTasks: 'Tasks',
-  Marketplace: 'Marketplace', VendorOrders: 'Vendor Orders', VendorProfile: 'Vendor Profile',
-  VendorListings: 'Listings', IncomingOrders: 'Incoming Orders',
-  MedicalDashboard: 'Medical', Appointments: 'Appointments', Patients: 'Patients',
-  Doctors: 'Doctors', RestaurantDashboard: 'Restaurant',
-  // Super Admin
-  SADashboard: 'Dashboard', SABusinesses: 'Businesses', SABusinessTypes: 'Business Types',
-  SAPackagePlans: 'Package Plans', SARoles: 'Roles', SAReports: 'Revenue Reports',
-  SASupport: 'Support Chat', SALegalPages: 'Legal Pages', SASettings: 'Settings',
-  SAVendors: 'Vendors', SADemoRequests: 'Demo Requests', SAPlatformTeam: 'Platform Team',
-  SADocuments: 'Documents', SAActivityLogs: 'Activity Logs', SALearnGuides: 'Learn Guides',
-  SABusinessCategories: 'Business Categories', SACustomPlans: 'Custom Plans',
-  SAPaymentQueue: 'Payment Queue', SAErrorLogs: 'Error Logs', SASupportTickets: 'Support Tickets',
-  SABusinessTypeForm: 'Business Type', SAPackagePlanForm: 'Package Plan',
-  SACustomPlanForm: 'Custom Plan', SABusinessForm: 'Edit Business',
-};
 
 const Header = ({
   showMenuButton = true,
@@ -58,13 +31,11 @@ const Header = ({
   const avatarRef = useRef(null);
   const setSearchQuery = useSearchStore(state => state.setSearchQuery);
   const navigation = useNavigation();
-  const route = useRoute();
   const { user, userRole, logout: contextLogout } = useAuth();
   const { mutate: apiLogout, isPending } = useLogout();
 
-  const pageTitle = SCREEN_TITLES[route?.name] ?? null;
-
   const initial = (user?.name ?? 'U')[0].toUpperCase();
+  const businessInitial = (user?.businessName ?? user?.name ?? 'B')[0].toUpperCase();
 
   const handleLogout = () => {
     setDropdownOpen(false);
@@ -105,8 +76,17 @@ const Header = ({
               <Image source={menuIcon} style={styles.menuIconStyle} />
             </TouchableOpacity>
           ) : null}
-          {pageTitle && !showSearchBar ? (
-            <Text style={styles.pageTitle} numberOfLines={1}>{pageTitle}</Text>
+          {!showSearchBar ? (
+            <View style={styles.bizIdentity}>
+              {user?.businessLogo ? (
+                <Image source={{ uri: user.businessLogo }} style={styles.bizLogoImg} />
+              ) : (
+                <View style={styles.bizLogoBadge}>
+                  <Text style={styles.bizLogoBadgeText}>{businessInitial}</Text>
+                </View>
+              )}
+              <Text style={styles.bizName} numberOfLines={1}>{user?.businessName ?? 'My Business'}</Text>
+            </View>
           ) : null}
         </View>
 
@@ -181,11 +161,15 @@ const Header = ({
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E5E5' },
   container: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff' },
-  leftSection: { flexDirection: 'row', alignItems: 'center' },
+  leftSection: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
   centerSection: { flex: 1, marginHorizontal: 10 },
   rightSection: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: { padding: 6, borderWidth: 1, borderColor: '#EAECF0', borderRadius: 8, position: 'relative' },
-  pageTitle: { fontSize: 16, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, marginLeft: 10 },
+  bizIdentity: { flexDirection: 'row', alignItems: 'center', marginLeft: 10, flexShrink: 1, gap: 8 },
+  bizLogoImg: { width: 22, height: 22, borderRadius: 5, flexShrink: 0 },
+  bizLogoBadge: { width: 22, height: 22, borderRadius: 5, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  bizLogoBadgeText: { color: '#fff', fontSize: 11, fontFamily: 'Outfit-Bold' },
+  bizName: { fontSize: 15, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, flexShrink: 1 },
   menuIconStyle: { width: 20, height: 20, resizeMode: 'contain' },
   backIcon: { width: 20, height: 20, resizeMode: 'contain', tintColor: '#666' },
   notificationBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: colors.warning, borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },

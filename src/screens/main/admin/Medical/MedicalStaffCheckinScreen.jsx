@@ -9,6 +9,7 @@ import {
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
 import { parseDateOnly } from '../../../../utils/formatDate';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const fmtTime = ts => {
   if (!ts) return '—';
@@ -115,9 +116,7 @@ export default function MedicalStaffCheckinScreen() {
         <TouchableOpacity style={styles.dateArrow} onPress={() => changeDate(1)} activeOpacity={0.7}>
           <Text style={styles.dateArrowText}>›</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       {/* Records list */}

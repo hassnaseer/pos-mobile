@@ -6,6 +6,7 @@ import {
 import { useSALearnGuides, useUpsertSALearnGuide, useCreateSALearnGuide } from '../../../../services/api/posApi';
 import { GUIDE_KEY_DEFS, GUIDE_GROUPS, PERMISSION_OPTIONS } from '../../../../constants/learnGuideKeys';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { title: '', subtitle: '', overview: '', videoUrl: '', tutorialUrl: '', requiredPermissions: [] };
 
@@ -149,9 +150,7 @@ export default function SALearnGuidesScreen() {
             <Text style={styles.title}>Learn & Guides</Text>
             <Text style={styles.subtitle}>Step-by-step guides for every feature. Pick a topic to get started.</Text>
           </View>
-          <TouchableOpacity style={styles.addBtn} onPress={() => setAddOpen(true)}>
-            <Text style={styles.addBtnText}>✨ Add Custom</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => setAddOpen(true)} label="Add Custom" />
         </View>
       </View>
 

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSAPackagePlans, useDeleteSAPackagePlan, useSABusinessTypes } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const SAPackagePlansScreen = ({ navigation }) => {
   const { data: plans = [], isLoading, refetch } = useSAPackagePlans();
@@ -69,9 +70,7 @@ const SAPackagePlansScreen = ({ navigation }) => {
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>Package Plans</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('SAPackagePlanForm')}>
-          <Text style={styles.addBtnText}>+ Add Plan</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={() => navigation.navigate('SAPackagePlanForm')} label="Add Plan" />
       </View>
 
       {types.length > 0 && (

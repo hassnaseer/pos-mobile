@@ -8,6 +8,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { title: '', trainer: '', startDate: '', endDate: '', description: '' };
 const STATUS_COLOR = { upcoming: '#3B82F6', ongoing: '#10B981', completed: '#9CA3AF' };
@@ -54,9 +55,7 @@ const TrainingsScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Trainings</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         )}
       </View>
 

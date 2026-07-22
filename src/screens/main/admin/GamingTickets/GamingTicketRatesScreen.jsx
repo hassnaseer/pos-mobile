@@ -7,6 +7,7 @@ import {
   useGamingTicketRates, useCreateGamingTicketRate, useDeleteGamingTicketRate,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY = { label: '', durationMinutes: '', price: '' };
 
@@ -51,7 +52,7 @@ export default function GamingTicketRatesScreen() {
           <Text style={styles.heading}>Gaming Ticket Rates</Text>
           <Text style={styles.sub}>Duration presets & prices shown when creating a ticket</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}><Text style={styles.addBtnText}>+ Add</Text></TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       <FlatList

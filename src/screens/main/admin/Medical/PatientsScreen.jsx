@@ -14,6 +14,7 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const uploadPatientFile = async (file, fallbackMime) => {
   const token = await AsyncStorage.getItem('authToken');
@@ -417,9 +418,7 @@ const PatientsScreen = () => {
           value={search}
           onChangeText={setSearch}
         />
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       <FlatList

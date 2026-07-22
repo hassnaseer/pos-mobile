@@ -11,6 +11,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_MFR = { name: '', phone: '', email: '', address: '' };
 const EMPTY_DEV = { name: '', model: '', deviceType: '' };
@@ -191,9 +192,7 @@ const ManufacturersScreen = () => {
   return (
     <View style={styles.root}>
       {canManage && (
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ Add Manufacturer</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add Manufacturer" />
       )}
 
       {isLoading ? (

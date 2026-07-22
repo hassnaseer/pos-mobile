@@ -7,6 +7,7 @@ import {
   usePropertyOptions, useCreatePropertyOption, useDeletePropertyOption,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const LISTS = [
   { key: 'property_type', title: 'Property Type', hint: 'e.g. Apartment, House, Plot' },
@@ -49,7 +50,7 @@ const OptionList = ({ listType, title, hint }) => {
           <Text style={styles.sectionTitle}>{title}</Text>
           <Text style={styles.sectionHint}>{hint}</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}><Text style={styles.addBtnText}>+ Add</Text></TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       {isLoading ? (

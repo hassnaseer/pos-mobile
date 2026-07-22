@@ -15,6 +15,7 @@ import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 const PROPERTY_TYPES = ['Residential', 'Commercial', 'Land', 'Industrial', 'Mixed-Use', 'Retail', 'Office', 'Warehouse'];
@@ -418,9 +419,7 @@ const PropertiesScreen = () => {
           <Text style={styles.subHeading}>Properties & units</Text>
         </View>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreate(true)}>
-            <Text style={styles.addBtnText}>+ New Property</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => setShowCreate(true)} label="New Property" />
         )}
       </View>
 

@@ -10,6 +10,7 @@ import {
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { name: '', description: '' };
 
@@ -63,9 +64,7 @@ const DeviceConditionsScreen = () => {
   return (
     <View style={styles.root}>
       {canManage && (
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ Add Condition</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add Condition" />
       )}
 
       {isLoading ? (

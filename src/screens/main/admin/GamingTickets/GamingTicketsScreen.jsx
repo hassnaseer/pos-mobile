@@ -14,6 +14,7 @@ import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 const STATUS_FILTERS = ['All', 'Active', 'Ended'];
@@ -400,9 +401,7 @@ const GamingTicketsScreen = () => {
           <Text style={styles.subHeading}>Prepaid time-based session tickets</Text>
         </View>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreate(true)}>
-            <Text style={styles.addBtnText}>+ New Ticket</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => setShowCreate(true)} label="New Ticket" />
         )}
       </View>
 

@@ -9,6 +9,7 @@ import {
 } from '../../../../services/api/posApi';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY = { providerName: '', policyNumber: '', patientName: '', coverageAmount: '', expiryDate: '', notes: '' };
 
@@ -59,9 +60,7 @@ const InsuranceScreen = () => {
 
   return (
     <View style={styles.root}>
-      <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-        <Text style={styles.addBtnText}>+ Add Insurance</Text>
-      </TouchableOpacity>
+      <HeaderAddButton onPress={openAdd} label="Add Insurance" />
 
       <FlatList
         data={records}

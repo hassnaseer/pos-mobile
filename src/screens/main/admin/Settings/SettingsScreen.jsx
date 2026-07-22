@@ -17,6 +17,7 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import { BASE_URL } from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 // Matches the backend's settings.service.ts isSettingsAllowed check.
 const SETTINGS_PERMS = [
@@ -400,9 +401,7 @@ const CRUDSection = ({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>{addLabel}</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="{addLabel}" />
         )}
       </View>
 

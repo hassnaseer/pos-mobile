@@ -12,6 +12,7 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const STATUS_STYLE = {
   Applied:  { bg: '#d1fae5', text: '#065f46' },
@@ -88,9 +89,7 @@ const FinesScreen = () => {
           <Text style={styles.subHeading}>Deducted from next payroll run, or recorded if already collected</Text>
         </View>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Apply Fine</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Apply Fine" />
         )}
       </View>
 

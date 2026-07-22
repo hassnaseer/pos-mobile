@@ -4,6 +4,7 @@ import { useCustomRoles, useCreateCustomRole, useUpdateCustomRole, useDeleteCust
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const ALL_PERMS = [
   // Sales
@@ -183,9 +184,7 @@ const RolesScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Custom Roles</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openCreate}>
-            <Text style={styles.addBtnText}>+ New Role</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openCreate} label="New Role" />
         )}
       </View>
 

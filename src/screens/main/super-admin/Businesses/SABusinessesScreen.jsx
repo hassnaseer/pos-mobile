@@ -9,6 +9,7 @@ import {
   useSABusinessesInfinite, useSABusinessTypes, useDeleteSABusiness, flattenPages,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const STATUS_STYLE = {
   Active:   { bg: '#dcfce7', text: '#16a34a' },
@@ -101,9 +102,7 @@ const SABusinessesScreen = () => {
           value={search}
           onChangeText={setSearch}
         />
-        <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('SABusinessForm', {})}>
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={() => navigation.navigate('SABusinessForm', {})} label="Add" />
       </View>
 
       {/* Status filter chips */}

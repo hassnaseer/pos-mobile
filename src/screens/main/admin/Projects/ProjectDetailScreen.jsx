@@ -15,6 +15,7 @@ import { getCategoryDef } from '../../../../config/projectCategories';
 import CallCenterEntriesTab from './CallCenterEntriesTab';
 import CategoryEntriesTab from './CategoryEntriesTab';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 
@@ -386,7 +387,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
       {tab === 'Sales' && entryKind === 'ecommerce' && (
         <View style={{ flex: 1 }}>
-          <TouchableOpacity style={styles.addBtn} onPress={openAddIncome}><Text style={styles.addBtnText}>+ Add Income Entry</Text></TouchableOpacity>
+          <HeaderAddButton onPress={openAddIncome} label="Add Income Entry" />
           <ScrollView
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
@@ -420,7 +421,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
       {tab === 'Expenses' && (
         <View style={{ flex: 1 }}>
-          <TouchableOpacity style={styles.addBtn} onPress={openAddExpense}><Text style={styles.addBtnText}>+ Add Expense</Text></TouchableOpacity>
+          <HeaderAddButton onPress={openAddExpense} label="Add Expense" />
           <ScrollView
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
@@ -445,7 +446,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
       {tab === 'Milestones' && (
         <View style={{ flex: 1 }}>
-          <TouchableOpacity style={styles.addBtn} onPress={openAddMilestone}><Text style={styles.addBtnText}>+ Add Milestone</Text></TouchableOpacity>
+          <HeaderAddButton onPress={openAddMilestone} label="Add Milestone" />
           <ScrollView
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}

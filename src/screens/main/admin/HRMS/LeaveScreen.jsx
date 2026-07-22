@@ -13,6 +13,7 @@ import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import QuickCreateModal from '../../../../components/QuickCreateModal/QuickCreateModal';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const STATUSES = ['', 'pending', 'approved', 'rejected'];
 const STATUS_STYLE = {
@@ -131,9 +132,7 @@ const LeaveScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Leave Requests</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ New</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="New" />
         )}
       </View>
 

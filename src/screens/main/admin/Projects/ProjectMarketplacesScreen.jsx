@@ -7,6 +7,7 @@ import {
   useProjectMarketplaces, useCreateProjectMarketplace, useUpdateProjectMarketplace, useDeleteProjectMarketplace,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'];
 const EMPTY = { name: '', description: '', color: COLORS[0] };
@@ -51,9 +52,7 @@ export default function ProjectMarketplacesScreen() {
           <Text style={styles.heading}>Marketplaces</Text>
           <Text style={styles.subHeading}>Manage your sales channels — TikTok, Daraz, Amazon, etc.</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       {isLoading ? (

@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import DatePicker from '../../../../components/Ui/DatePicker';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 import colors from '../../../../theme/colors';
 
 const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -111,7 +112,7 @@ const SupplierBillsScreen = () => {
     <View style={s.root}>
       <View style={s.topBar}>
         <Text style={s.heading}>Supplier Bills</Text>
-        <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       <View style={s.summaryGrid}>

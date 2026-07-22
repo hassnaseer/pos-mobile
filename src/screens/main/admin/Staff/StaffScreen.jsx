@@ -16,6 +16,7 @@ import QuickCreateModal from '../../../../components/QuickCreateModal/QuickCreat
 import DatePicker from '../../../../components/Ui/DatePicker';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -217,9 +218,7 @@ const StaffScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Employee Management</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add Employee</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add Employee" />
         )}
       </View>
 

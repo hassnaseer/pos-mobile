@@ -9,6 +9,7 @@ import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 
@@ -99,7 +100,7 @@ export default function CallCenterEntriesTab({ projectId, entries }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <TouchableOpacity style={styles.addBtn} onPress={openAdd}><Text style={styles.addBtnText}>+ Add Call Center Entry</Text></TouchableOpacity>
+      <HeaderAddButton onPress={openAdd} label="Add Call Center Entry" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {entries.length === 0 ? <Text style={styles.empty}>No call center entries yet.</Text> : entries.map(e => (
           <View key={e.id} style={styles.entryCard}>

@@ -14,6 +14,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const CATEGORIES = ['Plumbing', 'Electrical', 'HVAC', 'Appliance', 'Structural', 'Other'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
@@ -290,9 +291,7 @@ const MaintenanceScreen = () => {
           <Text style={styles.subHeading}>Field maintenance requests</Text>
         </View>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreate(true)}>
-            <Text style={styles.addBtnText}>+ New Request</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => setShowCreate(true)} label="New Request" />
         )}
       </View>
 

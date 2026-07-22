@@ -7,6 +7,7 @@ import {
   useExpenseCategories, useCreateExpenseCategory, useUpdateExpenseCategory, useDeleteExpenseCategory,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#84cc16'];
 const EMPTY = { name: '', description: '', color: COLORS[0] };
@@ -51,9 +52,7 @@ export default function ExpenseCategoriesScreen() {
           <Text style={styles.heading}>Expense Categories</Text>
           <Text style={styles.subHeading}>Organise expenses by type (Rent, Internet, Salaries…)</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       {isLoading ? (

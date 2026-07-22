@@ -12,6 +12,7 @@ import { PERMISSIONS } from '../../../../utils/permissions';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const STATUS_FILTERS = ['All', 'Scheduled', 'Completed', 'Cancelled', 'No-Show'];
 const COMPLETE_STATUSES = [{ id: 'Completed', name: 'Completed' }, { id: 'No-Show', name: 'No-Show' }];
@@ -244,9 +245,7 @@ const ViewingsScreen = () => {
           <Text style={styles.subHeading}>Scheduled viewings & appointments</Text>
         </View>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreate(true)}>
-            <Text style={styles.addBtnText}>+ New Viewing</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => setShowCreate(true)} label="New Viewing" />
         )}
       </View>
 

@@ -7,6 +7,7 @@ import { useReviews, useCreateReview, useUpdateReview } from '../../../../servic
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { employeeName: '', reviewPeriod: '', overallRating: '', comments: '' };
 const RATING_COLOR = { '5': '#10B981', '4': '#3B82F6', '3': '#F59E0B', '2': '#F97316', '1': '#EF4444' };
@@ -50,9 +51,7 @@ const ReviewsScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Annual Reviews</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         )}
       </View>
 

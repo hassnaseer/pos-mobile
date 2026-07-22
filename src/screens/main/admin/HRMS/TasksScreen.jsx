@@ -8,6 +8,7 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { title: '', description: '', assignedTo: '', dueDate: '', priority: 'medium' };
 const PRIORITY_COLOR = { high: '#EF4444', medium: '#F59E0B', low: '#10B981' };
@@ -60,9 +61,7 @@ const TasksScreen = () => {
       <View style={styles.topBar}>
         <Text style={styles.heading}>Tasks</Text>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         )}
       </View>
 

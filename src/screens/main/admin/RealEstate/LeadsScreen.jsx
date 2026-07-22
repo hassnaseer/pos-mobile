@@ -12,6 +12,7 @@ import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyConte
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 const SOURCE_OPTIONS = ['Walk-in', 'Website', 'Referral', 'Phone', 'Social Media', 'Portal', 'Other'];
@@ -205,9 +206,7 @@ const LeadsScreen = () => {
           <Text style={styles.subHeading}>{isRealEstate ? 'Real estate CRM pipeline' : 'Sales CRM pipeline'}</Text>
         </View>
         {canManage && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreate(true)}>
-            <Text style={styles.addBtnText}>+ New Lead</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => setShowCreate(true)} label="New Lead" />
         )}
       </View>
 

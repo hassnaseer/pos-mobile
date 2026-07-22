@@ -15,6 +15,7 @@ import CascadingCategorySelect from '../../../../components/Ui/CascadingCategory
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const STATUS_COLORS = {
   New: '#6366f1', 'In Progress': '#3b82f6', 'Waiting for Parts': '#f59e0b',
@@ -894,9 +895,7 @@ const TicketsScreen = ({ navigation }) => {
           onChangeText={setSearch}
         />
         {canCreate && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('CreateTicket')}>
-            <Text style={styles.addBtnText}>+ New</Text>
-          </TouchableOpacity>
+          <HeaderAddButton onPress={() => navigation.navigate('CreateTicket')} label="New" />
         )}
       </View>
 

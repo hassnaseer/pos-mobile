@@ -8,6 +8,7 @@ import {
   useUpdateSAPlatformMember, useDeleteSAPlatformMember,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const SA_PERMISSIONS = [
   'sa_dashboard',
@@ -118,9 +119,7 @@ export default function SAPlatformTeamScreen() {
           <Text style={styles.title}>Platform Team</Text>
           <Text style={styles.subtitle}>Manage team members and their access</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
-          <Text style={styles.addBtnText}>+ Add Member</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add Member" />
       </View>
 
       {/* List */}

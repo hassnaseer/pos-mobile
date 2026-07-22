@@ -11,6 +11,7 @@ import {
 } from '../../../../services/api/posApi';
 import { BASE_URL } from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = { name: '', url: '' };
 
@@ -131,9 +132,7 @@ export default function SADocumentsScreen() {
           <Text style={styles.title}>Documents</Text>
           <Text style={styles.subtitle}>Platform-wide documents</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       {/* Search */}

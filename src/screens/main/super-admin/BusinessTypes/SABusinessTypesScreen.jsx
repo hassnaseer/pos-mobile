@@ -9,6 +9,7 @@ import {
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
 import ConfirmModal from '../../../../components/Modal/ConfirmModal';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const DASHBOARD_OPTIONS = [
   { value: '', label: 'Standard POS' },
@@ -71,9 +72,7 @@ const SABusinessTypesScreen = ({ navigation }) => {
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>Business Types</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('SABusinessTypeForm')}>
-          <Text style={styles.addBtnText}>+ Add Type</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={() => navigation.navigate('SABusinessTypeForm')} label="Add Type" />
       </View>
 
       <FlatList

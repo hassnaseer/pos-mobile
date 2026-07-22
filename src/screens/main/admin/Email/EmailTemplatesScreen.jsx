@@ -7,6 +7,7 @@ import {
   useEmailTemplates, useCreateEmailTemplate, useUpdateEmailTemplate, useDeleteEmailTemplate,
 } from '../../../../services/api/posApi';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY = { name: '', subject: '', body: '' };
 
@@ -52,7 +53,7 @@ export default function EmailTemplatesScreen() {
           <Text style={styles.heading}>Email Templates</Text>
           <Text style={styles.sub}>Reusable templates for emailing leads & customers</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}><Text style={styles.addBtnText}>+ Add</Text></TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="Add" />
       </View>
 
       <FlatList

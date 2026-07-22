@@ -14,6 +14,7 @@ import DatePicker from '../../../../components/Ui/DatePicker';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import MultiSelectPicker from '../../../../components/InlinePicker/MultiSelectPicker';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 import { PROJECT_CATEGORIES, getCategoryDef } from '../../../../config/projectCategories';
 import colors from '../../../../theme/colors';
 
@@ -173,7 +174,7 @@ const ProjectsScreen = () => {
           <TouchableOpacity style={s.currencySelect} onPress={() => setShowCurrencyPicker(true)}>
             <Text style={s.currencySelectText}>{displayCurrency} ▾</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.addBtn} onPress={openAdd}><Text style={s.addBtnText}>+ Add</Text></TouchableOpacity>
+          <HeaderAddButton onPress={openAdd} label="Add" />
         </View>
       </View>
 

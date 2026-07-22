@@ -8,6 +8,7 @@ import apiClient from '../../../../services/api/globalApi';
 import { useMedicalAppointmentsInfinite, usePatientsList, useAppointmentTypes, flattenPages } from '../../../../services/api/posApi';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import colors from '../../../../theme/colors';
+import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 // Status values must match the backend exactly (medical-appointment.entity.ts: Scheduled | Completed | Cancelled | No-Show).
 const STATUSES = ['', 'Scheduled', 'Completed', 'Cancelled', 'No-Show'];
@@ -136,9 +137,7 @@ const AppointmentsScreen = () => {
     <View style={styles.root}>
       <View style={styles.topBar}>
         <Text style={styles.heading}>Appointments</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ New</Text>
-        </TouchableOpacity>
+        <HeaderAddButton onPress={openAdd} label="New" />
       </View>
 
       <ScrollView
