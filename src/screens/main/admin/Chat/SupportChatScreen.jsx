@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
+import { Trash2 } from 'lucide-react-native';
 import { useAuth } from '../../../../context/AuthContext';
 import apiClient from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
@@ -19,6 +20,8 @@ const SupportChatScreen = ({ route, navigation }) => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const flatRef = useRef(null);
   const prefillSent = useRef(false);
 
@@ -129,6 +132,35 @@ const SupportChatScreen = ({ route, navigation }) => {
     }).catch(() => {});
   };
 
+  // Mirrors web's useAdminSupportChat.deleteConversation (frontend/src/app/hooks/useSupportChat.ts):
+  // messages are hard-deleted for privacy, but the conversation doc is soft-deleted
+  // (isDeletedByCustomer) so the support/SA team still retains the record.
+  const deleteConversation = async () => {
+    if (!fs) return;
+    setDeleting(true);
+    try {
+      const db = fs.getFirestore();
+      if (conversationId) {
+        const msgsSnap = await fs.getDocs(fs.collection(fs.doc(db, 'support_conversations', conversationId), 'messages'));
+        await Promise.all(msgsSnap.docs.map(d => fs.deleteDoc(d.ref)));
+        await fs.updateDoc(fs.doc(db, 'support_conversations', conversationId), {
+          isDeletedByCustomer: true,
+          status: 'completed',
+          lastMessage: 'Chat ended by customer',
+          lastMessageAt: serverTs(),
+          isReadByCustomer: true,
+          isReadBySupport: true,
+        });
+      }
+      setConversationId(null);
+      setMessages([]);
+      setConfirmDelete(false);
+      navigation?.goBack();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!fs) {
     return (
       <View style={styles.center}>
@@ -140,6 +172,27 @@ const SupportChatScreen = ({ route, navigation }) => {
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={styles.topBar}>
+        <Text style={styles.topBarTitle}>Support Chat</Text>
+        <TouchableOpacity onPress={() => setConfirmDelete(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Trash2 size={19} color={colors.secondary} />
+        </TouchableOpacity>
+      </View>
+
+      {confirmDelete && (
+        <View style={styles.deleteBanner}>
+          <Text style={styles.deleteBannerText}>Closing will permanently delete your chat history. Continue?</Text>
+          <View style={styles.deleteBannerActions}>
+            <TouchableOpacity style={styles.deleteBtn} onPress={deleteConversation} disabled={deleting}>
+              {deleting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.deleteBtnText}>Yes, delete</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteCancelBtn} onPress={() => setConfirmDelete(false)} disabled={deleting}>
+              <Text style={styles.deleteCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {loading
         ? <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
         : (
@@ -184,6 +237,15 @@ const SupportChatScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f4f6f9' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee' },
+  topBarTitle: { fontSize: 15, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
+  deleteBanner: { backgroundColor: '#FEF2F2', borderBottomWidth: 1, borderColor: '#FECACA', paddingHorizontal: 16, paddingVertical: 12 },
+  deleteBannerText: { fontSize: 13, fontFamily: 'Outfit-Medium', color: '#B91C1C', marginBottom: 8 },
+  deleteBannerActions: { flexDirection: 'row', gap: 8 },
+  deleteBtn: { flex: 1, backgroundColor: '#DC2626', borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
+  deleteBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 12 },
+  deleteCancelBtn: { flex: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
+  deleteCancelText: { color: '#374151', fontFamily: 'Outfit-SemiBold', fontSize: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   infoText: { fontSize: 16, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack, marginBottom: 8, textAlign: 'center' },
   infoSub: { fontSize: 13, fontFamily: 'Outfit-Regular', color: colors.secondary, textAlign: 'center' },

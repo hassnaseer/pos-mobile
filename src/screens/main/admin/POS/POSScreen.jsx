@@ -11,6 +11,7 @@ import {
 } from '../../../../services/api/posApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import InvoicePreviewModal from '../../../../components/InvoicePreviewModal/InvoicePreviewModal';
+import BarcodeScannerModal from '../../../../components/BarcodeScanner/BarcodeScannerModal';
 import { buildSalesInvoiceHtml } from '../../../../utils/invoicePrinter';
 import colors from '../../../../theme/colors';
 
@@ -121,6 +122,7 @@ const POSScreen = () => {
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeMode, setBarcodeMode]   = useState(false);
   const [barcodeStatus, setBarcodeStatus] = useState('idle'); // idle | found | notfound
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [cart, setCart]                     = useState([]);
   const [paymentMethod, setPaymentMethod]   = useState('Cash');
   const [showReceipt, setShowReceipt]       = useState(false);
@@ -380,8 +382,11 @@ const POSScreen = () => {
                   value={search}
                   onChangeText={setSearch}
                 />
-                <TouchableOpacity style={styles.scanBtn} onPress={() => { setBarcodeMode(true); setBarcodeInput(''); setBarcodeStatus('idle'); }}>
-                  <Text style={styles.scanBtnText}>⬛ Scan</Text>
+                <TouchableOpacity style={styles.scanBtn} onPress={() => setScannerOpen(true)}>
+                  <Text style={styles.scanBtnText}>📷 Scan</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.keyboardScanBtn} onPress={() => { setBarcodeMode(true); setBarcodeInput(''); setBarcodeStatus('idle'); }}>
+                  <Text style={styles.keyboardScanBtnText}>⌨️</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -701,6 +706,12 @@ const POSScreen = () => {
         fileName={lastOrder?.orderNumber ? `invoice-${lastOrder.orderNumber}` : 'invoice'}
         title="Invoice"
       />
+
+      <BarcodeScannerModal
+        visible={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={code => { handleBarcodeScan(code); setScannerOpen(false); }}
+      />
     </SafeAreaView>
   );
 };
@@ -721,6 +732,8 @@ const styles = StyleSheet.create({
   search:      { flex: 1, backgroundColor: '#f4f6f9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Outfit-Regular', borderWidth: 1, borderColor: '#E5E7EB' },
   scanBtn:     { backgroundColor: '#1E293B', borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center' },
   scanBtnText: { color: '#fff', fontSize: 13, fontFamily: 'Outfit-SemiBold' },
+  keyboardScanBtn:     { backgroundColor: '#f4f6f9', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 10, justifyContent: 'center' },
+  keyboardScanBtnText: { fontSize: 15 },
   barcodeRow:  { flexDirection: 'row', alignItems: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#D0D5DD', paddingHorizontal: 10, paddingVertical: 6, gap: 8 },
   barcodeIcon: { fontSize: 18 },
   barcodeInput:{ flex: 1, fontSize: 14, fontFamily: 'Outfit-Regular', color: '#111', paddingVertical: 4 },

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
-  Modal, TouchableWithoutFeedback,
+  Modal, TouchableWithoutFeedback, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -43,6 +43,9 @@ const Header = ({
       onSuccess: async () => {
         await AsyncStorage.multiRemove(['authToken', 'userData']);
         contextLogout?.();
+      },
+      onError: () => {
+        Alert.alert('Error', 'Failed to log out. Please try again.');
       },
     });
   };
@@ -154,6 +157,17 @@ const Header = ({
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Blocks all interaction while logout is in flight — closing the dropdown above
+          doesn't mean the app is safe to keep using yet. */}
+      <Modal visible={isPending} transparent animationType="fade">
+        <View style={styles.logoutOverlay}>
+          <View style={styles.logoutCard}>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={styles.logoutCardText}>Logging out…</Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -170,6 +184,9 @@ const styles = StyleSheet.create({
   bizLogoBadge: { width: 22, height: 22, borderRadius: 5, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   bizLogoBadgeText: { color: '#fff', fontSize: 11, fontFamily: 'Outfit-Bold' },
   bizName: { fontSize: 15, fontFamily: 'Outfit-Bold', color: colors.defaultBlack, flexShrink: 1 },
+  logoutOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  logoutCard: { backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 32, paddingVertical: 24, alignItems: 'center', gap: 12 },
+  logoutCardText: { fontSize: 14, fontFamily: 'Outfit-Medium', color: colors.defaultBlack },
   menuIconStyle: { width: 20, height: 20, resizeMode: 'contain' },
   backIcon: { width: 20, height: 20, resizeMode: 'contain', tintColor: '#666' },
   notificationBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: colors.warning, borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },

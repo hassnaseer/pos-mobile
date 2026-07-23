@@ -367,6 +367,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     fontSize: 14,
     fontFamily: 'Outfit-Regular',
+    color: colors.defaultBlack,
     maxHeight: 90,
   },
   sendBtn: {
