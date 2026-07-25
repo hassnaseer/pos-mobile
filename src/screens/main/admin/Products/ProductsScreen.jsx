@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput,
   ActivityIndicator, Alert, RefreshControl, Image, ScrollView, Modal,
@@ -15,10 +15,20 @@ import { useCurrency } from '../../../../context/CurrencyContext';
 import { exportProductsToCsv, readCsvFileToRows, shareCsvTemplate } from '../../../../utils/productCsv';
 import colors from '../../../../theme/colors';
 import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
+import ManageFieldsButton, { loadHiddenFields } from '../../../../components/Ui/ManageFieldsButton';
 
 const STATUS_OPTIONS = [
   { id: '', name: 'All' }, { id: 'active', name: 'Active' },
   { id: 'pending', name: 'Pending' }, { id: 'inactive', name: 'Inactive' },
+];
+
+const FIELDS_STORAGE_KEY = 'products-card-fields';
+const MANAGEABLE_FIELDS = [
+  { id: 'sku', label: 'SKU' },
+  { id: 'category', label: 'Category' },
+  { id: 'stock', label: 'Stock' },
+  { id: 'cost', label: 'Cost' },
+  { id: 'status', label: 'Status Badge' },
 ];
 
 const ProductsScreen = ({ navigation }) => {
@@ -32,6 +42,7 @@ const ProductsScreen = ({ navigation }) => {
   const [conditionFilter, setConditionFilter] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [hiddenFields, setHiddenFields] = useState(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [exporting, setExporting] = useState(false);
@@ -39,6 +50,8 @@ const ProductsScreen = ({ navigation }) => {
   const [showHistory, setShowHistory] = useState(false);
 
   const canBulkOps = perms.can(PERMISSIONS.ACCESS_BULK_OPERATIONS);
+
+  useEffect(() => { loadHiddenFields(FIELDS_STORAGE_KEY).then(setHiddenFields); }, []);
 
   const queryParams = {
     ...(categoryFilter ? { category: categoryFilter } : {}),
@@ -143,6 +156,12 @@ const ProductsScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.filterBtn} onPress={() => setShowFilters(true)}>
           <Text style={styles.filterBtnText}>Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</Text>
         </TouchableOpacity>
+        <ManageFieldsButton
+          fields={MANAGEABLE_FIELDS}
+          storageKey={FIELDS_STORAGE_KEY}
+          hidden={hiddenFields}
+          onSave={setHiddenFields}
+        />
         {canManage && (
           <TouchableOpacity style={styles.selectToggleBtn} onPress={() => { setSelectMode(v => !v); setSelectedIds([]); }}>
             <Text style={styles.selectToggleBtnText}>{selectMode ? 'Cancel' : 'Select'}</Text>
@@ -218,7 +237,7 @@ const ProductsScreen = ({ navigation }) => {
             <View style={styles.rowInfo}>
               <View style={styles.rowNameRow}>
                 <Text style={styles.rowName}>{item.name}</Text>
-                {item.status && item.status !== 'active' && (
+                {!hiddenFields.has('status') && item.status && item.status !== 'active' && (
                   <View style={[styles.inactiveBadge, item.status === 'pending' && styles.pendingBadge]}>
                     <Text style={[styles.inactiveBadgeText, item.status === 'pending' && styles.pendingBadgeText]}>
                       {item.status === 'pending' ? 'Pending' : 'Inactive'}
@@ -229,10 +248,15 @@ const ProductsScreen = ({ navigation }) => {
                   <View style={styles.lowStockBadge}><Text style={styles.lowStockBadgeText}>Low Stock</Text></View>
                 )}
               </View>
-              <Text style={styles.rowSub}>
-                {item.sku ? `SKU: ${item.sku}  ` : ''}{item.categoryRef?.name ?? item.category ?? 'No cat'} · Stock: {item.stock}
-              </Text>
-              {item.cost != null && (
+              {(!hiddenFields.has('sku') || !hiddenFields.has('category') || !hiddenFields.has('stock')) && (
+                <Text style={styles.rowSub}>
+                  {!hiddenFields.has('sku') && item.sku ? `SKU: ${item.sku}  ` : ''}
+                  {!hiddenFields.has('category') ? (item.categoryRef?.name ?? item.category ?? 'No cat') : ''}
+                  {!hiddenFields.has('category') && !hiddenFields.has('stock') ? ' · ' : ''}
+                  {!hiddenFields.has('stock') ? `Stock: ${item.stock}` : ''}
+                </Text>
+              )}
+              {!hiddenFields.has('cost') && item.cost != null && (
                 <Text style={styles.rowCost}>Cost: {fmt(item.cost)}</Text>
               )}
             </View>
