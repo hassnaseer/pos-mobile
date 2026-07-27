@@ -155,7 +155,7 @@ const DashboardScreen = () => {
           {hasReports && (
           <View style={styles.cardRow}>
             <View style={[styles.card, styles.cardPrimary]}>
-              <Text style={styles.cardLabelLight}>Total Sales</Text>
+              <Text style={styles.cardLabelLight}>Total Revenue</Text>
               <Text style={styles.cardValueLight}>{fmt(totalRevenue)}</Text>
               {revenueChange !== null && (
                 <View style={styles.changeChipLight}>

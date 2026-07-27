@@ -236,7 +236,7 @@ const ProjectsTab = ({ data, fmt }) => (
   <>
     <View style={styles.grid}>
       <StatCard label="Total Entries"     value={data.totalEntries ?? 0}         color={colors.primary} />
-      <StatCard label="Total Sales"       value={fmt(data.totalSales)}           color="#22c55e" />
+      <StatCard label="Total Revenue"       value={fmt(data.totalSales)}           color="#22c55e" />
       <StatCard label="Received"          value={fmt(data.totalReceived)}        color="#06b6d4" />
       <StatCard label="Outstanding"       value={fmt(data.totalOutstanding)}      color={colors.warning} />
       <StatCard label="Profit"            value={fmt(data.totalProfit)}           color="#8b5cf6" sub={data.profitMargin != null ? `${data.profitMargin}% margin` : undefined} />

@@ -47,7 +47,7 @@ export default function ClientProjectDetailScreen() {
         </View>
 
         <View style={s.kpiGrid}>
-          <View style={[s.kpi, { backgroundColor: '#f0fdf4' }]}><Text style={s.kpiLabel}>Total Sales</Text><Text style={[s.kpiVal, { color: '#15803d' }]}>{money(totalIncome)}</Text></View>
+          <View style={[s.kpi, { backgroundColor: '#f0fdf4' }]}><Text style={s.kpiLabel}>Total Revenue</Text><Text style={[s.kpiVal, { color: '#15803d' }]}>{money(totalIncome)}</Text></View>
           <View style={[s.kpi, { backgroundColor: '#fef2f2' }]}><Text style={s.kpiLabel}>Expenses</Text><Text style={[s.kpiVal, { color: '#b91c1c' }]}>{money(totalExpense)}</Text></View>
           <View style={[s.kpi, { backgroundColor: net >= 0 ? '#eff6ff' : '#fef2f2' }]}><Text style={s.kpiLabel}>Net Profit</Text><Text style={[s.kpiVal, { color: net >= 0 ? '#1d4ed8' : '#b91c1c' }]}>{net >= 0 ? '+' : ''}{money(net)}</Text></View>
           {roi !== null ? <View style={[s.kpi, { backgroundColor: '#f5f3ff' }]}><Text style={s.kpiLabel}>ROI</Text><Text style={[s.kpiVal, { color: '#7c3aed' }]}>{roi}%</Text></View> : null}
