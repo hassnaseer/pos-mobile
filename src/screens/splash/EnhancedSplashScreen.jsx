@@ -56,6 +56,10 @@ const EnhancedSplashScreen = ({ onLogin, onFinish, navigation }) => {
               <TouchableOpacity onPress={() => goLegal('privacy')}>
                 <Text style={styles.legalLink}>Privacy Policy</Text>
               </TouchableOpacity>
+              <Text style={styles.legalSep}>·</Text>
+              <TouchableOpacity onPress={() => goLegal('refund')}>
+                <Text style={styles.legalLink}>Refund Policy</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

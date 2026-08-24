@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BASE_URL } from '../../services/api/globalApi';
 import colors from '../../theme/colors';
 
-const TITLES = { terms: 'Terms of Service', privacy: 'Privacy Policy' };
+const TITLES = { terms: 'Terms of Service', privacy: 'Privacy Policy', refund: 'Refund Policy' };
 
 const LegalPageScreen = ({ navigation, route }) => {
   const { type = 'terms' } = route.params ?? {};

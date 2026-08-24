@@ -110,6 +110,10 @@ const LoginScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.navigate('LegalPage', { type: 'privacy' })}>
             <Text style={styles.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
+          <Text style={styles.legalSep}>·</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('LegalPage', { type: 'refund' })}>
+            <Text style={styles.legalLink}>Refund Policy</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -71,6 +71,7 @@ const SALegalPagesScreen = () => {
         {[
           { key: 'terms', label: 'Terms of Service' },
           { key: 'privacy', label: 'Privacy Policy' },
+          { key: 'refund', label: 'Refund Policy' },
         ].map(t => (
           <TouchableOpacity
             key={t.key}
@@ -82,9 +83,9 @@ const SALegalPagesScreen = () => {
         ))}
       </View>
 
-      {activeTab === 'terms'
-        ? <LegalTab key="terms" type="terms" label="Terms of Service" />
-        : <LegalTab key="privacy" type="privacy" label="Privacy Policy" />}
+      {activeTab === 'terms' && <LegalTab key="terms" type="terms" label="Terms of Service" />}
+      {activeTab === 'privacy' && <LegalTab key="privacy" type="privacy" label="Privacy Policy" />}
+      {activeTab === 'refund' && <LegalTab key="refund" type="refund" label="Refund Policy" />}
     </View>
   );
 };
