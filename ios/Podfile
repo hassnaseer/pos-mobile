@@ -15,7 +15,18 @@ if linkage != nil
 end
 
 target 'mobileApp' do
-  config = use_native_modules!
+   config = use_native_modules!
+     use_frameworks! :linkage => :static
+     $RNFirebaseAsStaticFramework = true
+
+     pod 'Firebase', :modular_headers => true
+     pod 'Firebase/Core', :modular_headers => true
+     pod 'Firebase/Firestore', :modular_headers => true
+     pod 'FirebaseCoreInternal', :modular_headers => true
+     pod 'FirebaseCoreExtension', :modular_headers => true
+     pod 'FirebaseFirestoreInternal', :modular_headers => true
+     pod 'GoogleUtilities', :modular_headers => true
+     pod 'FirebaseCore', :modular_headers => true
 
   use_react_native!(
     :path => config[:reactNativePath],
@@ -31,5 +42,24 @@ target 'mobileApp' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 26's Apple clang 21 tightened consteval checks, which breaks the fmt
+    # 11.0.2 pod bundled by RCT-Folly ("call to consteval function ... is not a
+    # constant expression"). fmt already disables consteval for Apple clang < 14;
+    # extend that to all Apple clang versions until RN ships fmt >= 12.1.0.
+    # https://github.com/facebook/react-native/issues/55601
+    fmt_base_h = File.join(__dir__, 'Pods', 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(fmt_base_h)
+      contents = File.read(fmt_base_h)
+      patched = contents.sub(
+        '#elif defined(__apple_build_version__) && __apple_build_version__ < 14000029L',
+        '#elif defined(__apple_build_version__)'
+      )
+      if patched != contents
+        File.chmod(0644, fmt_base_h)
+        File.write(fmt_base_h, patched)
+        File.chmod(0444, fmt_base_h)
+      end
+    end
   end
 end
