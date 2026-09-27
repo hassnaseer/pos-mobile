@@ -183,9 +183,14 @@ const ADMIN_MENU = [
 
   // ── Specialty: Snooker — flat links, matching web (no dropdown group); Session
   // Types has no sidebar entry on web either, still reachable via Settings ──────
-  { id: 'snooker-dashboard', title: 'Snooker Dashboard', route: 'SnookerDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS, adminOnly: true },
-  { id: 'snooker-sessions',  title: 'Sessions',          route: 'SnookerSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_SNOOKER_SESSIONS, adminOnly: true },
-  { id: 'snooker-tables',    title: 'Tables',             route: 'SnookerTables',   icon: rolesIcon,  permission: PERMISSIONS.MANAGE_SNOOKER_TABLES, adminOnly: true },
+  { id: 'snooker-dashboard', title: 'Snooker Dashboard', route: 'SnookerDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true },
+  { id: 'snooker-sessions',  title: 'Sessions',          route: 'SnookerSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true },
+  { id: 'snooker-tables',    title: 'Tables',             route: 'SnookerTables',   icon: rolesIcon,  permission: PERMISSIONS.MANAGE_GAMING_STATIONS, adminOnly: true },
+
+  // ── Specialty: Arcade — shares the same gaming-stations/sessions permissions as Snooker
+  { id: 'arcade-dashboard', title: 'Arcade Dashboard', route: 'ArcadeDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true },
+  { id: 'arcade-sessions',  title: 'Sessions',         route: 'ArcadeSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true },
+  { id: 'arcade-stations',  title: 'Stations',         route: 'ArcadeStations',  icon: rolesIcon, permission: PERMISSIONS.MANAGE_GAMING_STATIONS, adminOnly: true },
 
   // ── Specialty: Gaming Tickets — prepaid time-based session tickets ───────────
   { id: 'gaming-tickets', title: 'Gaming Tickets', route: 'GamingTickets', icon: ticketsIcon, permission: PERMISSIONS.MANAGE_GAMING_TICKETS, adminOnly: true },

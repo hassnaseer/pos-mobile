@@ -6,6 +6,7 @@ import {
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useVendorListings, useCreateVendorListing, useUpdateVendorListing, useDeleteVendorListing } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
+import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import { BASE_URL } from '../../../../services/api/globalApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,7 +15,7 @@ import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
 
 const EMPTY_FORM = {
   productName: '', description: '', basePrice: '', moq: '1', unit: 'piece',
-  category: '', imageUrl: '', isActive: true, deliveryCharge: '', deliveryPaymentMethods: '',
+  category: '', imageUrl: '', isActive: true, deliveryCharge: '', deliveryPaymentMethods: '', stock: '0',
 };
 const PAYMENT_METHODS = [
   { key: '', label: 'Not set' },
@@ -44,6 +45,7 @@ const uploadImage = async (asset) => {
 const VendorListingsScreen = () => {
   const perms = usePermissions();
   const canAccess = perms.canAccessVendorSeller();
+  const canDeliver = perms.can(PERMISSIONS.HANDLE_DELIVERIES);
   const { fmt, currency } = useCurrency();
 
   const [showModal, setShowModal] = useState(false);
@@ -69,7 +71,7 @@ const VendorListingsScreen = () => {
       productName: l.productName ?? '', description: l.description ?? '', basePrice: String(l.basePrice ?? ''),
       moq: String(l.moq ?? '1'), unit: l.unit ?? 'piece', category: l.category ?? '', imageUrl: l.imageUrl ?? '',
       isActive: l.isActive ?? true, deliveryCharge: l.deliveryCharge != null ? String(l.deliveryCharge) : '',
-      deliveryPaymentMethods: l.deliveryPaymentMethods ?? '',
+      deliveryPaymentMethods: l.deliveryPaymentMethods ?? '', stock: String(l.stock ?? '0'),
     });
     setTiers((l.priceTiers ?? []).map(t => ({ minQty: t.minQty, discountPct: t.discountPct })));
     setShowModal(true);
@@ -105,6 +107,7 @@ const VendorListingsScreen = () => {
       imageUrl: form.imageUrl || undefined, priceTiers: tiers.map(t => ({ minQty: Number(t.minQty), discountPct: Number(t.discountPct) })),
       deliveryCharge: form.deliveryCharge ? parseFloat(form.deliveryCharge) : null,
       deliveryPaymentMethods: form.deliveryPaymentMethods || null,
+      stock: form.stock !== '' ? Number(form.stock) : 0,
     };
     try {
       editing ? await update({ id: editing.id, ...payload }) : await create(payload);
@@ -234,26 +237,34 @@ const VendorListingsScreen = () => {
                 </View>
               </View>
 
+              <Text style={styles.label}>Quantity in Stock</Text>
+              <TextInput style={styles.input} value={form.stock} onChangeText={set('stock')} placeholder="0" placeholderTextColor="#999" keyboardType="number-pad" />
+              <Text style={styles.hint}>How many you have available to sell right now — via the marketplace and your own POS.</Text>
+
               <View style={styles.switchRow}>
                 <Text style={styles.switchLabel}>Active (visible in marketplace)</Text>
                 <Switch value={form.isActive} onValueChange={set('isActive')} trackColor={{ false: '#e5e7eb', true: colors.primary + '80' }} thumbColor={form.isActive ? colors.primary : '#fff'} />
               </View>
 
-              <Text style={styles.sectionTitle}>Delivery</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Delivery Charge ({currency})</Text>
-                  <TextInput style={styles.input} value={form.deliveryCharge} onChangeText={set('deliveryCharge')} placeholder="0.00 — blank = free" placeholderTextColor="#999" keyboardType="decimal-pad" />
-                </View>
-              </View>
-              <Text style={styles.label}>Payment Method</Text>
-              <View style={styles.chips}>
-                {PAYMENT_METHODS.map(m => (
-                  <TouchableOpacity key={m.key} style={[styles.chip, form.deliveryPaymentMethods === m.key && styles.chipActive]} onPress={() => set('deliveryPaymentMethods')(m.key)}>
-                    <Text style={[styles.chipText, form.deliveryPaymentMethods === m.key && styles.chipTextActive]}>{m.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {canDeliver && (
+                <>
+                  <Text style={styles.sectionTitle}>Delivery</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.label}>Delivery Charge ({currency})</Text>
+                      <TextInput style={styles.input} value={form.deliveryCharge} onChangeText={set('deliveryCharge')} placeholder="0.00 — blank = free" placeholderTextColor="#999" keyboardType="decimal-pad" />
+                    </View>
+                  </View>
+                  <Text style={styles.label}>Payment Method</Text>
+                  <View style={styles.chips}>
+                    {PAYMENT_METHODS.map(m => (
+                      <TouchableOpacity key={m.key} style={[styles.chip, form.deliveryPaymentMethods === m.key && styles.chipActive]} onPress={() => set('deliveryPaymentMethods')(m.key)}>
+                        <Text style={[styles.chipText, form.deliveryPaymentMethods === m.key && styles.chipTextActive]}>{m.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
 
               <Text style={styles.sectionTitle}>Bulk Discount Tiers</Text>
               <Text style={styles.sectionSub}>Apply discounts when buyers order larger quantities</Text>

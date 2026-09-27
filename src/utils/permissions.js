@@ -113,9 +113,10 @@ export const PERMISSIONS = {
   MANAGE_COMMISSIONS:         'manage_commissions',
   MANAGE_TRANSPORT:           'manage_transport',
 
-  // ── Snooker ───────────────────────────────────────────────────────────────────
-  MANAGE_SNOOKER_SESSIONS:    'manage_snooker_sessions',
-  MANAGE_SNOOKER_TABLES:      'manage_snooker_tables',
+  // ── Gaming stations — shared by Snooker and Arcade (renamed from manage_snooker_*
+  // so the same permission gates both verticals; see backend permission.seeder.ts) ──
+  MANAGE_GAMING_SESSIONS:     'manage_gaming_sessions',
+  MANAGE_GAMING_STATIONS:     'manage_gaming_stations',
 
   // ── Gaming Tickets ───────────────────────────────────────────────────────────
   MANAGE_GAMING_TICKETS:      'manage_gaming_tickets',
@@ -178,9 +179,10 @@ export const FINANCE_PERMISSIONS = [
   PERMISSIONS.VIEW_FINANCE_REPORTS,
 ];
 
-export const SNOOKER_PERMISSIONS = [
-  PERMISSIONS.MANAGE_SNOOKER_SESSIONS,
-  PERMISSIONS.MANAGE_SNOOKER_TABLES,
+// Same two codes gate both Snooker and Arcade — they share one engine on the backend.
+export const GAMING_PERMISSIONS = [
+  PERMISSIONS.MANAGE_GAMING_SESSIONS,
+  PERMISSIONS.MANAGE_GAMING_STATIONS,
 ];
 
 // Real Estate module permission codes (any one grants access to the module as a whole)

@@ -173,6 +173,13 @@ import SnookerDashboardScreen    from '../screens/main/admin/Snooker/SnookerDash
 import SnookerSessionsScreen     from '../screens/main/admin/Snooker/SnookerSessionsScreen';
 import SnookerSessionDetailScreen from '../screens/main/admin/Snooker/SnookerSessionDetailScreen';
 
+// Arcade — shares manage_gaming_stations/manage_gaming_sessions permissions with Snooker
+import ArcadeStationsScreen       from '../screens/main/admin/Arcade/ArcadeStationsScreen';
+import ArcadeSessionTypesScreen   from '../screens/main/admin/Arcade/ArcadeSessionTypesScreen';
+import ArcadeDashboardScreen      from '../screens/main/admin/Arcade/ArcadeDashboardScreen';
+import ArcadeSessionsScreen       from '../screens/main/admin/Arcade/ArcadeSessionsScreen';
+import ArcadeSessionDetailScreen  from '../screens/main/admin/Arcade/ArcadeSessionDetailScreen';
+
 // Gaming Tickets
 import GamingTicketsScreen from '../screens/main/admin/GamingTickets/GamingTicketsScreen';
 
@@ -354,6 +361,10 @@ const ADMIN_SCREENS = [
   { name: 'SnookerSessions',     component: SnookerSessionsScreen },
   { name: 'SnookerTables',       component: SnookerTablesScreen },
   { name: 'SnookerSessionTypes', component: SnookerSessionTypesScreen },
+  { name: 'ArcadeDashboard',     component: ArcadeDashboardScreen },
+  { name: 'ArcadeSessions',      component: ArcadeSessionsScreen },
+  { name: 'ArcadeStations',      component: ArcadeStationsScreen },
+  { name: 'ArcadeSessionTypes',  component: ArcadeSessionTypesScreen },
 
   // Gaming Tickets
   { name: 'GamingTickets', component: GamingTicketsScreen },
@@ -431,6 +442,7 @@ const DASHBOARD_ROUTE_BY_PRIMARY = {
   hrms: 'HRMSDashboard',
   finance: 'FinanceDashboard',
   snooker: 'SnookerDashboard',
+  arcade: 'ArcadeDashboard',
   leads: 'LeadsDashboard',
   real_estate: 'REDashboard',
 };
@@ -481,6 +493,7 @@ const AdminNavigator = ({ unreadCount, userRole, user }) => {
         <Stack.Screen name="TeamChatThread"        component={TeamChatThreadScreen}        options={{ header: backHdr }} />
         <Stack.Screen name="LearnPage"              component={LearnPageScreen}             options={{ header: backHdr }} />
         <Stack.Screen name="SnookerSessionDetail"   component={SnookerSessionDetailScreen}   options={{ header: backHdr }} />
+        <Stack.Screen name="ArcadeSessionDetail"    component={ArcadeSessionDetailScreen}    options={{ header: backHdr }} />
         <Stack.Screen name="ProjectDetail"          component={ProjectDetailScreen}          options={{ header: backHdr }} />
         <Stack.Screen name="DoctorPatientPrescriptions" component={DoctorPatientPrescriptionsScreen} options={{ header: backHdr }} />
       </Stack.Navigator>

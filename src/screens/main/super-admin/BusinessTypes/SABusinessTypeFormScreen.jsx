@@ -18,8 +18,10 @@ const DASHBOARD_OPTIONS = [
   { value: 'pharmacy', label: 'Pharmacy' },
   { value: 'finance', label: 'Finance & Projects' },
   { value: 'snooker', label: 'Snooker Club' },
+  { value: 'arcade', label: 'Gaming Arcade' },
   { value: 'real_estate', label: 'Real Estate' },
   { value: 'leads', label: 'Lead Management' },
+  { value: 'vendor', label: 'Vendor / Wholesale' },
 ];
 
 const SABusinessTypeFormScreen = ({ route, navigation }) => {

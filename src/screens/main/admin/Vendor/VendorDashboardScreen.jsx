@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useVendorDashboard } from '../../../../services/api/posApi';
 import { useCurrency } from '../../../../context/CurrencyContext';
+import { usePermissions } from '../../../../hooks/usePermissions';
 import colors from '../../../../theme/colors';
 
 const STATUS_STYLE = {
@@ -40,6 +41,8 @@ function StatCard({ label, value, color }) {
 
 export default function VendorDashboardScreen() {
   const { fmt } = useCurrency();
+  const perms = usePermissions();
+  const canBuy = perms.canAccessVendorBuyer();
   const { data: stats, isLoading, isFetching, refetch } = useVendorDashboard();
 
   if (isLoading) return <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>;
@@ -73,6 +76,7 @@ export default function VendorDashboardScreen() {
         </View>
       </View>
 
+      {canBuy && (
       <View>
         <Text style={styles.sectionTitle}>Purchases (As Buyer)</Text>
         <View style={styles.statsGrid}>
@@ -116,6 +120,7 @@ export default function VendorDashboardScreen() {
           </View>
         )}
       </View>
+      )}
     </ScrollView>
   );
 }
