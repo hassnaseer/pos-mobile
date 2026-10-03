@@ -12,6 +12,7 @@ import {
   useDocumentCategories, useCreateDocumentCategory, useDeleteDocumentCategory,
 } from '../../../../services/api/posApi';
 import { usePermissions } from '../../../../hooks/usePermissions';
+import { useAuth } from '../../../../context/AuthContext';
 import { PERMISSIONS } from '../../../../utils/permissions';
 import { useCurrency } from '../../../../context/CurrencyContext';
 import { BASE_URL } from '../../../../services/api/globalApi';
@@ -341,8 +342,8 @@ const CONFIG_ITEMS = [
   { label: 'Expense Categories', desc: 'Define categories for organising business expenses',  route: 'ExpenseCategories', permission: PERMISSIONS.MANAGE_BUDGETS },
   { label: 'Marketplaces',       desc: 'Manage your sales channels — TikTok, Daraz, Amazon, eBay, etc.', route: 'ProjectMarketplaces', permission: PERMISSIONS.MANAGE_MARKETPLACES },
   { label: 'Supplier Bills',     desc: 'Track supplier invoices, record payments and view AP aging', route: 'SupplierBills', permission: PERMISSIONS.MANAGE_SUPPLIER_BILLS },
-  { label: 'Snooker Session Types', desc: 'Define billing methods and rates for snooker sessions', route: 'SnookerSessionTypes', permission: PERMISSIONS.MANAGE_GAMING_STATIONS },
-  { label: 'Arcade Session Types', desc: 'Define billing methods and rates for arcade sessions', route: 'ArcadeSessionTypes', permission: PERMISSIONS.MANAGE_GAMING_STATIONS },
+  { label: 'Snooker Session Types', desc: 'Define billing methods and rates for snooker sessions', route: 'SnookerSessionTypes', permission: PERMISSIONS.MANAGE_GAMING_STATIONS, gamingModule: 'snooker' },
+  { label: 'Arcade Session Types', desc: 'Define billing methods and rates for arcade sessions', route: 'ArcadeSessionTypes', permission: PERMISSIONS.MANAGE_GAMING_STATIONS, gamingModule: 'arcade' },
   { label: 'Gaming Ticket Rates', desc: 'Define duration presets and prices shown when creating a gaming ticket', route: 'GamingTicketRates', permission: PERMISSIONS.MANAGE_GAMING_TICKETS },
   { label: 'Gaming Ticket Template', desc: 'Customize the printed gaming tickets given to customers', route: 'GamingTicketTemplate', permission: PERMISSIONS.MANAGE_GAMING_TICKETS },
   { label: 'Property Options',   desc: 'Manage the Property Type, Purpose, and Furnishing dropdowns used when adding properties', route: 'PropertyOptions', permission: PERMISSIONS.MANAGE_RE_PROPERTIES },
@@ -354,9 +355,11 @@ const CONFIG_ITEMS = [
 
 const ConfigTab = ({ navigation }) => {
   const perms = usePermissions();
+  const { user } = useAuth();
 
   const visible = CONFIG_ITEMS.filter(item =>
-    item.permission == null || perms.can(item.permission),
+    (item.permission == null || perms.can(item.permission)) &&
+    (!item.gamingModule || item.gamingModule === user?.primaryDashboard),
   );
 
   const handlePress = item => {

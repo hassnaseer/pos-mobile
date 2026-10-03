@@ -96,18 +96,21 @@ export default function SnookerSessionDetailScreen({ route, navigation }) {
   const p2Items = items.filter(i => i.itemType === 'product' && i.playerSide === 'player2');
   const p1Total = p1Items.reduce((s, i) => s + parseFloat(i.totalPrice ?? 0), 0);
   const p2Total = p2Items.reduce((s, i) => s + parseFloat(i.totalPrice ?? 0), 0);
+  // Only each player's own products are taxed — the game fee never is.
+  const p1Tax = p1Items.reduce((s, i) => s + parseFloat(i.taxAmount ?? 0), 0);
+  const p2Tax = p2Items.reduce((s, i) => s + parseFloat(i.taxAmount ?? 0), 0);
   const sessionFee = parseFloat(session.sessionFee ?? 0);
   const elapsedMin = isActive ? (Date.now() - new Date(session.startTime).getTime()) / 60000 : parseFloat(session.durationMinutes ?? 0);
 
   const closePreview = side => {
     const isLoser = winner !== null && winner !== side;
-    const products = side === 'player1' ? p1Total : p2Total;
+    const products = side === 'player1' ? p1Total + p1Tax : p2Total + p2Tax;
     return (isLoser ? sessionFee : 0) + products;
   };
 
   const checkoutBill = side => {
     const isLoser = session.winner !== side;
-    return (isLoser ? sessionFee : 0) + (side === 'player1' ? p1Total : p2Total);
+    return (isLoser ? sessionFee : 0) + (side === 'player1' ? p1Total + p1Tax : p2Total + p2Tax);
   };
 
   return (
@@ -143,7 +146,7 @@ export default function SnookerSessionDetailScreen({ route, navigation }) {
         {['player1', 'player2'].map(side => {
           const name = side === 'player1' ? session.player1Name : session.player2Name;
           const pItems = side === 'player1' ? p1Items : p2Items;
-          const pTotal = side === 'player1' ? p1Total : p2Total;
+          const pTotal = (side === 'player1' ? p1Total : p2Total) + (side === 'player1' ? p1Tax : p2Tax);
           const paid = side === 'player1' ? session.player1Paid : session.player2Paid;
           const isWinner = session.winner === side;
           const isLoser = session.winner && session.winner !== side;
@@ -227,7 +230,8 @@ export default function SnookerSessionDetailScreen({ route, navigation }) {
         <View style={styles.billRow}><Text style={styles.billLabel}>Game Fee ({session.gameTypeName})</Text><Text style={styles.billValue}>Rs. {fmt(sessionFee)}</Text></View>
         {p1Items.length > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>{session.player1Name} products</Text><Text style={styles.billValue}>Rs. {fmt(p1Total)}</Text></View>}
         {p2Items.length > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>{session.player2Name} products</Text><Text style={styles.billValue}>Rs. {fmt(p2Total)}</Text></View>}
-        <View style={[styles.billRow, styles.billTotalRow]}><Text style={styles.billTotalLabel}>Total</Text><Text style={styles.billTotalValue}>Rs. {fmt(sessionFee + p1Total + p2Total)}</Text></View>
+        {(p1Tax + p2Tax) > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>Tax</Text><Text style={styles.billValue}>Rs. {fmt(p1Tax + p2Tax)}</Text></View>}
+        <View style={[styles.billRow, styles.billTotalRow]}><Text style={styles.billTotalLabel}>Total</Text><Text style={styles.billTotalValue}>Rs. {fmt(sessionFee + p1Total + p2Total + p1Tax + p2Tax)}</Text></View>
       </View>
 
       {isPending && (

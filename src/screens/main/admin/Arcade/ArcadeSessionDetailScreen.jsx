@@ -5,6 +5,10 @@ import {
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../services/api/globalApi';
+import { useAdminSettings, useInvoiceTemplate } from '../../../../services/api/posApi';
+import { useCurrency } from '../../../../context/CurrencyContext';
+import InvoicePreviewModal from '../../../../components/InvoicePreviewModal/InvoicePreviewModal';
+import { buildSalesInvoiceHtml } from '../../../../utils/invoicePrinter';
 import colors from '../../../../theme/colors';
 
 const fmt = n => (n == null ? '0.00' : parseFloat(String(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -24,6 +28,11 @@ export default function ArcadeSessionDetailScreen({ route }) {
   const qc = useQueryClient();
   const { data: session, isLoading, isFetching, refetch } = useSessionDetail(sessionId);
   const [, setTick] = useState(0);
+  const { data: businessSettings } = useAdminSettings();
+  const { data: invoiceTemplateCfg } = useInvoiceTemplate();
+  const { symbol, invoiceTerms } = useCurrency();
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [lastInvoiceHtml, setLastInvoiceHtml] = useState('');
 
   useEffect(() => {
     if (session?.status !== 'Active') return;
@@ -43,6 +52,13 @@ export default function ArcadeSessionDetailScreen({ route }) {
   const [productResults, setProductResults] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [qty, setQty] = useState('1');
+  const [customItemMode, setCustomItemMode] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customPrice, setCustomPrice] = useState('');
+
+  // Customer search state
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState([]);
 
   useEffect(() => {
     if (!productSearch.trim()) { setProductResults([]); return; }
@@ -56,13 +72,34 @@ export default function ArcadeSessionDetailScreen({ route }) {
     return () => clearTimeout(t);
   }, [productSearch]);
 
+  useEffect(() => {
+    if (!customerSearch.trim()) { setCustomerResults([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await apiClient.get(`/admin/customers?search=${encodeURIComponent(customerSearch)}&limit=8`);
+        const data = res?.data?.items ?? res?.data ?? res ?? [];
+        setCustomerResults(Array.isArray(data) ? data : []);
+      } catch { setCustomerResults([]); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [customerSearch]);
+
+  const canAddItem = customItemMode
+    ? customName.trim() !== '' && parseFloat(customPrice || '0') >= 0
+    : !!selectedProduct;
+
   const addItemMut = useMutation({
-    mutationFn: () => apiClient.post(`/admin/arcade/sessions/${sessionId}/items`, {
-      productId: selectedProduct.id, productName: selectedProduct.name,
-      unitPrice: parseFloat(selectedProduct.price), quantity: parseFloat(qty || '1'),
-    }),
-    onSuccess: () => { setSelectedProduct(null); setProductSearch(''); setQty('1'); refresh(); },
-    onError: e => Alert.alert('Error', typeof e === 'string' ? e : 'Failed to add product'),
+    mutationFn: () => apiClient.post(`/admin/arcade/sessions/${sessionId}/items`, customItemMode
+      ? { productName: customName.trim(), unitPrice: parseFloat(customPrice || '0'), quantity: parseFloat(qty || '1') }
+      : { productId: selectedProduct.id, productName: selectedProduct.name, unitPrice: parseFloat(selectedProduct.price), quantity: parseFloat(qty || '1') }),
+    onSuccess: () => { setSelectedProduct(null); setProductSearch(''); setQty('1'); setCustomName(''); setCustomPrice(''); refresh(); },
+    onError: e => Alert.alert('Error', typeof e === 'string' ? e : 'Failed to add item'),
+  });
+
+  const updateCustomerMut = useMutation({
+    mutationFn: customerId => apiClient.patch(`/admin/arcade/sessions/${sessionId}/customer`, { customerId }),
+    onSuccess: () => { setCustomerSearch(''); setCustomerResults([]); refresh(); },
+    onError: () => Alert.alert('Error', 'Failed to update customer'),
   });
 
   const removeItemMut = useMutation({
@@ -81,7 +118,38 @@ export default function ArcadeSessionDetailScreen({ route }) {
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const checkoutMut = useMutation({
     mutationFn: () => apiClient.post(`/admin/arcade/sessions/${sessionId}/checkout`, { paymentMethod }),
-    onSuccess: () => { setCheckoutOpen(false); refresh(); },
+    onSuccess: (result) => {
+      const orderNumber = result?.data?.orderNumber ?? sessionId;
+      const total = parseFloat(session.totalAmount ?? 0);
+      const cart = [
+        ...(session.sessionCharge && parseFloat(session.sessionCharge) > 0
+          ? [{ name: `Session Charge (${fmtDuration(session.durationMinutes)})`, quantity: 1, price: parseFloat(session.sessionCharge) }]
+          : []),
+        ...(session.items ?? []).filter(i => i.itemType === 'product').map(item => ({
+          name: item.productName ?? 'Item', quantity: parseFloat(item.quantity), price: parseFloat(item.unitPrice),
+        })),
+      ];
+      const html = buildSalesInvoiceHtml({
+        order: { orderNumber, paymentMethod, totalAmount: total, subtotal: total, amountPaid: total },
+        cart,
+        businessName: businessSettings?.name || '',
+        businessPhone: businessSettings?.phone,
+        businessEmail: businessSettings?.email,
+        businessAddress: businessSettings?.address,
+        symbol,
+        invoiceTerms,
+        subtotal: total,
+        excludedTaxes: [],
+        includedTaxes: [],
+        cartMiscCharges: [],
+        selectedCustomer: session.customerName ? { name: session.customerName } : null,
+        template: invoiceTemplateCfg,
+      });
+      setLastInvoiceHtml(html);
+      setCheckoutOpen(false);
+      refresh();
+      setShowInvoicePreview(true);
+    },
     onError: e => Alert.alert('Error', typeof e === 'string' ? e : 'Failed to process payment'),
   });
 
@@ -91,6 +159,7 @@ export default function ArcadeSessionDetailScreen({ route }) {
   const isPending = session.status === 'Completed';
   const items = (session.items ?? []).filter(i => i.itemType === 'product');
   const itemsTotal = parseFloat(session.itemsTotal ?? 0);
+  const taxAmount = parseFloat(session.taxAmount ?? 0);
   const sessionCharge = parseFloat(session.sessionCharge ?? session.sessionFee ?? 0);
   const elapsedMin = isActive ? (Date.now() - new Date(session.startTime).getTime()) / 60000 : parseFloat(session.durationMinutes ?? 0);
 
@@ -123,10 +192,45 @@ export default function ArcadeSessionDetailScreen({ route }) {
         </View>
       </View>
 
+      {(isActive || isPending) && (
+        <View style={styles.addBox}>
+          <Text style={styles.addBoxTitle}>👤 Customer</Text>
+          {session.customerName ? (
+            <View style={styles.selectedProduct}>
+              <Text style={styles.selectedProductText} numberOfLines={1}>{session.customerName}</Text>
+              <TouchableOpacity onPress={() => updateCustomerMut.mutate(null)}><Text style={styles.selectedProductClear}>✕</Text></TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <TextInput style={styles.input} value={customerSearch} onChangeText={setCustomerSearch} placeholder="Search customer…" placeholderTextColor="#999" />
+              {customerResults.length > 0 && (
+                <View style={styles.dropdown}>
+                  {customerResults.map(c => (
+                    <TouchableOpacity key={c.id} style={styles.dropdownRow} onPress={() => updateCustomerMut.mutate(c.id)}>
+                      <Text style={styles.dropdownText}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      )}
+
       {isActive && (
         <View style={styles.addBox}>
-          <Text style={styles.addBoxTitle}>🛒 Add Products</Text>
-          {selectedProduct ? (
+          <View style={styles.addBoxHeaderRow}>
+            <Text style={styles.addBoxTitle}>🛒 Add {customItemMode ? 'Custom Item' : 'Products'}</Text>
+            <TouchableOpacity onPress={() => { setCustomItemMode(m => !m); setSelectedProduct(null); setProductSearch(''); setCustomName(''); setCustomPrice(''); }}>
+              <Text style={styles.toggleLink}>{customItemMode ? 'Search catalog' : 'Custom item'}</Text>
+            </TouchableOpacity>
+          </View>
+          {customItemMode ? (
+            <View style={{ gap: 8 }}>
+              <TextInput style={styles.input} value={customName} onChangeText={setCustomName} placeholder="Item name" placeholderTextColor="#999" />
+              <TextInput style={styles.input} value={customPrice} onChangeText={setCustomPrice} placeholder="Price" placeholderTextColor="#999" keyboardType="decimal-pad" />
+            </View>
+          ) : selectedProduct ? (
             <View style={styles.selectedProduct}>
               <Text style={styles.selectedProductText} numberOfLines={1}>{selectedProduct.name}</Text>
               <Text style={styles.selectedProductPrice}>Rs. {fmt(selectedProduct.price)}</Text>
@@ -148,7 +252,7 @@ export default function ArcadeSessionDetailScreen({ route }) {
           )}
           <View style={styles.qtyRow}>
             <TextInput style={styles.qtyInput} value={qty} onChangeText={setQty} keyboardType="number-pad" />
-            <TouchableOpacity style={styles.addBtn} onPress={() => addItemMut.mutate()} disabled={!selectedProduct || addItemMut.isPending}>
+            <TouchableOpacity style={styles.addBtn} onPress={() => addItemMut.mutate()} disabled={!canAddItem || addItemMut.isPending}>
               {addItemMut.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.addBtnText}>+ Add</Text>}
             </TouchableOpacity>
           </View>
@@ -172,9 +276,10 @@ export default function ArcadeSessionDetailScreen({ route }) {
         <Text style={styles.billTitle}>Bill Summary</Text>
         <View style={styles.billRow}><Text style={styles.billLabel}>Session Charge{session.gameTypeName ? ` (${session.gameTypeName})` : ''}</Text><Text style={styles.billValue}>Rs. {fmt(isActive ? sessionCharge : session.sessionCharge)}</Text></View>
         {items.length > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>Items</Text><Text style={styles.billValue}>Rs. {fmt(itemsTotal)}</Text></View>}
+        {taxAmount > 0 && <View style={styles.billRow}><Text style={styles.billLabel}>Tax</Text><Text style={styles.billValue}>Rs. {fmt(taxAmount)}</Text></View>}
         <View style={[styles.billRow, styles.billTotalRow]}>
           <Text style={styles.billTotalLabel}>Total</Text>
-          <Text style={styles.billTotalValue}>Rs. {fmt(isActive ? sessionCharge + itemsTotal : session.totalAmount)}</Text>
+          <Text style={styles.billTotalValue}>Rs. {fmt(isActive ? sessionCharge + itemsTotal + taxAmount : session.totalAmount)}</Text>
         </View>
         {isActive && <Text style={styles.billNote}>Final charge is calculated when the session ends.</Text>}
       </View>
@@ -223,6 +328,14 @@ export default function ArcadeSessionDetailScreen({ route }) {
           </View>
         </View>
       </Modal>
+
+      <InvoicePreviewModal
+        visible={showInvoicePreview}
+        onClose={() => setShowInvoicePreview(false)}
+        html={lastInvoiceHtml}
+        fileName={`invoice-${sessionId}`}
+        title="Invoice"
+      />
     </ScrollView>
   );
 }
@@ -239,6 +352,8 @@ const styles = StyleSheet.create({
   infoFee: { fontSize: 11, fontFamily: 'Outfit-Medium', color: '#16a34a', marginTop: 1 },
   addBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 14, gap: 8 },
   addBoxTitle: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#1f2937' },
+  addBoxHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  toggleLink: { fontSize: 11, fontFamily: 'Outfit-Medium', color: colors.primary },
   input: { borderWidth: 1.5, borderColor: '#D0D5DD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, fontFamily: 'Outfit-Regular', color: '#111' },
   dropdown: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, maxHeight: 150 },
   dropdownRow: { paddingHorizontal: 12, paddingVertical: 9, borderBottomWidth: 1, borderColor: '#f3f4f6' },

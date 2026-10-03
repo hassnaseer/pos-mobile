@@ -182,15 +182,17 @@ const ADMIN_MENU = [
   { id: 'pharmacy-connections', title: 'Connections',      route: 'PharmacyConnections', icon: rolesIcon,     permission: PERMISSIONS.ACCESS_PHARMACY },
 
   // ── Specialty: Snooker — flat links, matching web (no dropdown group); Session
-  // Types has no sidebar entry on web either, still reachable via Settings ──────
-  { id: 'snooker-dashboard', title: 'Snooker Dashboard', route: 'SnookerDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true },
-  { id: 'snooker-sessions',  title: 'Sessions',          route: 'SnookerSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true },
-  { id: 'snooker-tables',    title: 'Tables',             route: 'SnookerTables',   icon: rolesIcon,  permission: PERMISSIONS.MANAGE_GAMING_STATIONS, adminOnly: true },
+  // Types has no sidebar entry on web either, still reachable via Settings. gamingModule
+  // keeps this mutually exclusive with Arcade below since both share the same permission
+  // codes — filterItem only shows it when user.primaryDashboard === 'snooker' ──────
+  { id: 'snooker-dashboard', title: 'Snooker Dashboard', route: 'SnookerDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true, gamingModule: 'snooker' },
+  { id: 'snooker-sessions',  title: 'Sessions',          route: 'SnookerSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true, gamingModule: 'snooker' },
+  { id: 'snooker-tables',    title: 'Tables',             route: 'SnookerTables',   icon: rolesIcon,  permission: PERMISSIONS.MANAGE_GAMING_STATIONS, adminOnly: true, gamingModule: 'snooker' },
 
   // ── Specialty: Arcade — shares the same gaming-stations/sessions permissions as Snooker
-  { id: 'arcade-dashboard', title: 'Arcade Dashboard', route: 'ArcadeDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true },
-  { id: 'arcade-sessions',  title: 'Sessions',         route: 'ArcadeSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true },
-  { id: 'arcade-stations',  title: 'Stations',         route: 'ArcadeStations',  icon: rolesIcon, permission: PERMISSIONS.MANAGE_GAMING_STATIONS, adminOnly: true },
+  { id: 'arcade-dashboard', title: 'Arcade Dashboard', route: 'ArcadeDashboard', icon: dashIcon,  permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true, gamingModule: 'arcade' },
+  { id: 'arcade-sessions',  title: 'Sessions',         route: 'ArcadeSessions',  icon: ordersIcon, permission: PERMISSIONS.MANAGE_GAMING_SESSIONS, adminOnly: true, gamingModule: 'arcade' },
+  { id: 'arcade-stations',  title: 'Stations',         route: 'ArcadeStations',  icon: rolesIcon, permission: PERMISSIONS.MANAGE_GAMING_STATIONS, adminOnly: true, gamingModule: 'arcade' },
 
   // ── Specialty: Gaming Tickets — prepaid time-based session tickets ───────────
   { id: 'gaming-tickets', title: 'Gaming Tickets', route: 'GamingTickets', icon: ticketsIcon, permission: PERMISSIONS.MANAGE_GAMING_TICKETS, adminOnly: true },
@@ -314,6 +316,7 @@ const Sidebar = ({ onClose }) => {
     if (isStaff && item.adminOnly)   return false;
     if (isAdmin && item.staffOnly)   return false;
     if (item.canShow && !item.canShow(perms)) return false;
+    if (item.gamingModule && item.gamingModule !== user?.primaryDashboard) return false;
     if (item.permission && !perms.can(item.permission)) return false;
     if (item.hideFor && item.hideFor.some(p => permCodes.includes(p))) return false;
     if (item.ownerPerm && bizPermCodes && !bizPermCodes.includes(item.ownerPerm)) return false;
