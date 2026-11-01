@@ -3,9 +3,27 @@ import {
   View, Text, StyleSheet, ScrollView, TextInput, Switch,
   TouchableOpacity, ActivityIndicator, Alert, Image,
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useProfile, useUpdateProfile, useChangePassword } from '../../../../services/api/posApi';
+import { useAuth } from '../../../../context/AuthContext';
+import { BASE_URL } from '../../../../services/api/globalApi';
 import colors from '../../../../theme/colors';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
+
+const uploadAvatar = async (asset) => {
+  const token = await AsyncStorage.getItem('authToken');
+  const body = new FormData();
+  body.append('file', { uri: asset.uri, type: asset.type ?? 'image/jpeg', name: asset.fileName ?? 'avatar.jpg' });
+  const res = await fetch(`${BASE_URL}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  });
+  const json = await res.json();
+  if (!res.ok) throw json?.message || 'Upload failed';
+  return json.data?.key ?? json.data?.url ?? '';
+};
 
 const Field = ({ label, value, onChangeText, placeholder, keyboardType, secureTextEntry, editable = true }) => (
   <View style={styles.field}>
@@ -24,6 +42,8 @@ const Field = ({ label, value, onChangeText, placeholder, keyboardType, secureTe
 );
 
 const ProfileScreen = () => {
+  const { userRole } = useAuth();
+  const isClient = userRole === 'project-client';
   const { data: profile, isLoading } = useProfile();
   const { mutateAsync: updateProfile, isPending: saving } = useUpdateProfile();
   const { mutateAsync: changePassword, isPending: changingPw } = useChangePassword();
@@ -32,6 +52,22 @@ const ProfileScreen = () => {
   const [form, setForm] = useState({ name: '', phoneNumber: '', address: '', bio: '', emergencyContact: '' });
   const [requireOtp, setRequireOtp] = useState(false);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handlePickAvatar = () => {
+    launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 }, async (res) => {
+      if (res.didCancel || !res.assets?.length) return;
+      setUploadingAvatar(true);
+      try {
+        const key = await uploadAvatar(res.assets[0]);
+        await updateProfile({ profileImg: key });
+      } catch (e) {
+        Alert.alert('Upload failed', typeof e === 'string' ? e : 'Please try again');
+      } finally {
+        setUploadingAvatar(false);
+      }
+    });
+  };
 
   useEffect(() => {
     if (profile) {
@@ -103,25 +139,41 @@ const ProfileScreen = () => {
         {tab === 'profile' && (
           <>
             <View style={styles.avatarRow}>
-              <View style={styles.avatar}>
-                {profile?.profileImg
-                  ? <Image source={{ uri: profile.profileImg }} style={styles.avatarImg} />
-                  : <Text style={styles.avatarText}>{(profile?.name ?? 'U')[0].toUpperCase()}</Text>}
-              </View>
+              <TouchableOpacity style={styles.avatar} onPress={handlePickAvatar} disabled={uploadingAvatar}>
+                {uploadingAvatar ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : profile?.profileImg ? (
+                  <Image source={{ uri: profile.profileImg }} style={styles.avatarImg} />
+                ) : (
+                  <Text style={styles.avatarText}>{(profile?.name ?? 'U')[0].toUpperCase()}</Text>
+                )}
+                <View style={styles.avatarCameraBadge}><Text style={styles.avatarCameraIcon}>📷</Text></View>
+              </TouchableOpacity>
               <View style={styles.avatarInfo}>
                 <Text style={styles.avatarName}>{profile?.name ?? '—'}</Text>
-                <Text style={styles.avatarRole}>{profile?.role ?? '—'}</Text>
+                <Text style={styles.avatarRole}>{isClient ? 'Client' : (profile?.role ?? '—')}</Text>
+                {uploadingAvatar && <Text style={styles.avatarUploading}>Uploading photo…</Text>}
               </View>
             </View>
 
-            <Field label="Full Name" value={form.name} onChangeText={set('name')} placeholder="Your name" />
-            <Field label="Email" value={profile?.email ?? ''} placeholder="Email" editable={false} />
-            <PhoneInput label="Phone Number" value={form.phoneNumber} onChange={set('phoneNumber')} placeholder="Phone number" />
-            <Field label="Address" value={form.address} onChangeText={set('address')} placeholder="Your address" />
-            <Field label="Bio" value={form.bio} onChangeText={set('bio')} placeholder="Tell us about yourself" />
+            {isClient ? (
+              <>
+                <Field label="Name" value={profile?.name ?? ''} placeholder="Name" editable={false} />
+                <Field label="Login Email" value={profile?.email ?? ''} placeholder="Email" editable={false} />
+                <Text style={styles.sectionNote}>Your name and login email are managed by the business. Contact them if these need to change.</Text>
+              </>
+            ) : (
+              <>
+                <Field label="Full Name" value={form.name} onChangeText={set('name')} placeholder="Your name" />
+                <Field label="Email" value={profile?.email ?? ''} placeholder="Email" editable={false} />
+                <PhoneInput label="Phone Number" value={form.phoneNumber} onChange={set('phoneNumber')} placeholder="Phone number" />
+                <Field label="Address" value={form.address} onChangeText={set('address')} placeholder="Your address" />
+                <Field label="Bio" value={form.bio} onChangeText={set('bio')} placeholder="Tell us about yourself" />
+              </>
+            )}
 
             {/* Employment details — read-only, admin-managed via HRMS Profile */}
-            {(profile?.designation || profile?.department || profile?.employeeId || profile?.shiftStartTime || profile?.reportsTo) && (
+            {!isClient && (profile?.designation || profile?.department || profile?.employeeId || profile?.shiftStartTime || profile?.reportsTo) && (
               <View style={styles.hrmsBlock}>
                 <Text style={styles.hrmsBlockTitle}>Employment Details</Text>
                 {profile?.designation && (
@@ -142,10 +194,10 @@ const ProfileScreen = () => {
               </View>
             )}
 
-            <Field label="Emergency Contact" value={form.emergencyContact} onChangeText={set('emergencyContact')} placeholder="Name, relation, phone number" />
+            {!isClient && <Field label="Emergency Contact" value={form.emergencyContact} onChangeText={set('emergencyContact')} placeholder="Name, relation, phone number" />}
 
             {/* OTP toggle */}
-            <View style={styles.otpToggleRow}>
+            {!isClient && <View style={styles.otpToggleRow}>
               <View style={styles.otpToggleInfo}>
                 <Text style={styles.otpToggleLabel}>Require OTP on Login</Text>
                 <Text style={styles.otpToggleDesc}>Send a verification code every time you sign in</Text>
@@ -159,11 +211,13 @@ const ProfileScreen = () => {
                 trackColor={{ false: '#D1D5DB', true: colors.primary }}
                 thumbColor="#fff"
               />
-            </View>
+            </View>}
 
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={saving}>
-              {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
-            </TouchableOpacity>
+            {!isClient && (
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={saving}>
+                {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
+              </TouchableOpacity>
+            )}
           </>
         )}
 
@@ -194,9 +248,12 @@ const styles = StyleSheet.create({
   tabTextActive: { fontFamily: 'Outfit-SemiBold', color: colors.primary },
   body: { padding: 16 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, gap: 14 },
-  avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   avatarImg: { width: 54, height: 54, borderRadius: 27 },
   avatarText: { color: '#fff', fontSize: 22, fontFamily: 'Outfit-Bold' },
+  avatarCameraBadge: { position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
+  avatarCameraIcon: { fontSize: 10 },
+  avatarUploading: { fontSize: 11, fontFamily: 'Outfit-Regular', color: colors.primary, marginTop: 2 },
   avatarInfo: { flex: 1 },
   avatarName: { fontSize: 17, fontFamily: 'Outfit-SemiBold', color: colors.defaultBlack },
   avatarRole: { fontSize: 13, fontFamily: 'Outfit-Regular', color: colors.secondary, textTransform: 'capitalize', marginTop: 2 },

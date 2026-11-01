@@ -1221,11 +1221,17 @@ export const useClientDashboard = () =>
     staleTime: 30_000,
   });
 
-export const useClientProjects = () =>
+export const useClientProjects = (params = {}) =>
   useQuery({
-    queryKey: ['client-projects'],
+    queryKey: ['client-projects', params],
     queryFn: async () => {
-      const r = await apiClient.get('/client/projects');
+      const qs = params.startDate || params.endDate
+        ? `?${new URLSearchParams({
+            ...(params.startDate ? { startDate: params.startDate } : {}),
+            ...(params.endDate ? { endDate: params.endDate } : {}),
+          }).toString()}`
+        : '';
+      const r = await apiClient.get(`/client/projects${qs}`);
       return r?.data ?? r ?? [];
     },
     staleTime: 30_000,
@@ -1290,6 +1296,18 @@ export const useBlockBusiness = () => {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['sa-business', id] });
       qc.invalidateQueries({ queryKey: ['sa-businesses'] });
+    },
+  });
+};
+
+export const useGrantBusinessSlots = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, slotType, slotsCount }) =>
+      apiClient.patch(`/super-admin/businesses/${id}/grant-slots`, { slotType, slotsCount }),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['sa-business', id] });
+      qc.invalidateQueries({ queryKey: ['sa-business-stats', id] });
     },
   });
 };

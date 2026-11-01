@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, RefreshControl,
+  ActivityIndicator, Alert, Modal, RefreshControl, TextInput,
 } from 'react-native';
 import {
   useSABusinessDetail, useSABusinessStats, useSABusinessStaff,
   useSABusinessSubscriptions, useExtendBusinessTrial,
-  useBlockBusiness,
+  useBlockBusiness, useGrantBusinessSlots,
 } from '../../../../services/api/posApi';
 import { useNavigation } from '@react-navigation/native';
 import DatePicker from '../../../../components/Ui/DatePicker';
@@ -36,10 +36,13 @@ const SABusinessDetailScreen = ({ route }) => {
 
   const { mutate: extendTrial, isPending: extending } = useExtendBusinessTrial();
   const { mutate: blockBusiness, isPending: blocking } = useBlockBusiness();
+  const { mutate: grantSlots, isPending: granting } = useGrantBusinessSlots();
 
   const [activeTab, setActiveTab] = useState('Overview');
   const [showExtend, setShowExtend] = useState(false);
   const [expiryDate, setExpiryDate] = useState('');
+  const [grantSlotType, setGrantSlotType] = useState('staff');
+  const [grantSlotCount, setGrantSlotCount] = useState('1');
 
   if (isLoading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
@@ -81,6 +84,18 @@ const SABusinessDetailScreen = ({ route }) => {
       },
     ]);
   };
+
+  const handleGrantSlots = () => {
+    const count = parseInt(grantSlotCount, 10);
+    if (!Number.isFinite(count) || count < 0) { Alert.alert('Error', 'Please enter a valid number of slots'); return; }
+    grantSlots({ id: businessId, slotType: grantSlotType, slotsCount: count });
+  };
+
+  const SLOT_TYPES = [
+    { key: 'staff', label: 'Staff' },
+    { key: 'branch', label: 'Branch' },
+    { key: 'client-portal', label: 'Client Portal' },
+  ];
 
   const renderOverview = () => (
     <>
@@ -157,18 +172,57 @@ const SABusinessDetailScreen = ({ route }) => {
   );
 
   const renderSubscription = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Subscription History</Text>
-      {subsList.length === 0
-        ? <Text style={styles.emptyText}>No subscription records.</Text>
-        : subsList.map((s, i) => (
-          <View key={i} style={styles.listItem}>
-            <Text style={styles.listItemTitle}>{s.planName ?? s.plan ?? 'Plan'}</Text>
-            <Text style={styles.listItemSub}>{s.status} · {s.startDate ? new Date(s.startDate).toLocaleDateString() : '—'} → {s.endDate ? new Date(s.endDate).toLocaleDateString() : '—'}</Text>
-          </View>
-        ))
-      }
-    </View>
+    <>
+      {/* Grant / Adjust Free Slots */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Grant / Adjust Free Slots</Text>
+        <Text style={styles.cardNote}>
+          Set the number of extra staff, branch, or client portal slots for this business at no charge — bypasses the payment flow and takes effect immediately. Setting a lower number than before reduces the limit; if the business is currently over the new limit, the most recently added staff/branches are automatically deactivated until it's back within limit.
+        </Text>
+        <View style={styles.slotTypeRow}>
+          {SLOT_TYPES.map(t => (
+            <TouchableOpacity
+              key={t.key}
+              style={[styles.slotTypeBtn, grantSlotType === t.key && styles.slotTypeBtnActive]}
+              onPress={() => setGrantSlotType(t.key)}
+            >
+              <Text style={[styles.slotTypeBtnText, grantSlotType === t.key && styles.slotTypeBtnTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.slotInputRow}>
+          <Text style={styles.infoLabel}>Number of Slots</Text>
+          <TextInput
+            style={styles.slotInput}
+            keyboardType="number-pad"
+            value={grantSlotCount}
+            onChangeText={setGrantSlotCount}
+            placeholder="0"
+            placeholderTextColor="#999"
+          />
+        </View>
+        <TouchableOpacity style={styles.actionBtn} onPress={handleGrantSlots} disabled={granting}>
+          {granting
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={styles.actionBtnText}>
+                Set {grantSlotCount || 0} {SLOT_TYPES.find(t => t.key === grantSlotType)?.label} Slot(s)
+              </Text>}
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Subscription History</Text>
+        {subsList.length === 0
+          ? <Text style={styles.emptyText}>No subscription records.</Text>
+          : subsList.map((s, i) => (
+            <View key={i} style={styles.listItem}>
+              <Text style={styles.listItemTitle}>{s.planName ?? s.plan ?? 'Plan'}</Text>
+              <Text style={styles.listItemSub}>{s.status} · {s.startDate ? new Date(s.startDate).toLocaleDateString() : '—'} → {s.endDate ? new Date(s.endDate).toLocaleDateString() : '—'}</Text>
+            </View>
+          ))
+        }
+      </View>
+    </>
   );
 
   const renderStaff = () => (
@@ -340,6 +394,14 @@ const styles = StyleSheet.create({
   // Cards
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, elevation: 2 },
   cardTitle: { fontSize: 15, fontFamily: 'Outfit-Bold', color: '#111827', marginBottom: 12 },
+  cardNote: { fontSize: 12, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginBottom: 14, lineHeight: 17 },
+  slotTypeRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  slotTypeBtn: { flex: 1, paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f4f6f9', alignItems: 'center' },
+  slotTypeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  slotTypeBtnText: { fontSize: 12, fontFamily: 'Outfit-SemiBold', color: '#475569' },
+  slotTypeBtnTextActive: { color: '#fff' },
+  slotInputRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  slotInput: { width: 90, backgroundColor: '#f4f6f9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, fontFamily: 'Outfit-SemiBold', color: '#111827', textAlign: 'center' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderColor: '#f4f6f9' },
   infoLabel: { fontSize: 13, fontFamily: 'Outfit-Regular', color: '#6b7280', flex: 1 },
   infoValue: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#111827', flex: 2, textAlign: 'right' },
