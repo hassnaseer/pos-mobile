@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, ActivityIndicator, Alert, TextInput, RefreshControl,
+  Modal, ActivityIndicator, Alert, TextInput, RefreshControl, Linking,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { pick, types, isCancel } from '@react-native-documents/picker';
+import RNFS from 'react-native-fs';
 import apiClient from '../../../../services/api/globalApi';
 import { useExpenseCategories, useCustomers, useCreateCustomer } from '../../../../services/api/posApi';
 import { useCurrency, CURRENCY_SYMBOLS } from '../../../../context/CurrencyContext';
 import { compactAmt } from '../../../../utils/currency';
+import { usePermissions } from '../../../../hooks/usePermissions';
 import InlinePicker from '../../../../components/InlinePicker/InlinePicker';
 import DatePicker from '../../../../components/Ui/DatePicker';
 import PhoneInput from '../../../../components/PhoneInput/PhoneInput';
@@ -16,6 +19,52 @@ import CallCenterEntriesTab from './CallCenterEntriesTab';
 import CategoryEntriesTab from './CategoryEntriesTab';
 import colors from '../../../../theme/colors';
 import HeaderAddButton from '../../../../components/Ui/HeaderAddButton';
+
+// eBay/TikTok Shop are the two platforms with real push-listing support today (see
+// docs/Store-Integrations-Sync-Plan.md); other permitted platforms can still be connected here
+// for project_income order sync, they just can't push new listings yet.
+const LISTING_PLATFORMS = [
+  { id: 'ebay', label: 'eBay' },
+  { id: 'tiktokshop', label: 'TikTok Shop' },
+];
+
+const useProjectConnections = projectId =>
+  useQuery({
+    queryKey: ['project-ecommerce', projectId],
+    queryFn: async () => { const r = await apiClient.get(`/admin/projects/${projectId}/ecommerce`); return r?.data ?? r ?? []; },
+    enabled: !!projectId,
+  });
+
+const useProjectListings = projectId =>
+  useQuery({
+    queryKey: ['project-listings', projectId],
+    queryFn: async () => { const r = await apiClient.get(`/admin/projects/${projectId}/listings`); return r?.data ?? r ?? []; },
+    enabled: !!projectId,
+  });
+
+// Minimal CSV parser — handles quoted fields and embedded commas (same shape as
+// BulkOperationsScreen.jsx's local parser).
+const parseCsv = text => {
+  const lines = String(text).split(/\r?\n/).filter(l => l.trim().length);
+  if (!lines.length) return { headers: [], rows: [] };
+  const splitLine = line => {
+    const out = []; let cur = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+      else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out.map(v => v.trim());
+  };
+  const headers = splitLine(lines[0]).map(h => h.toLowerCase());
+  const rows = lines.slice(1).map(l => {
+    const vals = splitLine(l);
+    return headers.reduce((o, h, i) => { o[h] = vals[i] ?? ''; return o; }, {});
+  });
+  return { headers, rows };
+};
 
 const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS);
 
@@ -83,10 +132,102 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const categoryDef = getCategoryDef(pl?.project?.category);
   const entryKind = categoryDef.entryTable;
   const salesTabLabel = entryKind === 'call_center' ? 'Call Center' : entryKind === 'universal' ? 'Entries' : 'Sales';
-  const TABS = ['Overview', ...(entryKind ? [salesTabLabel] : []), 'Expenses', ...(isMilestone ? ['Milestones'] : [])];
+  const TABS = ['Overview', ...(entryKind ? [salesTabLabel] : []), 'Expenses', ...(isMilestone ? ['Milestones'] : []), 'Product Listings'];
 
   const reload = () => qc.invalidateQueries({ queryKey: ['project-pl', projectId] });
   const reloadMilestones = () => qc.invalidateQueries({ queryKey: ['project-milestones', projectId] });
+
+  // ── Product Listings tab (per-project ecommerce account + push-listing) ──────────────────
+  const perms = usePermissions();
+  const { data: connections = [], refetch: refetchConnections } = useProjectConnections(projectId);
+  const { data: listings = [], refetch: refetchListings } = useProjectListings(projectId);
+  const reloadListingsTab = () => { refetchConnections(); refetchListings(); };
+
+  const [connectModal, setConnectModal] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const syncConnectionMut = useMutation({
+    mutationFn: platform => apiClient.patch(`/admin/projects/${projectId}/ecommerce/${platform}/sync`),
+    onSuccess: reloadListingsTab,
+    onError: () => Alert.alert('Error', 'Sync failed'),
+  });
+  const disconnectConnectionMut = useMutation({
+    mutationFn: platform => apiClient.delete(`/admin/projects/${projectId}/ecommerce/${platform}/disconnect`),
+    onSuccess: reloadListingsTab,
+    onError: () => Alert.alert('Error', 'Failed to disconnect'),
+  });
+  const handleConnectPlatform = async platformId => {
+    setConnecting(true);
+    try {
+      const res = await apiClient.get(`/admin/projects/${projectId}/ecommerce/${platformId}/auth-url`);
+      const url = res?.data?.url ?? res?.url;
+      if (!url) throw new Error('Failed to get auth URL');
+      setConnectModal(false);
+      await Linking.openURL(url);
+      Alert.alert('Continue in browser', 'Finish connecting your account in the browser, then come back and pull down to refresh.');
+    } catch (e) {
+      Alert.alert('Error', typeof e === 'string' ? e : (e?.message || 'Failed to start connection'));
+    } finally { setConnecting(false); }
+  };
+  const handleDisconnectPlatform = platform => Alert.alert('Disconnect', `Disconnect ${platform}? Listings already pushed will remain.`, [
+    { text: 'Cancel', style: 'cancel' }, { text: 'Disconnect', style: 'destructive', onPress: () => disconnectConnectionMut.mutate(platform) },
+  ]);
+
+  // Add Listing modal
+  const [listingModal, setListingModal] = useState(false);
+  const [listingConnId, setListingConnId] = useState('');
+  const [listingForm, setListingForm] = useState({ name: '', description: '', price: '', stock: '', category: '' });
+  const pushableConnections = connections.filter(c => c.isActive);
+  const createListingMut = useMutation({
+    mutationFn: () => apiClient.post(`/admin/projects/${projectId}/listings`, {
+      connectionId: listingConnId,
+      name: listingForm.name,
+      description: listingForm.description || undefined,
+      price: parseFloat(listingForm.price) || 0,
+      stock: parseInt(listingForm.stock, 10) || 0,
+      category: listingForm.category || undefined,
+    }),
+    onSuccess: () => { setListingModal(false); reloadListingsTab(); },
+    onError: e => Alert.alert('Error', typeof e === 'string' ? e : (e?.message || 'Failed to create listing')),
+  });
+  const openAddListing = () => {
+    setListingForm({ name: '', description: '', price: '', stock: '', category: '' });
+    setListingConnId(pushableConnections[0]?.id ?? '');
+    setListingModal(true);
+  };
+  const handleSaveListing = () => {
+    if (!listingConnId || !listingForm.name.trim()) { Alert.alert('Error', 'Pick a connection and enter a name'); return; }
+    createListingMut.mutate();
+  };
+
+  // Bulk CSV import of listings
+  const [importing, setImporting] = useState(false);
+  const handleImportListings = async () => {
+    if (pushableConnections.length === 0) { Alert.alert('Error', 'Connect an account first'); return; }
+    const connectionId = pushableConnections[0].id;
+    let picked;
+    try { [picked] = await pick({ type: [types.csv, types.plainText, types.allFiles] }); }
+    catch (e) { if (!isCancel(e)) Alert.alert('Error', 'Could not pick file'); return; }
+    if (!picked?.uri) return;
+    setImporting(true);
+    try {
+      const text = await RNFS.readFile(picked.uri, 'utf8');
+      const { rows } = parseCsv(text);
+      if (!rows.length) { Alert.alert('Error', 'File has no data rows'); return; }
+      const mapped = rows.map(r => ({
+        name: r.name, description: r.description || undefined,
+        price: r.price ? parseFloat(r.price) : undefined,
+        stock: r.stock ? parseFloat(r.stock) : undefined,
+        category: r.category || undefined,
+        imageUrl: r.imageurl || undefined,
+      })).filter(r => r.name);
+      const res = await apiClient.post(`/admin/projects/${projectId}/listings/import`, { connectionId, rows: mapped });
+      const data = res?.data ?? res ?? {};
+      Alert.alert('Import complete', `${data.success ?? 0} listing(s) imported${data.errors?.length ? `, ${data.errors.length} failed` : ''}`);
+      reloadListingsTab();
+    } catch (e) {
+      Alert.alert('Error', typeof e === 'string' ? e : 'Import failed');
+    } finally { setImporting(false); }
+  };
 
   // Milestone modal
   const [milestoneModal, setMilestoneModal] = useState(false);
@@ -488,6 +629,116 @@ export default function ProjectDetailScreen({ route, navigation }) {
         </View>
       )}
 
+      {tab === 'Product Listings' && (
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isFetching} onRefresh={reloadListingsTab} tintColor={colors.primary} />}
+        >
+          <View style={styles.breakdownCard}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={styles.breakdownTitle}>Connected Accounts</Text>
+              <TouchableOpacity style={styles.smallBtn} onPress={() => setConnectModal(true)}>
+                <Text style={styles.smallBtnText}>+ Connect Account</Text>
+              </TouchableOpacity>
+            </View>
+            {connections.length === 0 ? <Text style={styles.empty}>No account connected yet.</Text> : connections.map(c => (
+              <View key={c.id} style={styles.connectionRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.entryTitle}>{LISTING_PLATFORMS.find(p => p.id === c.platform)?.label ?? c.platform}</Text>
+                  <Text style={styles.entrySub}>{c.isActive ? 'Connected' : 'Inactive'}{c.lastSyncAt ? ` · Synced ${new Date(c.lastSyncAt).toLocaleDateString()}` : ''}</Text>
+                  {c.lastSyncError ? <Text style={[styles.entrySub, { color: '#dc2626' }]}>{c.lastSyncError}</Text> : null}
+                </View>
+                <TouchableOpacity onPress={() => syncConnectionMut.mutate(c.platform)} disabled={syncConnectionMut.isPending}>
+                  <Text style={styles.entryEdit}>Sync</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDisconnectPlatform(c.platform)} style={{ marginLeft: 12 }}>
+                  <Text style={styles.entryDel}>Disconnect</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.breakdownCard}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={styles.breakdownTitle}>Product Listings ({listings.length})</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity style={styles.smallBtnOutline} onPress={handleImportListings} disabled={importing || pushableConnections.length === 0}>
+                  {importing ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={styles.smallBtnOutlineText}>Import</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.smallBtn} onPress={openAddListing} disabled={pushableConnections.length === 0}>
+                  <Text style={styles.smallBtnText}>+ Add</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            {pushableConnections.length === 0 && <Text style={styles.empty}>Connect an account above before adding listings.</Text>}
+            {listings.length === 0 ? (pushableConnections.length > 0 && <Text style={styles.empty}>No listings yet.</Text>) : listings.map(l => (
+              <View key={l.id} style={styles.entryCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.entryTitle}>{l.name}</Text>
+                  <Text style={styles.entrySub}>Stock {l.stock}{l.category ? ` · ${l.category}` : ''}</Text>
+                </View>
+                <Text style={styles.entryAmount}>{fmt((parseFloat(l.price) || 0))}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* Connect Account modal */}
+      <Modal visible={connectModal} animationType="slide" transparent onRequestClose={() => setConnectModal(false)}>
+        <View style={styles.modalBg}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Connect Account</Text>
+            {LISTING_PLATFORMS.filter(p => perms.can(`ecommerce_${p.id}`)).map(p => (
+              <TouchableOpacity key={p.id} style={styles.platformOption} onPress={() => handleConnectPlatform(p.id)} disabled={connecting}>
+                <Text style={styles.entryTitle}>{p.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setConnectModal(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Listing modal */}
+      <Modal visible={listingModal} animationType="slide" transparent onRequestClose={() => setListingModal(false)}>
+        <View style={styles.modalBg}>
+          <ScrollView style={styles.modalCard} contentContainerStyle={{ paddingBottom: 12 }}>
+            <Text style={styles.modalTitle}>Add Listing</Text>
+            <Text style={styles.label}>Push to</Text>
+            <InlinePicker
+              options={pushableConnections.map(c => ({ id: c.id, name: LISTING_PLATFORMS.find(p => p.id === c.platform)?.label ?? c.platform }))}
+              value={listingConnId}
+              onSelect={setListingConnId}
+              placeholder="Select connection"
+              allowNone={false}
+            />
+            <Text style={styles.label}>Name *</Text>
+            <TextInput style={styles.input} value={listingForm.name} onChangeText={v => setListingForm(f => ({ ...f, name: v }))} placeholder="Product name" placeholderTextColor="#999" />
+            <Text style={styles.label}>Description</Text>
+            <TextInput style={styles.input} value={listingForm.description} onChangeText={v => setListingForm(f => ({ ...f, description: v }))} placeholder="Optional" placeholderTextColor="#999" />
+            <View style={styles.row2}>
+              <View style={styles.col}>
+                <Text style={styles.label}>Price</Text>
+                <TextInput style={styles.input} value={listingForm.price} onChangeText={v => setListingForm(f => ({ ...f, price: v }))} placeholder="0.00" placeholderTextColor="#999" keyboardType="decimal-pad" />
+              </View>
+              <View style={styles.col}>
+                <Text style={styles.label}>Stock</Text>
+                <TextInput style={styles.input} value={listingForm.stock} onChangeText={v => setListingForm(f => ({ ...f, stock: v }))} placeholder="0" placeholderTextColor="#999" keyboardType="number-pad" />
+              </View>
+            </View>
+            <Text style={styles.label}>Category</Text>
+            <TextInput style={styles.input} value={listingForm.category} onChangeText={v => setListingForm(f => ({ ...f, category: v }))} placeholder="Optional" placeholderTextColor="#999" />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setListingModal(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveListing} disabled={createListingMut.isPending}>
+                {createListingMut.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveText}>Create & Push</Text>}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
       <Modal visible={milestoneModal} animationType="slide" transparent onRequestClose={() => setMilestoneModal(false)}>
         <View style={styles.modalBg}>
           <ScrollView style={styles.modalCard} contentContainerStyle={{ paddingBottom: 12 }}>
@@ -805,6 +1056,12 @@ const styles = StyleSheet.create({
   addBtn: { margin: 16, marginBottom: 0, backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 11, alignItems: 'center' },
   addBtnText: { color: '#fff', fontFamily: 'Outfit-SemiBold', fontSize: 13 },
   empty: { textAlign: 'center', color: '#9ca3af', fontFamily: 'Outfit-Regular', marginTop: 30 },
+  smallBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
+  smallBtnText: { color: '#fff', fontSize: 12, fontFamily: 'Outfit-SemiBold' },
+  smallBtnOutline: { borderWidth: 1, borderColor: colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
+  smallBtnOutlineText: { color: colors.primary, fontSize: 12, fontFamily: 'Outfit-SemiBold' },
+  connectionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderColor: '#f3f4f6' },
+  platformOption: { paddingVertical: 14, borderBottomWidth: 1, borderColor: '#f0f0f0' },
   entryCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
   entryTitle: { fontSize: 13, fontFamily: 'Outfit-SemiBold', color: '#111827' },
   entrySub: { fontSize: 11, fontFamily: 'Outfit-Regular', color: '#9ca3af', marginTop: 2 },
